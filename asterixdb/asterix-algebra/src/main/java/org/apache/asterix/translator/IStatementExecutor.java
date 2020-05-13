@@ -137,6 +137,7 @@ public interface IStatementExecutor {
         private Profile profile;
         private ProfileType profileType;
         private long totalWarningsCount;
+        private long optimizeTime;
 
         public long getCount() {
             return count;
@@ -187,6 +188,15 @@ public interface IStatementExecutor {
         public void setProfileType(ProfileType profileType) {
             this.profileType = profileType;
         }
+
+        public long getOptimizationTime() {
+            return optimizeTime;
+        }
+
+        public void setOptimizeTime(long optimizeTime) {
+            this.optimizeTime = optimizeTime;
+        }
+
     }
 
     class Profile implements Serializable {
@@ -215,6 +225,7 @@ public interface IStatementExecutor {
         public ObjectNode getProfile() {
             return profile;
         }
+
     }
 
     /**
@@ -248,7 +259,8 @@ public interface IStatementExecutor {
      */
     JobSpecification rewriteCompileQuery(IClusterInfoCollector clusterInfoCollector, MetadataProvider metadataProvider,
             Query query, ICompiledDmlStatement dmlStatement, Map<String, IAObject> statementParameters,
-            IStatementRewriter statementRewriter) throws RemoteException, AlgebricksException, ACIDException;
+            IStatementRewriter statementRewriter, Stats stats)
+            throws RemoteException, AlgebricksException, ACIDException;
 
     /**
      * returns the active dataverse for an entity or a statement

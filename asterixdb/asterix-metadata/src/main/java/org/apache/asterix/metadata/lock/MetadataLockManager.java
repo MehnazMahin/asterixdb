@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
 import org.apache.asterix.common.api.IMetadataLockManager;
+import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.common.metadata.IMetadataLock;
 import org.apache.asterix.common.metadata.LockList;
@@ -265,4 +266,12 @@ public class MetadataLockManager implements IMetadataLockManager {
         locks.downgrade(IMetadataLock.Mode.EXCLUSIVE_MODIFY, lock);
     }
 
+    @Override
+    public void acquireStatisticsWriteLock(LockList locks, DataverseName dataverse, String dataset, String indexName,
+            String fieldName, String nodeName, String partitionId, boolean isAntimatter) throws AsterixException {
+
+        MetadataLockKey key = MetadataLockKey.createStatisticsLockKey(dataverse, fieldName);
+        IMetadataLock lock = mdlocks.computeIfAbsent(key, LOCK_FUNCTION);
+        locks.add(IMetadataLock.Mode.WRITE, lock);
+    }
 }
