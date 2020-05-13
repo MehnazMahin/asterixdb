@@ -18,6 +18,7 @@
  */
 package org.apache.asterix.common.api;
 
+import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.common.metadata.LockList;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
@@ -507,5 +508,35 @@ public interface IMetadataLockManager {
      *             if lock couldn't be downgraded
      */
     void downgradeDatasetLockToExclusiveModify(LockList locks, DataverseName dataverseName, String datasetName)
+            throws AlgebricksException;
+
+    /**
+     * Acquire read lock on the statistics entity
+     *
+     * @param locks
+     *            the lock list to add the new lock to
+     * @param dataverseName
+     *            the dataverse name
+     * @param indexName
+     *            the fully qualified name of the index
+     * @throws AlgebricksException
+     *             if lock couldn't be acquired
+     */
+    void acquireStatisticsReadLock(LockList locks, DataverseName dataverseName, String indexName)
+            throws AlgebricksException;
+
+    /**
+     * Acquire write lock on the statistics entity
+     *
+     * @param locks
+     *            the lock list to add the new lock to
+     * @param dataverseName
+     *            the dataverse name
+     * @param indexName
+     *            the fully qualified name of the index
+     * @throws AlgebricksException
+     *             if lock couldn't be acquired
+     */
+    void acquireStatisticsWriteLock(LockList locks, DataverseName dataverseName, String indexName)
             throws AlgebricksException;
 }

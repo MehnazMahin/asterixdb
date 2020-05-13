@@ -43,6 +43,7 @@ import org.apache.asterix.metadata.entities.Function;
 import org.apache.asterix.metadata.entities.Index;
 import org.apache.asterix.metadata.entities.Library;
 import org.apache.asterix.metadata.entities.NodeGroup;
+import org.apache.asterix.metadata.entities.Statistics;
 import org.apache.asterix.metadata.entities.Synonym;
 import org.apache.asterix.metadata.utils.IndexUtil;
 import org.apache.asterix.runtime.fulltext.FullTextConfigDescriptor;
@@ -86,6 +87,12 @@ public class MetadataCache {
     protected final Map<DataverseName, Map<String, FullTextFilterMetadataEntity>> fullTextFilters = new HashMap<>();
     // Key is DataverseName. Key of value map is the full-text config name
     protected final Map<DataverseName, Map<String, FullTextConfigMetadataEntity>> fullTextConfigs = new HashMap<>();
+    // Key is dataverse name. Key of value map is dataset name. Key of value map of value map is index name.
+    protected final Map<DataverseName, Map<String, Map<String, Map<String, Statistics>>>> indexSynopsesMap =
+            new HashMap<>();
+    // Key is dataverse name. Key of value map is dataset name. Key of value map of value map is index name.
+    protected final Map<DataverseName, Map<String, Map<String, Map<String, Statistics>>>> indexAntimatterSynopsesMap =
+            new HashMap<>();
 
     // Atomically executes all metadata operations in ctx's log.
     public void commit(MetadataTransactionContext ctx) {
@@ -126,18 +133,24 @@ public class MetadataCache {
                                             synchronized (libraries) {
                                                 synchronized (compactionPolicies) {
                                                     synchronized (synonyms) {
-                                                        dataverses.clear();
-                                                        nodeGroups.clear();
-                                                        datasets.clear();
-                                                        indexes.clear();
-                                                        datatypes.clear();
-                                                        functions.clear();
-                                                        fullTextConfigs.clear();
-                                                        fullTextFilters.clear();
-                                                        adapters.clear();
-                                                        libraries.clear();
-                                                        compactionPolicies.clear();
-                                                        synonyms.clear();
+                                                        synchronized (indexSynopsesMap) {
+                                                            synchronized (indexAntimatterSynopsesMap) {
+                                                                dataverses.clear();
+                                                                nodeGroups.clear();
+                                                                datasets.clear();
+                                                                indexes.clear();
+                                                                datatypes.clear();
+                                                                functions.clear();
+                                                                fullTextConfigs.clear();
+                                                                fullTextFilters.clear();
+                                                                adapters.clear();
+                                                                libraries.clear();
+                                                                compactionPolicies.clear();
+                                                                synonyms.clear();
+                                                                indexSynopsesMap.clear();
+                                                                indexAntimatterSynopsesMap.clear();
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -257,28 +270,35 @@ public class MetadataCache {
                                             synchronized (feeds) {
                                                 synchronized (compactionPolicies) {
                                                     synchronized (synonyms) {
-                                                        datasets.remove(dataverse.getDataverseName());
-                                                        indexes.remove(dataverse.getDataverseName());
-                                                        datatypes.remove(dataverse.getDataverseName());
-                                                        adapters.remove(dataverse.getDataverseName());
-                                                        compactionPolicies.remove(dataverse.getDataverseName());
-                                                        List<FunctionSignature> markedFunctionsForRemoval =
-                                                                new ArrayList<>();
-                                                        for (FunctionSignature signature : functions.keySet()) {
-                                                            if (signature.getDataverseName()
-                                                                    .equals(dataverse.getDataverseName())) {
-                                                                markedFunctionsForRemoval.add(signature);
+                                                        synchronized (indexSynopsesMap) {
+                                                            synchronized (indexAntimatterSynopsesMap) {
+                                                                datasets.remove(dataverse.getDataverseName());
+                                                                indexes.remove(dataverse.getDataverseName());
+                                                                datatypes.remove(dataverse.getDataverseName());
+                                                                adapters.remove(dataverse.getDataverseName());
+                                                                compactionPolicies.remove(dataverse.getDataverseName());
+                                                                List<FunctionSignature> markedFunctionsForRemoval =
+                                                                        new ArrayList<>();
+                                                                for (FunctionSignature signature : functions.keySet()) {
+                                                                    if (signature.getDataverseName()
+                                                                            .equals(dataverse.getDataverseName())) {
+                                                                        markedFunctionsForRemoval.add(signature);
+                                                                    }
+                                                                }
+                                                                for (FunctionSignature signature : markedFunctionsForRemoval) {
+                                                                    functions.remove(signature);
+                                                                }
+                                                                fullTextConfigs.remove(dataverse.getDataverseName());
+                                                                fullTextFilters.remove(dataverse.getDataverseName());
+                                                                libraries.remove(dataverse.getDataverseName());
+                                                                feeds.remove(dataverse.getDataverseName());
+                                                                synonyms.remove(dataverse.getDataverseName());
+                                                                indexSynopsesMap.remove(dataverse.getDataverseName());
+                                                                indexAntimatterSynopsesMap
+                                                                        .remove(dataverse.getDataverseName());
+                                                                return dataverses.remove(dataverse.getDataverseName());
                                                             }
                                                         }
-                                                        for (FunctionSignature signature : markedFunctionsForRemoval) {
-                                                            functions.remove(signature);
-                                                        }
-                                                        fullTextConfigs.remove(dataverse.getDataverseName());
-                                                        fullTextFilters.remove(dataverse.getDataverseName());
-                                                        libraries.remove(dataverse.getDataverseName());
-                                                        feeds.remove(dataverse.getDataverseName());
-                                                        synonyms.remove(dataverse.getDataverseName());
-                                                        return dataverses.remove(dataverse.getDataverseName());
                                                     }
                                                 }
                                             }
@@ -296,35 +316,69 @@ public class MetadataCache {
     public Dataset dropDataset(Dataset dataset) {
         synchronized (datasets) {
             synchronized (indexes) {
+                synchronized (indexSynopsesMap) {
+                    synchronized (indexAntimatterSynopsesMap) {
+                        //remove the indexes of the dataset from indexes' cache
+                        Map<String, Map<String, Index>> datasetMap = indexes.get(dataset.getDataverseName());
+                        if (datasetMap != null) {
+                            datasetMap.remove(dataset.getDatasetName());
+                        }
 
-                //remove the indexes of the dataset from indexes' cache
-                Map<String, Map<String, Index>> datasetMap = indexes.get(dataset.getDataverseName());
-                if (datasetMap != null) {
-                    datasetMap.remove(dataset.getDatasetName());
-                }
+                        // remove the index statistics of the dataset from synopses' cache
+                        Map<String, Map<String, Map<String, Statistics>>> dtMap =
+                                indexSynopsesMap.get(dataset.getDataverseName());
+                        if (dtMap != null) {
+                            dtMap.remove(dataset.getDatasetName());
+                        }
+                        dtMap = indexAntimatterSynopsesMap.get(dataset.getDataverseName());
+                        if (dtMap != null) {
+                            dtMap.remove(dataset.getDatasetName());
+                        }
 
-                //remove the dataset from datasets' cache
-                Map<String, Dataset> m = datasets.get(dataset.getDataverseName());
-                if (m == null) {
-                    return null;
+                        //remove the dataset from datasets' cache
+                        Map<String, Dataset> m = datasets.get(dataset.getDataverseName());
+                        if (m == null) {
+                            return null;
+                        }
+                        return m.remove(dataset.getDatasetName());
+                    }
                 }
-                return m.remove(dataset.getDatasetName());
             }
         }
     }
 
     public Index dropIndex(Index index) {
         synchronized (indexes) {
-            Map<String, Map<String, Index>> datasetMap = indexes.get(index.getDataverseName());
-            if (datasetMap == null) {
-                return null;
-            }
+            synchronized (indexSynopsesMap) {
+                synchronized (indexAntimatterSynopsesMap) {
+                    Map<String, Map<String, Map<String, Statistics>>> dtMap =
+                            indexSynopsesMap.get(index.getDataverseName());
+                    if (dtMap != null) {
+                        Map<String, Map<String, Statistics>> indexMap = dtMap.get(index.getDatasetName());
+                        if (indexMap != null) {
+                            indexMap.remove(index.getIndexName());
+                        }
+                    }
+                    dtMap = indexAntimatterSynopsesMap.get(index.getDataverseName());
+                    if (dtMap != null) {
+                        Map<String, Map<String, Statistics>> indexMap = dtMap.get(index.getDatasetName());
+                        if (indexMap != null) {
+                            indexMap.remove(index.getIndexName());
+                        }
+                    }
 
-            Map<String, Index> indexMap = datasetMap.get(index.getDatasetName());
-            if (indexMap == null) {
-                return null;
+                    Map<String, Map<String, Index>> datasetMap = indexes.get(index.getDataverseName());
+                    if (datasetMap == null) {
+                        return null;
+                    }
+
+                    Map<String, Index> indexMap = datasetMap.get(index.getDatasetName());
+                    if (indexMap == null) {
+                        return null;
+                    }
+                    return indexMap.remove(index.getIndexName());
+                }
             }
-            return indexMap.remove(index.getIndexName());
         }
     }
 
@@ -341,6 +395,53 @@ public class MetadataCache {
     public NodeGroup dropNodeGroup(NodeGroup nodeGroup) {
         synchronized (nodeGroups) {
             return nodeGroups.remove(nodeGroup.getNodeGroupName());
+        }
+    }
+
+    public Statistics addStatisticsToCache(Statistics statistics) {
+        synchronized (indexSynopsesMap) {
+            synchronized (indexAntimatterSynopsesMap) {
+                Map<String, Map<String, Map<String, Statistics>>> datasetMap =
+                        statistics.isAntimatter() ? indexAntimatterSynopsesMap.get(statistics.getDataverseName())
+                                : indexSynopsesMap.get(statistics.getDataverseName());
+                if (datasetMap == null) {
+                    datasetMap = new HashMap<>();
+                    if (statistics.isAntimatter()) {
+                        indexAntimatterSynopsesMap.put(statistics.getDataverseName(), datasetMap);
+                    } else {
+                        indexSynopsesMap.put(statistics.getDataverseName(), datasetMap);
+                    }
+                }
+                Map<String, Map<String, Statistics>> indexMap =
+                        datasetMap.computeIfAbsent(statistics.getDatasetName(), k -> new HashMap<>());
+                Map<String, Statistics> fieldMap =
+                        indexMap.computeIfAbsent(statistics.getIndexName(), k -> new HashMap<>());
+                Statistics stats = fieldMap.get(statistics.getFieldName());
+                fieldMap.put(statistics.getFieldName(), statistics);
+                return stats;
+            }
+        }
+    }
+
+    public Statistics dropStatistics(Statistics statistics) {
+        synchronized (indexSynopsesMap) {
+            synchronized (indexAntimatterSynopsesMap) {
+                Map<String, Map<String, Map<String, Statistics>>> datasetMap =
+                        statistics.isAntimatter() ? indexAntimatterSynopsesMap.get(statistics.getDataverseName())
+                                : indexSynopsesMap.get(statistics.getDataverseName());
+                if (datasetMap == null) {
+                    return null;
+                }
+                Map<String, Map<String, Statistics>> indexMap = datasetMap.get(statistics.getDatasetName());
+                if (indexMap == null) {
+                    return null;
+                }
+                Map<String, Statistics> fieldMap = indexMap.get(statistics.getIndexName());
+                if (fieldMap == null) {
+                    return null;
+                }
+                return fieldMap.remove(statistics.getFieldName());
+            }
         }
     }
 
@@ -434,6 +535,46 @@ public class MetadataCache {
             }
             return new ArrayList<>(map.values());
         }
+    }
+
+    public Statistics getFieldStatistics(DataverseName dataverseName, String datasetName, String indexName, String node,
+            String partition, boolean isAntimatter, String fieldName) {
+        synchronized (indexSynopsesMap) {
+            synchronized (indexAntimatterSynopsesMap) {
+                Map<String, Map<String, Map<String, Statistics>>> datasetMap = isAntimatter
+                        ? indexAntimatterSynopsesMap.get(dataverseName) : indexSynopsesMap.get(dataverseName);
+                if (datasetMap == null) {
+                    return null;
+                }
+                Map<String, Map<String, Statistics>> indexMap = datasetMap.get(datasetName);
+                if (indexMap == null) {
+                    return null;
+                }
+                Map<String, Statistics> fieldMap = indexMap.get(indexName);
+                if (fieldMap == null) {
+                    return null;
+                }
+                return fieldMap.get(fieldName);
+            }
+        }
+    }
+
+    public Map<String, Map<String, Map<String, Statistics>[]>> getIndexStatistics(DataverseName dataverseName,
+            String datasetName, String indexName) {
+        //        synchronized (partitionStats) {
+        //            Map<String, Map<String, Map<String, Map<String, Map<String, Statistics>[]>>>> datasetMap =
+        //                    partitionStats.get(dataverseName);
+        //            if (datasetMap == null) {
+        //                return null;
+        //            }
+        //            Map<String, Map<String, Map<String, Map<String, Statistics>[]>>> indexMap = datasetMap.get(datasetName);
+        //            if (indexMap == null) {
+        //                return null;
+        //            }
+        //            return indexMap.get(indexName);
+        //        }
+        // TODO: check and finish it
+        return null;
     }
 
     protected void doOperation(MetadataLogicalOperation op) {

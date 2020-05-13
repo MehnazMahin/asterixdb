@@ -40,11 +40,13 @@ import org.apache.asterix.metadata.entities.Function;
 import org.apache.asterix.metadata.entities.Index;
 import org.apache.asterix.metadata.entities.Library;
 import org.apache.asterix.metadata.entities.NodeGroup;
+import org.apache.asterix.metadata.entities.Statistics;
 import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.runtime.fulltext.AbstractFullTextFilterDescriptor;
 import org.apache.asterix.runtime.fulltext.FullTextConfigDescriptor;
 import org.apache.hyracks.storage.am.lsm.invertedindex.fulltext.FullTextFilterType;
 import org.apache.hyracks.storage.am.lsm.invertedindex.fulltext.IFullTextFilterEvaluatorFactory;
+import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 
 /**
  * Used to implement serializable transactions against the MetadataCache.
@@ -136,6 +138,11 @@ public class MetadataTransactionContext extends MetadataCache {
         logAndApply(new MetadataLogicalOperation(compactionPolicy, true));
     }
 
+    public void addStatistics(Statistics stat) {
+        droppedCache.dropStatistics(stat);
+        logAndApply(new MetadataLogicalOperation(stat, true));
+    }
+
     public void dropDataset(DataverseName dataverseName, String datasetName) {
         Dataset dataset = new Dataset(dataverseName, datasetName, null, null, null, null, null, null, null, null, -1,
                 MetadataUtil.PENDING_NO_OP);
@@ -218,6 +225,15 @@ public class MetadataTransactionContext extends MetadataCache {
         Library library = new Library(dataverseName, libraryName, null, null, MetadataUtil.PENDING_NO_OP);
         droppedCache.addLibraryIfNotExists(library);
         logAndApply(new MetadataLogicalOperation(library, false));
+    }
+
+    public void dropStatistics(DataverseName dataverseName, String datasetName, String indexName, String node,
+            String partition, boolean isAntimatter, String fieldName) {
+        Statistics stat = new Statistics(dataverseName, datasetName, indexName, node, partition,
+                new ComponentStatisticsId(0L, 0L), false, isAntimatter, fieldName, null);
+        //        droppedCache.addStatisticsIfNotExists(stat);
+        droppedCache.addStatisticsToCache(stat);
+        logAndApply(new MetadataLogicalOperation(stat, false));
     }
 
     public void logAndApply(MetadataLogicalOperation op) {

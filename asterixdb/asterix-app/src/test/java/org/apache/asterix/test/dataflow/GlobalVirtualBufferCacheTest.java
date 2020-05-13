@@ -196,13 +196,13 @@ public class GlobalVirtualBufferCacheTest {
                 StorageTestUtils.NODE_GROUP_NAME, NoMergePolicyFactory.NAME,
                 null, new InternalDatasetDetails(null, PartitioningStrategy.HASH, StorageTestUtils.PARTITIONING_KEYS,
                         null, null, null, false, null, null),
-                null, DatasetType.INTERNAL, StorageTestUtils.DATASET_ID, 0);
+                null, DatasetType.INTERNAL, StorageTestUtils.DATASET_ID, 0, false, false);
 
         filteredDataset = new TestDataset(dvName, "filtered_ds", dvName, StorageTestUtils.DATA_TYPE_NAME,
                 StorageTestUtils.NODE_GROUP_NAME, NoMergePolicyFactory.NAME, null,
                 new InternalDatasetDetails(null, PartitioningStrategy.HASH, StorageTestUtils.PARTITIONING_KEYS, null,
-                        null, null, false, 0, Collections.singletonList("value")),
-                null, DatasetType.INTERNAL, StorageTestUtils.DATASET_ID + 1, 0);
+                        null, null, false, null, Collections.singletonList("value")),
+                null, DatasetType.INTERNAL, StorageTestUtils.DATASET_ID + 1, 0, false, false);
 
         primaryIndexInfos = new PrimaryIndexInfo[NUM_PARTITIONS];
         filteredPrimaryIndexInfos = new PrimaryIndexInfo[NUM_PARTITIONS];

@@ -247,6 +247,12 @@ public interface ILSMIndexAccessor extends IIndexAccessor {
     void scanDiskComponents(IIndexCursor cursor) throws HyracksDataException;
 
     /**
+     * Send the statistics of all disk components of an LSM index
+     * @throws HyracksDataException
+     */
+    void sendDiskComponentsStatistics() throws HyracksDataException;
+
+    /**
      * Delete components that match the passed predicate
      * NOTE: This call can only be made when the caller knows that data modification has been stopped
      *

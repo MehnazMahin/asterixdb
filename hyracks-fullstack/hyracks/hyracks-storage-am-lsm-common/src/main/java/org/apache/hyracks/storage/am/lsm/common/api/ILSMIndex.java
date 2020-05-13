@@ -59,6 +59,8 @@ public interface ILSMIndex extends IIndex {
 
     boolean isPrimaryIndex();
 
+    boolean hasStatistics();
+
     void modify(IIndexOperationContext ictx, ITupleReference tuple) throws HyracksDataException;
 
     /**
@@ -73,6 +75,8 @@ public interface ILSMIndex extends IIndex {
     void search(ILSMIndexOperationContext ictx, IIndexCursor cursor, ISearchPredicate pred) throws HyracksDataException;
 
     public void scanDiskComponents(ILSMIndexOperationContext ctx, IIndexCursor cursor) throws HyracksDataException;
+
+    void sendDiskComponentsStatistics(ILSMIndexOperationContext ctx) throws HyracksDataException;
 
     /**
      * Create a flush operation.

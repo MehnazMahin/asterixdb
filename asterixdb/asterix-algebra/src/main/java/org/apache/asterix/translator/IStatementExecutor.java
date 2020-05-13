@@ -137,6 +137,7 @@ public interface IStatementExecutor {
         private Profile profile;
         private ProfileType profileType;
         private long totalWarningsCount;
+        private long optimizeTime;
 
         public long getCount() {
             return count;
@@ -187,6 +188,15 @@ public interface IStatementExecutor {
         public void setProfileType(ProfileType profileType) {
             this.profileType = profileType;
         }
+
+        public long getOptimizationTime() {
+            return optimizeTime;
+        }
+
+        public void setOptimizeTime(long optimizeTime) {
+            this.optimizeTime = optimizeTime;
+        }
+
     }
 
     class Profile implements Serializable {
@@ -215,6 +225,7 @@ public interface IStatementExecutor {
         public ObjectNode getProfile() {
             return profile;
         }
+
     }
 
     class StatementProperties implements Serializable {

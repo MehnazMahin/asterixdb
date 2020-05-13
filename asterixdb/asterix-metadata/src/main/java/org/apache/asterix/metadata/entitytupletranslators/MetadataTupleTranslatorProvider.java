@@ -92,4 +92,9 @@ public class MetadataTupleTranslatorProvider {
     public SynonymTupleTranslator getSynonymTupleTranslator(boolean getTuple) {
         return new SynonymTupleTranslator(getTuple);
     }
+
+    public StatisticsTupleTranslator getStatisticsTupleTranslator(TxnId txnId, MetadataNode metadataNode,
+            boolean getTuple) {
+        return new StatisticsTupleTranslator(txnId, metadataNode, getTuple);
+    }
 }

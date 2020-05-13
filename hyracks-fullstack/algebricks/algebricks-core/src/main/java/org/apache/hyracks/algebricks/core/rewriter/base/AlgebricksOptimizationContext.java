@@ -41,6 +41,8 @@ import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.algebricks.core.algebra.plan.PlanStabilityVerifier;
 import org.apache.hyracks.algebricks.core.algebra.plan.PlanStructureVerifier;
 import org.apache.hyracks.algebricks.core.algebra.prettyprint.IPlanPrettyPrinter;
+import org.apache.hyracks.algebricks.core.algebra.prettyprint.LogicalOperatorPrettyPrintVisitor;
+import org.apache.hyracks.algebricks.core.algebra.prettyprint.PlanPrettyPrinter;
 import org.apache.hyracks.algebricks.core.algebra.properties.DefaultNodeGroupDomain;
 import org.apache.hyracks.algebricks.core.algebra.properties.FunctionalDependency;
 import org.apache.hyracks.algebricks.core.algebra.properties.ILogicalPropertiesVector;
@@ -93,13 +95,14 @@ public class AlgebricksOptimizationContext implements IOptimizationContext {
     private final IWarningCollector warningCollector;
     private final PlanStructureVerifier planStructureVerifier;
     private final PlanStabilityVerifier planStabilityVerifier;
+    private final ICardinalityEstimator cardinalityEstimator;
 
     public AlgebricksOptimizationContext(int varCounter, IExpressionEvalSizeComputer expressionEvalSizeComputer,
             IMergeAggregationExpressionFactory mergeAggregationExpressionFactory,
             IExpressionTypeComputer expressionTypeComputer, IMissableTypeComputer nullableTypeComputer,
-            IConflictingTypeResolver conflictingTypeResovler, PhysicalOptimizationConfig physicalOptimizationConfig,
-            AlgebricksPartitionConstraint clusterLocations, IPlanPrettyPrinter prettyPrinter,
-            IWarningCollector warningCollector) {
+            IConflictingTypeResolver conflictingTypeResovler, ICardinalityEstimator cardinalityEstimator,
+            PhysicalOptimizationConfig physicalOptimizationConfig, AlgebricksPartitionConstraint clusterLocations,
+            IPlanPrettyPrinter prettyPrinter, IWarningCollector warningCollector) {
         this.varCounter = varCounter;
         this.expressionEvalSizeComputer = expressionEvalSizeComputer;
         this.mergeAggregationExpressionFactory = mergeAggregationExpressionFactory;
@@ -113,6 +116,7 @@ public class AlgebricksOptimizationContext implements IOptimizationContext {
         boolean isSanityCheckEnabled = physicalOptimizationConfig.isSanityCheckEnabled();
         this.planStructureVerifier = isSanityCheckEnabled ? new PlanStructureVerifier(prettyPrinter, this) : null;
         this.planStabilityVerifier = isSanityCheckEnabled ? new PlanStabilityVerifier(prettyPrinter) : null;
+        this.cardinalityEstimator = cardinalityEstimator;
     }
 
     @Override
@@ -353,5 +357,15 @@ public class AlgebricksOptimizationContext implements IOptimizationContext {
     @Override
     public PlanStabilityVerifier getPlanStabilityVerifier() {
         return planStabilityVerifier;
+    }
+
+    @Override
+    public ICardinalityEstimator getCardinalityEstimator() {
+        return cardinalityEstimator;
+    }
+
+    @Override
+    public LogicalOperatorPrettyPrintVisitor getPrettyPrintVisitor() {
+        return null;
     }
 }

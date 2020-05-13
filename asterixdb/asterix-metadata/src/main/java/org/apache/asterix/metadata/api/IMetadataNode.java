@@ -43,9 +43,11 @@ import org.apache.asterix.metadata.entities.Index;
 import org.apache.asterix.metadata.entities.Library;
 import org.apache.asterix.metadata.entities.Node;
 import org.apache.asterix.metadata.entities.NodeGroup;
+import org.apache.asterix.metadata.entities.Statistics;
 import org.apache.asterix.metadata.entities.Synonym;
 import org.apache.asterix.transaction.management.opcallbacks.AbstractIndexModificationOperationCallback;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
+import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 
 /**
  * A metadata node stores metadata in its local storage structures (currently
@@ -978,5 +980,98 @@ public interface IMetadataNode extends Remote, Serializable {
             throws AlgebricksException, RemoteException;
 
     List<FeedConnection> getFeedConnections(TxnId txnId, DataverseName dataverseName, String feedName)
+            throws AlgebricksException, RemoteException;
+
+    /**
+     * Adds a statistics, acquiring local locks on behalf of the given
+     * transaction id.
+     *
+     * @param txnId
+     *            A globally unique id for an active metadata transaction.
+     * @param statistics
+     *            Statistics to be added
+     * @throws AlgebricksException
+     *             for example, if the library is already added.
+     * @throws RemoteException
+     */
+    void addStatistics(TxnId txnId, Statistics statistics) throws AlgebricksException, RemoteException;
+
+    void updateStatistics(TxnId txnId, Statistics statistics) throws AlgebricksException, RemoteException;
+
+    /**
+     * Retrieves all statistics for a given dataset.
+     *
+     * @param txnId
+     * @param dataverse
+     * @param dataset
+     * @return
+     * @throws AlgebricksException
+     * @throws RemoteException
+     */
+    List<Statistics> getDatasetStatistics(TxnId txnId, DataverseName dataverse, String dataset)
+            throws AlgebricksException, RemoteException;
+
+    /**
+     * Deletes a statistics from a particular index component, acquiring local locks on behalf of the given
+     * transaction id.
+     *
+     * @param txnId
+     *            A globally unique id for an active metadata transaction.
+     * @param dataverseName
+     *            Name of the dataverse holding the given dataset.
+     * @param datasetName
+     *            Name of the dataset holding the index.
+     * @param indexName
+     *            Name of the index holding the field.
+     * @param fieldName
+     *            the name of the field for which component statistics is calculated.
+     * @param node
+     *            the name of the node holding the component statistics.
+     * @param partition
+     *            the name of the partition holding the component statistics.
+     * @param isAntimatter
+     *            true if statistics represent data about anti-matter records
+     * @throws AlgebricksException
+     * @throws RemoteException
+     */
+    void dropStatistics(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName, String node,
+            String partition, boolean isAntimatter, String fieldName) throws AlgebricksException, RemoteException;
+
+    /**
+     * Retrieves the statistics for an index in a given dataset,
+     * acquiring local locks on behalf of the given transaction id.
+     * @param datasetName
+     *            The qualified dataset name
+     * @param indexName
+     *            The secondary/ primary key index of the dataset
+     */
+    List<Statistics> getIndexStatistics(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName)
+            throws AlgebricksException, RemoteException;
+
+    /**
+     * Retrieves the statistics for a given component in given dataverse and dataset,
+     * acquiring local locks on behalf of the given transaction id.
+     * @param componentId
+     *            The given component Id
+     */
+    //    List<Statistics> getComponentStatistics(TxnId txnId, DataverseName dataverseName, String datasetName,
+    //            String indexName, String node, String partition, ComponentStatisticsId componentId)
+    //            throws AlgebricksException, RemoteException;
+
+    /**
+     * Retrieves matter/ antimatter statistics of a given field of an index component.
+     * @param isAntimatter
+     *            Is antimatter statistics required?
+     */
+    Statistics getFieldStatistics(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName,
+            String node, String partition, boolean isAntimatter, String fieldName)
+            throws AlgebricksException, RemoteException;
+
+    /**
+     * Retrieves full statistics (both matter and antimatter) of a given field
+     * of an index component.
+     */
+    List<Statistics> getFullFieldStatistics(TxnId txnId, DataverseName dataverseName, String datasetName,
+            String indexName, String node, String partition, String fieldName)
             throws AlgebricksException, RemoteException;
 }

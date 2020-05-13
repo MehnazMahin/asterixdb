@@ -127,7 +127,7 @@ public class MetadataBootstrap {
                     MetadataPrimaryIndexes.LIBRARY_DATASET, MetadataPrimaryIndexes.COMPACTION_POLICY_DATASET,
                     MetadataPrimaryIndexes.EXTERNAL_FILE_DATASET, MetadataPrimaryIndexes.FEED_CONNECTION_DATASET,
                     MetadataPrimaryIndexes.SYNONYM_DATASET, MetadataPrimaryIndexes.FULL_TEXT_CONFIG_DATASET,
-                    MetadataPrimaryIndexes.FULL_TEXT_FILTER_DATASET };
+                    MetadataPrimaryIndexes.FULL_TEXT_FILTER_DATASET, MetadataPrimaryIndexes.STATISTICS_DATASET };
 
     private MetadataBootstrap() {
     }
@@ -432,7 +432,7 @@ public class MetadataBootstrap {
                             appContext.getMetadataMergePolicyFactory(),
                             StorageConstants.DEFAULT_COMPACTION_POLICY_PROPERTIES, true, bloomFilterKeyFields,
                             bloomFilterFalsePositiveRate, true, null, NoOpCompressorDecompressorFactory.INSTANCE, true,
-                            TypeTraitProvider.INSTANCE.getTypeTrait(BuiltinType.ANULL), NullIntrospector.INSTANCE);
+                            TypeTraitProvider.INSTANCE.getTypeTrait(BuiltinType.ANULL), NullIntrospector.INSTANCE, null, null);
             DatasetLocalResourceFactory dsLocalResourceFactory =
                     new DatasetLocalResourceFactory(datasetId, lsmBtreeFactory);
             // TODO(amoudi) Creating the index should be done through the same code path as
@@ -574,7 +574,8 @@ public class MetadataBootstrap {
                 // Backward-compatibility: FULLTEXT_ENTITY_DATASET is added to AsterixDB recently
                 // and may not exist in an older dataverse
                 && index != MetadataPrimaryIndexes.FULL_TEXT_CONFIG_DATASET
-                && index != MetadataPrimaryIndexes.FULL_TEXT_FILTER_DATASET) {
+                && index != MetadataPrimaryIndexes.FULL_TEXT_FILTER_DATASET
+                && index != MetadataPrimaryIndexes.STATISTICS_DATASET) {
             throw new IllegalStateException(
                     "attempt to create metadata index " + index.getIndexName() + ". Index should already exist");
         }

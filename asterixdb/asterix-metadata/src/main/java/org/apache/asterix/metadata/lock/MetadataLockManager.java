@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
 import org.apache.asterix.common.api.IMetadataLockManager;
+import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.common.metadata.IMetadataLock;
 import org.apache.asterix.common.metadata.LockList;
@@ -297,4 +298,19 @@ public class MetadataLockManager implements IMetadataLockManager {
         locks.downgrade(IMetadataLock.Mode.EXCLUSIVE_MODIFY, lock);
     }
 
+    @Override
+    public void acquireStatisticsReadLock(LockList locks, DataverseName dataverseName, String indexName)
+            throws AlgebricksException {
+        MetadataLockKey key = MetadataLockKey.createStatisticsLockKey(dataverseName, indexName);
+        IMetadataLock lock = mdlocks.computeIfAbsent(key, LOCK_FUNCTION);
+        locks.add(IMetadataLock.Mode.READ, lock);
+    }
+
+    @Override
+    public void acquireStatisticsWriteLock(LockList locks, DataverseName dataverseName, String indexName)
+            throws AlgebricksException {
+        MetadataLockKey key = MetadataLockKey.createStatisticsLockKey(dataverseName, indexName);
+        IMetadataLock lock = mdlocks.computeIfAbsent(key, LOCK_FUNCTION);
+        locks.add(IMetadataLock.Mode.WRITE, lock);
+    }
 }

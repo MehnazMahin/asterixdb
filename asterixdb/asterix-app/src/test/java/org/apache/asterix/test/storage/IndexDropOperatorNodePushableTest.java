@@ -109,7 +109,7 @@ public class IndexDropOperatorNodePushableTest {
                     NoMergePolicyFactory.NAME, null,
                     new InternalDatasetDetails(null, InternalDatasetDetails.PartitioningStrategy.HASH, partitioningKeys,
                             null, null, null, false, null, null),
-                    null, DatasetConfig.DatasetType.INTERNAL, DATASET_ID, 0);
+                    Collections.EMPTY_MAP, DatasetConfig.DatasetType.INTERNAL, DATASET_ID, 0);
             // create dataset
             TestNodeController.PrimaryIndexInfo indexInfo = nc.createPrimaryIndex(dataset, KEY_TYPES, RECORD_TYPE,
                     META_TYPE, null, storageManager, KEY_INDEXES, KEY_INDICATORS_LIST, 0);

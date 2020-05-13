@@ -323,4 +323,11 @@ public class MetadataLockUtil implements IMetadataLockUtil {
         lockMgr.acquireDataverseReadLock(locks, dataverseName);
         lockMgr.acquireDatasetExclusiveModificationLock(locks, dataverseName, datasetName);
     }
+
+    public static void insertStatisticsBegin(IMetadataLockManager lockMgr, LockList locks, DataverseName dataverseName,
+            String datasetName, String indexPartition) throws AlgebricksException {
+        lockMgr.acquireDataverseReadLock(locks, dataverseName);
+        lockMgr.acquireDatasetModifyLock(locks, dataverseName, datasetName);
+        lockMgr.acquireStatisticsWriteLock(locks, dataverseName, indexPartition);
+    }
 }

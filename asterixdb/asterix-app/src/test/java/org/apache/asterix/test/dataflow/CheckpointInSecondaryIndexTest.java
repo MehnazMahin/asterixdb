@@ -170,7 +170,7 @@ public class CheckpointInSecondaryIndexTest {
         dataset = new TestDataset(dvName, DATASET_NAME, dvName, DATA_TYPE_NAME, NODE_GROUP_NAME,
                 NoMergePolicyFactory.NAME, null, new InternalDatasetDetails(null, PartitioningStrategy.HASH,
                         partitioningKeys, null, null, null, false, null, null),
-                null, DatasetType.INTERNAL, DATASET_ID, 0);
+                null, DatasetType.INTERNAL, DATASET_ID, 0, false, false);
         secondaryIndex = new Index(dvName, DATASET_NAME, INDEX_NAME, INDEX_TYPE, INDEX_FIELD_NAMES,
                 INDEX_FIELD_INDICATORS, INDEX_FIELD_TYPES, false, false, false, 0, OptionalBoolean.of(false));
         taskCtx = null;

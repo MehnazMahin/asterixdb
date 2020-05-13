@@ -34,6 +34,7 @@ import org.apache.asterix.common.api.IDatasetLifecycleManager;
 import org.apache.asterix.common.api.INcApplicationContext;
 import org.apache.asterix.common.config.DatasetConfig.DatasetType;
 import org.apache.asterix.common.dataflow.LSMIndexUtil;
+import org.apache.asterix.common.exceptions.ACIDException;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.exceptions.MetadataException;
 import org.apache.asterix.common.functions.FunctionSignature;
@@ -78,6 +79,7 @@ import org.apache.asterix.metadata.entities.InternalDatasetDetails;
 import org.apache.asterix.metadata.entities.Library;
 import org.apache.asterix.metadata.entities.Node;
 import org.apache.asterix.metadata.entities.NodeGroup;
+import org.apache.asterix.metadata.entities.Statistics;
 import org.apache.asterix.metadata.entities.Synonym;
 import org.apache.asterix.metadata.entities.ViewDetails;
 import org.apache.asterix.metadata.entitytupletranslators.CompactionPolicyTupleTranslator;
@@ -97,12 +99,14 @@ import org.apache.asterix.metadata.entitytupletranslators.LibraryTupleTranslator
 import org.apache.asterix.metadata.entitytupletranslators.MetadataTupleTranslatorProvider;
 import org.apache.asterix.metadata.entitytupletranslators.NodeGroupTupleTranslator;
 import org.apache.asterix.metadata.entitytupletranslators.NodeTupleTranslator;
+import org.apache.asterix.metadata.entitytupletranslators.StatisticsTupleTranslator;
 import org.apache.asterix.metadata.entitytupletranslators.SynonymTupleTranslator;
 import org.apache.asterix.metadata.utils.DatasetUtil;
 import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.metadata.utils.TypeUtil;
 import org.apache.asterix.metadata.valueextractors.MetadataEntityValueExtractor;
 import org.apache.asterix.metadata.valueextractors.TupleCopyValueExtractor;
+import org.apache.asterix.om.base.ABoolean;
 import org.apache.asterix.om.base.AInt32;
 import org.apache.asterix.om.base.AMutableString;
 import org.apache.asterix.om.base.AString;
@@ -840,6 +844,22 @@ public class MetadataNode implements IMetadataNode {
     public void dropIndex(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName)
             throws AlgebricksException {
         try {
+            Index deletedIndex = getIndex(txnId, dataverseName, datasetName, indexName);
+            // Delete related entry(s) from the 'statistics' dataset.
+            // TODO: allow nested & composite field names
+            String fullNestedFieldName = "";
+            for (List<String> firstField : ((Index.ValueIndexDetails) deletedIndex.getIndexDetails())
+                    .getKeyFieldNames()) {
+                fullNestedFieldName = String.join(".", firstField);
+            }
+            List<Statistics> indexStatistics = getIndexStatistics(txnId, dataverseName, datasetName, indexName);
+            if (indexStatistics != null) {
+                for (Statistics stats : indexStatistics) {
+                    dropStatistics(txnId, stats.getDataverseName(), stats.getDatasetName(), stats.getIndexName(),
+                            stats.getNode(), stats.getPartition(), stats.isAntimatter(), stats.getFieldName());
+                }
+            }
+
             ITupleReference searchKey = createTuple(dataverseName, datasetName, indexName);
             // Searches the index for the tuple to be deleted. Acquires an S
             // lock on the 'index' dataset.
@@ -1207,7 +1227,7 @@ public class MetadataNode implements IMetadataNode {
                     throw new AsterixException(
                             org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS,
                             "function", functionSignature, "feed connection", MetadataUtil.getFullyQualifiedDisplayName(
-                                    feedConnection.getDataverseName(), feedConnection.getFeedName()));
+                            feedConnection.getDataverseName(), feedConnection.getFeedName()));
                 }
             }
         }
@@ -1224,7 +1244,7 @@ public class MetadataNode implements IMetadataNode {
                 throw new AsterixException(
                         org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "function",
                         signature, "feed connection", MetadataUtil.getFullyQualifiedDisplayName(
-                                feedConnection.getDataverseName(), feedConnection.getFeedName()));
+                        feedConnection.getDataverseName(), feedConnection.getFeedName()));
             }
         }
     }
@@ -1339,7 +1359,7 @@ public class MetadataNode implements IMetadataNode {
                                 "full-text config",
                                 MetadataUtil.getFullyQualifiedDisplayName(dataverseNameFullTextConfig, configName),
                                 "index", DatasetUtil.getFullyQualifiedDisplayName(index.getDataverseName(),
-                                        index.getDatasetName()) + "." + index.getIndexName());
+                                index.getDatasetName()) + "." + index.getIndexName());
                     }
                 }
             }
@@ -1414,7 +1434,7 @@ public class MetadataNode implements IMetadataNode {
             if ((dataset.getItemTypeName().equals(datatypeName)
                     && dataset.getItemTypeDataverseName().equals(dataverseName))
                     || ((dataset.hasMetaPart() && dataset.getMetaItemTypeName().equals(datatypeName)
-                            && dataset.getMetaItemTypeDataverseName().equals(dataverseName)))) {
+                    && dataset.getMetaItemTypeDataverseName().equals(dataverseName)))) {
                 throw new AsterixException(
                         org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "type",
                         TypeUtil.getFullyQualifiedDisplayName(dataverseName, datatypeName), dataset(),
@@ -2028,7 +2048,7 @@ public class MetadataNode implements IMetadataNode {
     }
 
     @Override
-    public int getMostRecentDatasetId() throws RemoteException {
+    public int getMostRecentDatasetId() {
         return DatasetIdFactory.getMostRecentDatasetId();
     }
 
@@ -2480,6 +2500,171 @@ public class MetadataNode implements IMetadataNode {
     public void updateDatatype(TxnId txnId, Datatype datatype) throws AlgebricksException {
         dropDatatype(txnId, datatype.getDataverseName(), datatype.getDatatypeName(), true);
         addDatatype(txnId, datatype);
+    }
+
+    @Override
+    public void addStatistics(TxnId txnId, Statistics statistics) throws MetadataException {
+        try {
+            // Insert into the 'Statistics' dataset.
+            StatisticsTupleTranslator tupleReaderWriter =
+                    tupleTranslatorProvider.getStatisticsTupleTranslator(txnId, this, true);
+            ITupleReference statsTuple = tupleReaderWriter.getTupleFromMetadataEntity(statistics);
+            insertTupleIntoIndex(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, statsTuple);
+        } catch (HyracksDataException e) {
+            if (e.getComponent().equals(ErrorCode.HYRACKS) && e.getComponent().equals(ErrorCode.DUPLICATE_KEY)) {
+                // This could happen only if the statistics on merged component was persisted before the flushed one.
+                // In this case We can safely ignore the flushed statistics, the info is reflected in merged statistics.
+            } else {
+                throw new MetadataException("A statistics with this name "
+                        + String.join(".", statistics.getDatasetName(), statistics.getFieldName(), statistics.getNode(),
+                        statistics.getPartition(), statistics.getComponentId().toString())
+                        + " already exists in dataverse '" + statistics.getDataverseName() + "'.", e);
+            }
+        } catch (ACIDException e) {
+            throw new MetadataException(e);
+        }
+    }
+
+    @Override
+    public void dropStatistics(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName,
+            String node, String partition, boolean isAntimatter, String fieldName) throws AlgebricksException {
+        try {
+            ITupleReference searchKey =
+                    createIndexStatsSearchTuple(dataverseName, datasetName, indexName, isAntimatter, fieldName);
+            ITupleReference deletedStatsTuples =
+                    getTupleToBeDeleted(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, searchKey);
+            deleteTupleFromIndex(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, deletedStatsTuples);
+        } catch (HyracksDataException e) {
+            if (e.getComponent().equals(ErrorCode.HYRACKS)
+                    && e.getComponent().equals(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
+                // This could happen if either matter or antimatter synopses, but
+                // not both synopses of an index partition were persisted and tries to drop the earlier ones
+            } else {
+                throw new AlgebricksException(e);
+            }
+        }
+    }
+
+    @Override
+    public void updateStatistics(TxnId txnId, Statistics statistics) throws AlgebricksException {
+        try {
+            ITupleReference searchKey =
+                    createIndexStatsSearchTuple(statistics.getDataverseName(), statistics.getDatasetName(),
+                            statistics.getIndexName(), statistics.isAntimatter(), statistics.getFieldName());
+            ITupleReference statTuples =
+                    getTupleToBeDeleted(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, searchKey);
+            deleteTupleFromIndex(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, statTuples);
+            StatisticsTupleTranslator tupleReaderWriter =
+                    tupleTranslatorProvider.getStatisticsTupleTranslator(txnId, this, true);
+            statTuples = tupleReaderWriter.getTupleFromMetadataEntity(statistics);
+            insertTupleIntoIndex(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, statTuples);
+        } catch (HyracksDataException e) {
+            if (e.getComponent().equals(ErrorCode.HYRACKS)
+                    && e.getComponent().equals(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
+                // This could happen if either matter or antimatter synopses, but
+                // not both synopses of an index partition were persisted and tries to drop the earlier ones
+            } else {
+                throw new AlgebricksException(e);
+            }
+        }
+    }
+
+    @Override
+    public List<Statistics> getDatasetStatistics(TxnId txnId, DataverseName dataverse, String dataset)
+            throws AlgebricksException {
+        try {
+            ITupleReference searchKey = createTuple(dataverse, dataset);
+            StatisticsTupleTranslator tupleReaderWriter =
+                    tupleTranslatorProvider.getStatisticsTupleTranslator(txnId, this, false);
+            IValueExtractor<Statistics> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            List<Statistics> results = new ArrayList<>();
+            searchIndex(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, searchKey, valueExtractor, results);
+            return results;
+        } catch (HyracksDataException e) {
+            throw new MetadataException(e);
+        }
+    }
+
+    @Override
+    public List<Statistics> getIndexStatistics(TxnId txnId, DataverseName dataverseName, String datasetName,
+            String indexName) throws AlgebricksException {
+        try {
+            StatisticsTupleTranslator tupleReaderWriter =
+                    tupleTranslatorProvider.getStatisticsTupleTranslator(txnId, this, false);
+            ITupleReference searchKey = createTuple(dataverseName, datasetName, indexName);
+            List<Statistics> results = new ArrayList<>();
+            IValueExtractor<Statistics> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            searchIndex(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, searchKey, valueExtractor, results);
+            return results;
+        } catch (HyracksDataException e) {
+            throw new MetadataException(e);
+        }
+    }
+
+    @Override
+    public Statistics getFieldStatistics(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName,
+            String node, String partition, boolean isAntimatter, String fieldName) throws AlgebricksException {
+        try {
+            StatisticsTupleTranslator tupleReaderWriter =
+                    tupleTranslatorProvider.getStatisticsTupleTranslator(txnId, this, false);
+            ITupleReference searchKey =
+                    createIndexStatsSearchTuple(dataverseName, datasetName, indexName, isAntimatter, fieldName);
+            List<Statistics> results = new ArrayList<>();
+            IValueExtractor<Statistics> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            searchIndex(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, searchKey, valueExtractor, results);
+            return results.isEmpty() ? null : results.get(0);
+        } catch (HyracksDataException e) {
+            throw new MetadataException(e);
+        }
+    }
+
+    @Override
+    public List<Statistics> getFullFieldStatistics(TxnId txnId, DataverseName dataverseName, String datasetName,
+            String indexName, String node, String partition, String fieldName) throws AlgebricksException {
+        List<Statistics> results = new ArrayList<>();
+        results.add(
+                getFieldStatistics(txnId, dataverseName, datasetName, indexName, node, partition, false, fieldName));
+        results.add(getFieldStatistics(txnId, dataverseName, datasetName, indexName, node, partition, true, fieldName));
+        return results;
+    }
+
+    public ITupleReference createIndexStatsSearchTuple(DataverseName dataverseName, String datasetName,
+            String indexName, boolean isAntimatter, String fieldName) throws HyracksDataException {
+        ISerializerDeserializer<AString> stringSerde =
+                SerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(BuiltinType.ASTRING);
+        ISerializerDeserializer<ABoolean> boolSerde =
+                SerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(BuiltinType.ABOOLEAN);
+
+        AMutableString aString = new AMutableString("");
+        ArrayTupleBuilder tupleBuilder = new ArrayTupleBuilder(5);
+
+        //dataverse field
+        aString.setValue(dataverseName.getCanonicalForm());
+        stringSerde.serialize(aString, tupleBuilder.getDataOutput());
+        tupleBuilder.addFieldEndOffset();
+
+        //dataset field
+        aString.setValue(datasetName);
+        stringSerde.serialize(aString, tupleBuilder.getDataOutput());
+        tupleBuilder.addFieldEndOffset();
+
+        //index field
+        aString.setValue(indexName);
+        stringSerde.serialize(aString, tupleBuilder.getDataOutput());
+        tupleBuilder.addFieldEndOffset();
+
+        //isAntimatter field
+        boolSerde.serialize(isAntimatter ? ABoolean.TRUE : ABoolean.FALSE, tupleBuilder.getDataOutput());
+        tupleBuilder.addFieldEndOffset();
+
+        //field field
+        aString.setValue(fieldName);
+        stringSerde.serialize(aString, tupleBuilder.getDataOutput());
+        tupleBuilder.addFieldEndOffset();
+
+        ArrayTupleReference tuple = new ArrayTupleReference();
+        tuple.reset(tupleBuilder.getFieldEndOffsets(), tupleBuilder.getByteArray());
+        return tuple;
     }
 
     public ITxnIdFactory getTxnIdFactory() {

@@ -88,6 +88,7 @@ import org.apache.asterix.metadata.entities.FullTextConfigMetadataEntity;
 import org.apache.asterix.metadata.entities.FullTextFilterMetadataEntity;
 import org.apache.asterix.metadata.entities.Function;
 import org.apache.asterix.metadata.entities.Index;
+import org.apache.asterix.metadata.entities.Statistics;
 import org.apache.asterix.metadata.entities.Synonym;
 import org.apache.asterix.metadata.feeds.FeedMetadataUtil;
 import org.apache.asterix.metadata.lock.ExternalDatasetsRegistry;
@@ -164,6 +165,8 @@ import org.apache.hyracks.storage.am.common.dataflow.IIndexDataflowHelperFactory
 import org.apache.hyracks.storage.am.common.dataflow.IndexDataflowHelperFactory;
 import org.apache.hyracks.storage.am.common.ophelpers.IndexOperation;
 import org.apache.hyracks.storage.am.lsm.btree.dataflow.LSMBTreeBatchPointSearchOperatorDescriptor;
+import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
+import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 import org.apache.hyracks.storage.am.lsm.invertedindex.dataflow.BinaryTokenizerOperatorDescriptor;
 import org.apache.hyracks.storage.am.lsm.invertedindex.fulltext.IFullTextConfigEvaluatorFactory;
 import org.apache.hyracks.storage.am.lsm.invertedindex.tokenizers.IBinaryTokenizerFactory;
@@ -467,6 +470,35 @@ public class MetadataProvider implements IMetadataProvider<DataSourceId, String>
     public FullTextFilterMetadataEntity findFullTextFilter(DataverseName dataverseName, String ftFilterName)
             throws AlgebricksException {
         return MetadataManagerUtil.findFullTextFilterDescriptor(mdTxnCtx, dataverseName, ftFilterName);
+    }
+
+    @Override
+    public void dropStatistics(String dataverse, String datasetName, String indexName, String node, String partition,
+            boolean isAntimatter, String fieldName) throws AlgebricksException {
+        DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverse);
+        MetadataManager.INSTANCE.dropStatistics(mdTxnCtx, dataverseName, datasetName, indexName, node, partition,
+                isAntimatter, fieldName);
+    }
+
+    //TODO: Delete this function before merge to the main branch
+    @Override
+    public void addStatistics(String dataverse, String datasetName, String indexName, String node, String partition,
+            ComponentStatisticsId componentId, boolean isAntimatter, String fieldName, ISynopsis synopsis)
+            throws AlgebricksException {
+        // add statistics to the metadata using metadata manager
+        DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverse);
+        MetadataManager.INSTANCE.addStatistics(mdTxnCtx, new Statistics(dataverseName, datasetName, indexName, node,
+                partition, componentId, false, isAntimatter, fieldName, synopsis));
+    }
+
+    @Override
+    public void updateStatistics(String dataverse, String datasetName, String indexName, String node, String partition,
+            ComponentStatisticsId componentId, boolean isAntimatter, String fieldName, ISynopsis synopsis)
+            throws AlgebricksException {
+        // add statistics to the metadata using metadata manager
+        DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverse);
+        MetadataManager.INSTANCE.updateStatistics(mdTxnCtx, new Statistics(dataverseName, datasetName, indexName, node,
+                partition, componentId, false, isAntimatter, fieldName, synopsis));
     }
 
     @Override
@@ -1685,7 +1717,7 @@ public class MetadataProvider implements IMetadataProvider<DataSourceId, String>
         String itemTypeName = dataset.getItemTypeName();
         IAType itemType;
         try {
-            itemType = MetadataManager.INSTANCE.getDatatype(mdTxnCtx, dataset.getItemTypeDataverseName(), itemTypeName)
+            itemType = MetadataManager.INSTANCE.getDatatype(mdTxnCtx, dataset.getDataverseName(), itemTypeName)
                     .getDatatype();
 
             if (itemType.getTypeTag() != ATypeTag.OBJECT) {
