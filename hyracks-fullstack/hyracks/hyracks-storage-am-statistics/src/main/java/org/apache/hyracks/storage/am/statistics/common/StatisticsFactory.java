@@ -27,7 +27,15 @@ import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisType;
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatistics;
 import org.apache.hyracks.storage.am.statistics.historgram.EquiHeightHistogramSynopsis;
+import org.apache.hyracks.storage.am.statistics.historgram.HistogramBucket;
+import org.apache.hyracks.storage.am.statistics.historgram.HistogramBuilder;
+import org.apache.hyracks.storage.am.statistics.historgram.HistogramSynopsis;
+import org.apache.hyracks.storage.am.statistics.sketch.groupcount.GroupCountSketchBuilder;
 import org.apache.hyracks.storage.am.statistics.sketch.quantile.QuantileSketchBuilder;
+import org.apache.hyracks.storage.am.statistics.wavelet.PrefixSumWaveletSynopsis;
+import org.apache.hyracks.storage.am.statistics.wavelet.PrefixSumWaveletTransform;
+import org.apache.hyracks.storage.am.statistics.wavelet.WaveletSynopsis;
+import org.apache.hyracks.storage.am.statistics.wavelet.WaveletTransform;
 
 public class StatisticsFactory extends AbstractStatisticsFactory {
     private static final Logger LOGGER = Logger.getLogger(StatisticsFactory.class.getName());
@@ -79,6 +87,22 @@ public class StatisticsFactory extends AbstractStatisticsFactory {
         ISynopsis synopsis = SynopsisFactory.createSynopsis(type, fieldExtractor.getFieldTypeTraits(),
                 SynopsisElementFactory.createSynopsisElementsCollection(type, size), numElements, size);
         switch (type) {
+            case UniformHistogram:
+            case ContinuousHistogram:
+            case EquiWidthHistogram:
+                return new HistogramBuilder((HistogramSynopsis<? extends HistogramBucket>) synopsis, dataverseName,
+                        datasetName, indexName, fieldExtractor.getFieldName(), isAntimatter, fieldExtractor,
+                        componentStatistics);
+            case PrefixSumWavelet:
+                return new PrefixSumWaveletTransform((PrefixSumWaveletSynopsis) synopsis, dataverseName, datasetName,
+                        indexName, fieldExtractor.getFieldName(), isAntimatter, fieldExtractor, componentStatistics);
+            case Wavelet:
+                return new WaveletTransform((WaveletSynopsis) synopsis, dataverseName, datasetName, indexName,
+                        fieldExtractor.getFieldName(), isAntimatter, fieldExtractor, componentStatistics);
+            case GroupCountSketch:
+                return new GroupCountSketchBuilder((WaveletSynopsis) synopsis, dataverseName, datasetName, indexName,
+                        fieldExtractor.getFieldName(), isAntimatter, fieldExtractor, componentStatistics, fanout,
+                        failureProbability, accuracy, energyAccuracy, numElements, System.currentTimeMillis());
             case QuantileSketch:
                 return new QuantileSketchBuilder((EquiHeightHistogramSynopsis) synopsis, dataverseName, datasetName,
                         indexName, fieldExtractor.getFieldName(), isAntimatter, fieldExtractor, componentStatistics,

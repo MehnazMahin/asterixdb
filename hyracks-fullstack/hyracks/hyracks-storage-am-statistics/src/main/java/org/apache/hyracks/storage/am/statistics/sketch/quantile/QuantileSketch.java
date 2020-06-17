@@ -210,7 +210,7 @@ public class QuantileSketch<T extends Comparable<T>> implements ISketch<T, T> {
         while (true) {
             ThresholdEntry minElement = compressibleElements.peek();
             if (minElement.threshold > threshold) {
-                // all elements are greater than threshold. simply break because the new element was already added
+                // all elements are greater then threshold. simply break because the new element was already added
                 break;
             }
             // update next element's threshold
