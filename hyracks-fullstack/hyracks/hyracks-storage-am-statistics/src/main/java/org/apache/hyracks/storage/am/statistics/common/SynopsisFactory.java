@@ -37,6 +37,7 @@ public class SynopsisFactory {
         long domainEnd = TypeTraitsDomainUtils.maxDomainValue(keyTypeTraits);
         int maxLevel = TypeTraitsDomainUtils.maxLevel(keyTypeTraits);
         switch (type) {
+            case ContinuousHistogram:
             case QuantileSketch:
                 return new ContinuousHistogramSynopsis(domainStart, domainEnd, maxLevel, synopsisElementsNum,
                         synopsisSize, (List<HistogramBucket>) synopsisElements);
