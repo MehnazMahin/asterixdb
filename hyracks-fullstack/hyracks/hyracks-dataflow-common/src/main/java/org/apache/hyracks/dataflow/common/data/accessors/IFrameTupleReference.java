@@ -24,5 +24,4 @@ public interface IFrameTupleReference extends ITupleReference {
     public IFrameTupleAccessor getFrameTupleAccessor();
 
     public int getTupleIndex();
-
 }

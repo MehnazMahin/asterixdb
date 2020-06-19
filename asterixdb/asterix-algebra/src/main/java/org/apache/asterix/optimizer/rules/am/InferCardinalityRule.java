@@ -265,7 +265,7 @@ public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
         }
         if (expr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
             IAObject constExprValue = ((AsterixConstantValue) ((ConstantExpression) expr).getValue()).getObject();
-            if (ATypeHierarchy.getTypeDomain(constExprValue.getType().getTypeTag()) == ATypeHierarchy.Domain.INTEGER) {
+            if (ATypeHierarchy.getTypeDomain(constExprValue.getType().getTypeTag()) == ATypeHierarchy.Domain.NUMERIC) {
                 return (AIntegerObject) constExprValue;
             }
         }

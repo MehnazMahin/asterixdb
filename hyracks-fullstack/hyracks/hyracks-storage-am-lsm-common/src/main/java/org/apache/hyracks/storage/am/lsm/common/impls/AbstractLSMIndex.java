@@ -651,7 +651,6 @@ public abstract class AbstractLSMIndex implements ILSMIndex {
 
     @Override
     public ILSMIOOperationCallback getIOOperationCallback() {
-        //return ioOpCallback;
         return getStatisticsAwareIOOperationCallback(ioOpCallback);
     }
 

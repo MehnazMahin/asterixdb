@@ -23,7 +23,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
 import org.apache.asterix.common.api.IMetadataLockManager;
-import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.common.metadata.IMetadataLock;
 import org.apache.asterix.common.metadata.LockList;

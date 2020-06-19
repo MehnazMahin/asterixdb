@@ -3831,6 +3831,7 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
                     throw new CompilationException(ErrorCode.COMPILATION_ERROR, sourceLoc,
                             "There is no feed with this name " + feedName + ".");
                 }
+                MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);
                 return;
             }
             doDropFeed(hcc, metadataProvider, feed, sourceLoc);

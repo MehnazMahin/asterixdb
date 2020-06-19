@@ -46,7 +46,6 @@ public class LSMIndexUtil {
                     } else {
                         ioCallback = (LSMIOOperationCallback) lsmIndex.getIOOperationCallback();
                     }
-                    //LSMIOOperationCallback ioOpCallback = (LSMIOOperationCallback) lsmIndex.getIOOperationCallback();
                     ioCallback.setFirstLsnForCurrentMemoryComponent(logManager.getAppendLSN());
                 }
             }

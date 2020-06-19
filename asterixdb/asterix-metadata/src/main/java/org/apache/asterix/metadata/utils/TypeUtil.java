@@ -486,7 +486,6 @@ public class TypeUtil {
 
     /**
      * Creates a map from name to type for fields in the passed type
-     *
      * @param recordType the type to be mapped
      * @return a map mapping all fields to their types
      */
@@ -500,7 +499,6 @@ public class TypeUtil {
 
     /**
      * Maintains the {@code updatedRecordType} as nullable/missable (?) in case it was originally nullable/missable
-     * 
      * @param originalRecordType the original record type
      * @param updatedRecordType the original record type being enforced/modified with new non-declared fields included
      * @return {@code updatedRecordType}
@@ -514,7 +512,6 @@ public class TypeUtil {
 
     /**
      * Makes sure the dataset record type being enforced/modified stays as a pure record type
-     * 
      * @param enforcedDatasetRecordType the dataset record type enforced and modified by adding the extra fields indexed
      */
     private static void validateRecord(IAType enforcedDatasetRecordType) {

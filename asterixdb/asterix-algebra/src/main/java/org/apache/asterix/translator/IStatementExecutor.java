@@ -187,7 +187,6 @@ public interface IStatementExecutor {
         public void setProfileType(ProfileType profileType) {
             this.profileType = profileType;
         }
-
     }
 
     class Profile implements Serializable {
@@ -216,7 +215,6 @@ public interface IStatementExecutor {
         public ObjectNode getProfile() {
             return profile;
         }
-
     }
 
     class StatementProperties implements Serializable {

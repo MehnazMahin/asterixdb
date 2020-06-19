@@ -142,6 +142,7 @@
             <configuration>
               <includeClassifiers>testlib</includeClassifiers>
               <outputDirectory>target/data/externallib</outputDirectory>
+              <overwrite>true</overwrite>
               <stripVersion>true</stripVersion>
             </configuration>
           </execution>
@@ -711,10 +712,6 @@
       <artifactId>hyracks-control-common</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hyracks</groupId>
-      <artifactId>hyracks-storage-am-common</artifactId>
-    </dependency>
-    <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
       <scope>test</scope>
@@ -747,16 +744,6 @@
       <groupId>org.apache.hyracks</groupId>
       <artifactId>hyracks-storage-am-lsm-btree-test</artifactId>
       <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hyracks</groupId>
-      <artifactId>hyracks-storage-am-statistics</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hyracks</groupId>
-      <artifactId>hyracks-storage-am-statistics</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

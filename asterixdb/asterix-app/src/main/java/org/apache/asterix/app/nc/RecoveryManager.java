@@ -478,7 +478,6 @@ public class RecoveryManager implements IRecoveryManager, ILifeCycleComponent {
         long minFirstLSN = logMgr.getAppendLSN();
         if (!openIndexList.isEmpty()) {
             for (IIndex index : openIndexList) {
-                //                if (!((ILSMIndex) index).hasStatistics()) {
                 LSMIOOperationCallback ioCallback = null;
                 if (((ILSMIndex) index)
                         .getIOOperationCallback() instanceof StatisticsMessageIOOperationCallbackWrapper) {
@@ -492,7 +491,6 @@ public class RecoveryManager implements IRecoveryManager, ILifeCycleComponent {
                     firstLSN = ioCallback.getPersistenceLsn();
                     minFirstLSN = Math.min(minFirstLSN, firstLSN);
                 }
-                //}
             }
         }
         return minFirstLSN;

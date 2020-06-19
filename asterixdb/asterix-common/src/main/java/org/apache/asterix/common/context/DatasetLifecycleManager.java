@@ -394,7 +394,6 @@ public class DatasetLifecycleManager implements IDatasetLifecycleManager, ILifeC
             Predicate<ILSMIndex> indexPredicate) throws HyracksDataException {
         final int partition = opTracker.getPartition();
         for (ILSMIndex lsmIndex : dsr.getDatasetInfo().getDatasetPartitionOpenIndexes(partition)) {
-            //if (!lsmIndex.hasStatistics()) {
             LSMIOOperationCallback ioCallback = null;
             if (lsmIndex.getIOOperationCallback() instanceof StatisticsMessageIOOperationCallbackWrapper) {
                 ioCallback = (LSMIOOperationCallback) ((StatisticsMessageIOOperationCallbackWrapper) lsmIndex
@@ -402,14 +401,12 @@ public class DatasetLifecycleManager implements IDatasetLifecycleManager, ILifeC
             } else {
                 ioCallback = (LSMIOOperationCallback) lsmIndex.getIOOperationCallback();
             }
-            //LSMIOOperationCallback ioCallback = (LSMIOOperationCallback) lsmIndex.getIOOperationCallback();
             if (needsFlush(opTracker, lsmIndex, ioCallback) && indexPredicate.test(lsmIndex)) {
                 LOGGER.info("Async flushing {}", opTracker);
                 opTracker.setFlushOnExit(true);
                 opTracker.flushIfNeeded();
                 break;
             }
-            // }
         }
     }
 

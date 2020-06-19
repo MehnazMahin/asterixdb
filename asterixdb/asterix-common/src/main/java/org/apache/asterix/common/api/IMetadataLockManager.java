@@ -18,7 +18,6 @@
  */
 package org.apache.asterix.common.api;
 
-import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.common.metadata.LockList;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
