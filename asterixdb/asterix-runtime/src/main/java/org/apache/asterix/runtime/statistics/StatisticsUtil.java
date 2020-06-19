@@ -21,6 +21,7 @@ package org.apache.asterix.runtime.statistics;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.asterix.common.context.IStorageComponentProvider;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.dataflow.data.nontagged.serde.AIntegerSerializerDeserializer;
 import org.apache.asterix.formats.nontagged.SerializerDeserializerProvider;
@@ -40,9 +41,10 @@ public class StatisticsUtil {
     private StatisticsUtil() {
     }
 
-    public static List<IFieldExtractor> computeStatisticsFieldExtractors(ITypeTraitProvider typeTraitProvider,
-            ARecordType recordType, List<List<String>> indexKeys, boolean isPrimaryIndex,
-            boolean keepStatisticsOnPrimaryKeys, String[] unorderedStatisticsFields) throws AlgebricksException {
+    public static List<IFieldExtractor> computeStatisticsFieldExtractors(
+            IStorageComponentProvider storageComponentProvider, ARecordType recordType, List<List<String>> indexKeys,
+            boolean isPrimaryIndex, boolean keepStatisticsOnPrimaryKeys, String[] unorderedStatisticsFields)
+            throws AlgebricksException {
         if (indexKeys.size() > 1) {
             throw new AsterixException("Cannot collect statistics on composite fields");
         }
@@ -53,6 +55,7 @@ public class StatisticsUtil {
         }
         String keyField = String.join(".", indexKeys.get(0));
         IAType keyType = recordType.getFieldType(keyField);
+        ITypeTraitProvider typeTraitProvider = storageComponentProvider.getTypeTraitProvider();
         // add statistics on indexed fields
         if ((!isPrimaryIndex || keepStatisticsOnPrimaryKeys)
                 && ATypeHierarchy.getTypeDomain(keyType.getTypeTag()) == Domain.NUMERIC) {

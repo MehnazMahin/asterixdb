@@ -135,8 +135,8 @@ public class BTreeResourceFactoryProvider implements IResourceFactoryProvider {
                     statisticsFactory =
                             new StatisticsFactory(statisticsType, dataset.getDataverseName().getCanonicalForm(),
                                     dataset.getDatasetName(), index.getIndexName(),
-                                    StatisticsUtil.computeStatisticsFieldExtractors(typeTraitProvider, recordType,
-                                            ((Index.ValueIndexDetails) index.getIndexDetails()).getKeyFieldNames(),
+                                    StatisticsUtil.computeStatisticsFieldExtractors(mdProvider.getStorageComponentProvider(),
+                                            recordType, ((Index.ValueIndexDetails) index.getIndexDetails()).getKeyFieldNames(),
                                             index.isPrimaryIndex(), statsOnPrimaryKeys, unorderedStatisticsFields),
                                     statsSize, mdProvider.getApplicationContext().getStatisticsProperties().getSketchAccuracy());
                 }

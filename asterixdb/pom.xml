@@ -559,6 +559,9 @@
           <groupId>org.apache.hyracks</groupId>
           <artifactId>license-automation-plugin</artifactId>
           <version>${hyracks.version}</version>
+          <configuration>
+            <argLine>-Xmx2048m</argLine>
+          </configuration>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -1393,16 +1396,6 @@
         <artifactId>hyracks-hdfs</artifactId>
         <version>${hyracks.version}</version>
         <type>test-jar</type>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hyracks</groupId>
-        <artifactId>hyracks-storage-am-statistics</artifactId>
-        <version>${hyracks.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hyracks</groupId>
-        <artifactId>hyracks-storage-am-statistics</artifactId>
-        <version>${hyracks.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.hyracks</groupId>
