@@ -648,10 +648,6 @@
       <artifactId>hyracks-storage-am-lsm-common</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hyracks</groupId>
-      <artifactId>hyracks-storage-am-common</artifactId>
-    </dependency>
-    <dependency>
       <groupId>org.apache.asterix</groupId>
       <artifactId>asterix-runtime</artifactId>
       <version>${project.version}</version>
@@ -710,6 +706,10 @@
     <dependency>
       <groupId>org.apache.hyracks</groupId>
       <artifactId>hyracks-control-common</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hyracks</groupId>
+      <artifactId>hyracks-storage-am-common</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
