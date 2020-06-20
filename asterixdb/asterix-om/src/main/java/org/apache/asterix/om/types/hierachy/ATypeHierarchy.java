@@ -425,7 +425,6 @@ public class ATypeHierarchy {
 
     public enum Domain {
         SPATIAL,
-        INTEGER,
         NUMERIC,
         LIST,
         ANY

@@ -28,6 +28,7 @@ import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.om.base.AIntegerObject;
 import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.constants.AsterixConstantValue;
+import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.hierachy.ATypeHierarchy;
 import org.apache.asterix.optimizer.rules.am.BTreeAccessMethod.LimitType;
 import org.apache.commons.lang3.mutable.Mutable;
@@ -263,7 +264,7 @@ public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
         }
         if (expr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
             IAObject constExprValue = ((AsterixConstantValue) ((ConstantExpression) expr).getValue()).getObject();
-            if (ATypeHierarchy.getTypeDomain(constExprValue.getType().getTypeTag()) == ATypeHierarchy.Domain.INTEGER) {
+            if (constExprValue.getType().getTypeTag() == ATypeTag.INTEGER) {
                 return (AIntegerObject) constExprValue;
             }
         }
