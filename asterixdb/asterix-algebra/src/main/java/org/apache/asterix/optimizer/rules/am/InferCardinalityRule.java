@@ -24,7 +24,6 @@ import static org.apache.asterix.optimizer.rules.am.OptimizableOperatorSubTree.D
 import java.util.List;
 import java.util.Map;
 
-import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.om.base.AIntegerObject;
 import org.apache.asterix.om.base.IAObject;
@@ -59,7 +58,6 @@ import org.apache.hyracks.algebricks.core.algebra.operators.logical.visitors.Car
  * (join) <-- (assign)? <--(datasource scan)
  * <-- (assign)? <-- (datasource scan)
  */
-//public class InferCardinalityRule implements IAlgebraicRewriteRule {
 public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
 
     private OptimizableOperatorSubTree leftSubTree;
@@ -259,13 +257,13 @@ public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
         }
     }
 
-    private AIntegerObject extractConstantIntegerExpr(ILogicalExpression expr) throws AsterixException {
+    private AIntegerObject extractConstantIntegerExpr(ILogicalExpression expr) {
         if (expr == null) {
             return null;
         }
         if (expr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
             IAObject constExprValue = ((AsterixConstantValue) ((ConstantExpression) expr).getValue()).getObject();
-            if (ATypeHierarchy.getTypeDomain(constExprValue.getType().getTypeTag()) == ATypeHierarchy.Domain.NUMERIC) {
+            if (ATypeHierarchy.getTypeDomain(constExprValue.getType().getTypeTag()) == ATypeHierarchy.Domain.INTEGER) {
                 return (AIntegerObject) constExprValue;
             }
         }
