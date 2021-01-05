@@ -119,7 +119,7 @@ public class StatisticsTest {
             StorageTestUtils.DATASET_NAME, StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATA_TYPE_NAME,
             StorageTestUtils.NODE_GROUP_NAME, NoMergePolicyFactory.NAME, null,
             new InternalDatasetDetails(null, PartitioningStrategy.HASH, StorageTestUtils.PARTITIONING_KEYS, null, null,
-                    null, false, null),
+                    null, false, null, null),
             new HashMap<>(), DatasetType.INTERNAL, StorageTestUtils.DATASET_ID, 0, true, true);
     private static final TestStatisticsID keyFieldStatisticsID =
             new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME.getCanonicalForm(), StorageTestUtils.DATASET_NAME,
