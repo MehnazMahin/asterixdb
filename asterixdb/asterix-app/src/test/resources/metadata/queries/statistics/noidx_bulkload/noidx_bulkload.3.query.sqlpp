@@ -16,5 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+<<<<<<< HEAD
+=======
+use test;
+
+update statistics for TestDataset(TestIdx1, TestIdx2);
+
+>>>>>>> Initial commit for stats framework
 select DataverseName, DatasetName, IndexName, FieldName, IsAntimatter, Synopsis
  from Metadata.Statistics;

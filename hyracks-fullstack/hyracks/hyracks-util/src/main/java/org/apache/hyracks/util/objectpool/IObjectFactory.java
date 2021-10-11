@@ -26,7 +26,11 @@ public interface IObjectFactory<E, T> {
 
     /**
      * create an element of type E
+<<<<<<< HEAD
      * 
+=======
+     *
+>>>>>>> Initial commit for stats framework
      * @param arg
      * @return an E element
      */

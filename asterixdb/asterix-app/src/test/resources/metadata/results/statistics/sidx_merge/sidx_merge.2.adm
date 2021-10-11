@@ -1,0 +1,1 @@
+{ "DataverseName": "test", "DatasetName": "TestDataset", "IndexName": "TestIndex", "FieldName": "sid", "IsAntimatter": false, "Synopsis": { "Type": "ContinuousHistogram", "Size": 4, "Elements": [ { "Key": -29, "Value": 2.7355835575013656 }, { "Key": 42, "Value": 2.7354987764128262 }, { "Key": 84, "Value": 2.7612231315578755 }, { "Key": 127, "Value": 2.767694534527932 } ] } }

@@ -1,1 +1,6 @@
+<<<<<<< HEAD
 { "DataverseName": "test", "DatasetName": "TestDataset", "IndexName": "TestDataset", "FieldName": "sid", "IsAntimatter": false, "Synopsis": { "Type": "ContinuousHistogram", "Size": 256, "Elements": [ { "Key": -92, "Value": 1.0 } ] }
+=======
+{ "DataverseName": "test", "DatasetName": "TestDataset", "IndexName": "TestIdx1", "FieldName": "sid", "IsAntimatter": false, "Synopsis": { "Type": "ContinuousHistogram", "Size": 1, "Elements": [ { "Key": 127, "Value": 1.0 } ] } }
+{ "DataverseName": "test", "DatasetName": "TestDataset", "IndexName": "TestIdx2", "FieldName": "age", "IsAntimatter": false, "Synopsis": { "Type": "ContinuousHistogram", "Size": 1, "Elements": [ { "Key": 127, "Value": 1.0 } ] } }
+>>>>>>> Initial commit for stats framework

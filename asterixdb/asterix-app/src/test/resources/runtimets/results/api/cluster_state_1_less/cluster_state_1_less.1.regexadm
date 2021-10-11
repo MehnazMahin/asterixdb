@@ -53,7 +53,11 @@
     "statistics.primary.keys.enabled" : false,
     "statistics\.sketch\.accuracy" : 0.1,
     "statistics\.sketch\.energy\.accuracy" : 0.1,
+<<<<<<< HEAD
     "statistics\.sketch\.failure\.probability" : 0.01,
+=======
+    "statistics.sketch.failure.probability" : 0.01,
+>>>>>>> Initial commit for stats framework
     "statistics\.sketch\.fanout" : 2,
     "statistics\.synopsis\.size" : 100,
     "statistics\.synopsis\.type" : "None",

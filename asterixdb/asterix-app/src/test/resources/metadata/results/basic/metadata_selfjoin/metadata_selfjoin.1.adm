@@ -13,4 +13,9 @@
 { "dv1": "Metadata", "dv2": "Metadata" }
 { "dv1": "Metadata", "dv2": "Metadata" }
 { "dv1": "Metadata", "dv2": "Metadata" }
+<<<<<<< HEAD
+=======
+{ "dv1": "Metadata", "dv2": "Metadata" }
+{ "dv1": "Metadata", "dv2": "Metadata" }
+>>>>>>> Initial commit for stats framework
 { "dv1": "Metadata", "dv2": "Metadata" }

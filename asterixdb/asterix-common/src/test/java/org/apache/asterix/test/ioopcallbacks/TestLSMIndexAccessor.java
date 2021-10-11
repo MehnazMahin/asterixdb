@@ -172,6 +172,11 @@ public class TestLSMIndexAccessor implements ILSMIndexAccessor {
     }
 
     @Override
+    public void sendDiskComponentsStatistics() throws HyracksDataException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void deleteComponents(Predicate<ILSMComponent> predicate) throws HyracksDataException {
         throw new UnsupportedOperationException();
     }

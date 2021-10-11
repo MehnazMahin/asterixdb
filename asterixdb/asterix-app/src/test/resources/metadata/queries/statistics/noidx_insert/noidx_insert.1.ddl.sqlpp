@@ -20,12 +20,22 @@ drop  dataverse test if exists;
 create  dataverse test;
 use test;
 
+<<<<<<< HEAD
 set `statistics.synopsis.type` `QuantileSketch`;
+=======
+set `statistics.synopsis.type` `ContinuousHistogram`;
+>>>>>>> Initial commit for stats framework
 set `statistics.synopsis.size` `256`;
 
 create type TestType as open {
   `id`: int8,
   `sid`: int8
 };
+<<<<<<< HEAD
 create dataset TestDataset(TestType) primary key id
 hints("statistics"="sid");
+=======
+create dataset TestDataset(TestType) primary key id;
+
+create index TestIdx on TestDataset(sid);
+>>>>>>> Initial commit for stats framework

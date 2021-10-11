@@ -25,6 +25,7 @@ public class ContinuousHistogramSynopsis extends EquiHeightHistogramSynopsis<His
 
     private static final long serialVersionUID = 1L;
 
+<<<<<<< HEAD
     public ContinuousHistogramSynopsis(long domainStart, long domainEnd, int maxLevel, long elementsNum,
             int bucketsNum) {
         this(domainStart, domainEnd, maxLevel, elementsNum, bucketsNum, new ArrayList<>(bucketsNum));
@@ -33,6 +34,15 @@ public class ContinuousHistogramSynopsis extends EquiHeightHistogramSynopsis<His
     public ContinuousHistogramSynopsis(long domainStart, long domainEnd, int maxLevel, long elementsNum, int bucketsNum,
             List<HistogramBucket> buckets) {
         super(domainStart, domainEnd, maxLevel, elementsNum, bucketsNum, buckets);
+=======
+    public ContinuousHistogramSynopsis(long domainStart, long domainEnd, long elementsNum, int bucketsNum) {
+        this(domainStart, domainEnd, elementsNum, bucketsNum, new ArrayList<>(bucketsNum));
+    }
+
+    public ContinuousHistogramSynopsis(long domainStart, long domainEnd, long elementsNum, int bucketsNum,
+            List<HistogramBucket> buckets) {
+        super(domainStart, domainEnd, elementsNum, bucketsNum, buckets);
+>>>>>>> Initial commit for stats framework
     }
 
     @Override
@@ -40,9 +50,15 @@ public class ContinuousHistogramSynopsis extends EquiHeightHistogramSynopsis<His
         return SynopsisType.ContinuousHistogram;
     }
 
+<<<<<<< HEAD
     public void appendToBucket(int bucketId, int bucketNum, long tuplePos, double frequency) {
         if (bucketId >= getBuckets().size()) {
             getBuckets().add(new HistogramBucket(0l, frequency));
+=======
+    public void appendToBucket(int bucketId, double frequency) {
+        if (bucketId >= getBuckets().size()) {
+            getBuckets().add(new HistogramBucket(0L, frequency));
+>>>>>>> Initial commit for stats framework
         } else {
             getBuckets().get(bucketId).appendToValue(frequency);
         }

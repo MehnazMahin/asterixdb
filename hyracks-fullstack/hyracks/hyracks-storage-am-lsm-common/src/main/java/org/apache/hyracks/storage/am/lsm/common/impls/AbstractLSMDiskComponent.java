@@ -96,6 +96,7 @@ public abstract class AbstractLSMDiskComponent extends AbstractLSMComponent impl
             case REPLICATE:
             case SEARCH:
             case DISK_COMPONENT_SCAN:
+            case DISK_COMPONENTS_STATISTICS_SEND:
             case MERGE:
                 readerCount++;
                 break;
@@ -124,6 +125,7 @@ public abstract class AbstractLSMDiskComponent extends AbstractLSMComponent impl
             case REPLICATE:
             case SEARCH:
             case DISK_COMPONENT_SCAN:
+            case DISK_COMPONENTS_STATISTICS_SEND:
                 readerCount--;
                 if (readerCount == 0 && state == ComponentState.UNREADABLE_UNWRITABLE) {
                     state = ComponentState.INACTIVE;

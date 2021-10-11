@@ -128,9 +128,11 @@ public interface ILSMDiskComponent extends ILSMComponent {
      * @param fillFactor
      * @param verifyInput
      * @param numElementsHint
+     * @param numAntimatterElementsHint
      * @param checkIfEmptyIndex
      * @param withFilter
      * @param cleanupEmptyComponent
+     * @param callback
      * @return the created disk component bulk loader
      * @throws HyracksDataException
      */

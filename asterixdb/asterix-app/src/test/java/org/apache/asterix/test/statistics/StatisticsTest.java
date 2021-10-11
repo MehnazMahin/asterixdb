@@ -309,8 +309,15 @@ public class StatisticsTest {
     @Test
     public void testFlushStatistics() throws Exception {
         insertRecords(NUM_INSERT_RECORDS);
+<<<<<<< HEAD
         nc.getTransactionManager().commitTransaction(txnCtx.getTxnId());
         StorageTestUtils.flush(dsLifecycleMgr, primaryLsmBtree, STATS_DATASET, false);
+=======
+//        nc.getTransactionManager().commitTransaction(txnCtx.getTxnId());
+//        StorageTestUtils.flush(dsLifecycleMgr, primaryLsmBtree, STATS_DATASET, false);
+        nc.getTransactionManager().commitTransaction(txnCtx.getTxnId());
+//        StorageTestUtils.updateStats(primaryLsmBtree);
+>>>>>>> Initial commit for stats framework
 
         Collection<TestStatisticsEntry> keyFieldStatsEntries = testMdProvider.getStats(keyFieldStatisticsID);
         Collection<TestStatisticsEntry> valueFieldStatsEntries = testMdProvider.getStats(indexedFieldStatisticsID);
@@ -323,8 +330,12 @@ public class StatisticsTest {
         Assert.assertEquals(1, keyFieldStatsEntries.size());
         TestStatisticsEntry keyFieldEntry = keyFieldStatsEntries.iterator().next();
         CountingSynopsis synopsis = (CountingSynopsis) keyFieldEntry.getSynopsis();
+<<<<<<< HEAD
         Assert.assertEquals(keyFieldEntry.getComponentId().getMinTimestamp(),
                 keyFieldEntry.getComponentId().getMaxTimestamp());
+=======
+        Assert.assertEquals(keyFieldEntry.getComponentId().getMinTimestamp(), keyFieldEntry.getComponentId().getMaxTimestamp());
+>>>>>>> Initial commit for stats framework
         Assert.assertNotNull(synopsis);
         Assert.assertEquals(NUM_INSERT_RECORDS, synopsis.getCount());
 
@@ -334,8 +345,12 @@ public class StatisticsTest {
         synopsis = (CountingSynopsis) valueFieldEntry.getSynopsis();
         Assert.assertNotNull(synopsis);
         Assert.assertEquals(NUM_INSERT_RECORDS, synopsis.getCount());
+<<<<<<< HEAD
         Assert.assertEquals(valueFieldEntry.getComponentId().getMinTimestamp(),
                 valueFieldEntry.getComponentId().getMaxTimestamp());
+=======
+        Assert.assertEquals(valueFieldEntry.getComponentId().getMinTimestamp(), valueFieldEntry.getComponentId().getMaxTimestamp());
+>>>>>>> Initial commit for stats framework
 
         Assert.assertTrue(keyFieldAntimatterStatsEntries.isEmpty());
         Assert.assertTrue(valueFieldAntimatterStatsEntries.isEmpty());

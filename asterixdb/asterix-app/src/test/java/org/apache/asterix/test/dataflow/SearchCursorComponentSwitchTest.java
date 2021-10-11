@@ -139,7 +139,11 @@ public class SearchCursorComponentSwitchTest {
         dataset = new TestDataset(dvName, DATASET_NAME, dvName, DATA_TYPE_NAME, NODE_GROUP_NAME,
                 NoMergePolicyFactory.NAME, null, new InternalDatasetDetails(null, PartitioningStrategy.HASH,
                         partitioningKeys, null, null, null, false, null, null),
+<<<<<<< HEAD
                 Collections.EMPTY_MAP, DatasetType.INTERNAL, DATASET_ID, 0, false, false);
+=======
+                null, DatasetType.INTERNAL, DATASET_ID, 0, false, false);
+>>>>>>> Initial commit for stats framework
         PrimaryIndexInfo primaryIndexInfo = nc.createPrimaryIndex(dataset, KEY_TYPES, RECORD_TYPE, META_TYPE, null,
                 storageManager, KEY_INDEXES, KEY_INDICATORS_LIST, 0);
         IndexDataflowHelperFactory iHelperFactory =

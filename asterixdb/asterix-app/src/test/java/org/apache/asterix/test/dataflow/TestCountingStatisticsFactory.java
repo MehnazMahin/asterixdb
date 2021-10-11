@@ -41,7 +41,11 @@ public class TestCountingStatisticsFactory extends AbstractStatisticsFactory {
         private int count = 0;
 
         public CountingSynopsis() {
+<<<<<<< HEAD
             super(Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.SIZE, 0, null);
+=======
+            super(Integer.MIN_VALUE, Integer.MAX_VALUE, 0, null);
+>>>>>>> Initial commit for stats framework
         }
 
         @Override

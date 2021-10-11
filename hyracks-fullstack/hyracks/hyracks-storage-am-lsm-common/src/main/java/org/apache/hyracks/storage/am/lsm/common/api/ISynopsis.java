@@ -29,6 +29,7 @@ public interface ISynopsis<T extends ISynopsisElement> extends Serializable {
 
     enum SynopsisType {
         None(false, false, false),
+<<<<<<< HEAD
         GroupCountSketch(true, false, false),
         PrefixSumWavelet(true, false, true),
         Wavelet(true, true, true),
@@ -40,6 +41,14 @@ public interface ISynopsis<T extends ISynopsisElement> extends Serializable {
         private boolean isMergeable;
         private final boolean isJoinable;
         private boolean needsSortedOrder;
+=======
+        ContinuousHistogram(false, false, true),
+        QuantileSketch(true, false, false);
+
+        private final boolean isMergeable;
+        private final boolean isJoinable;
+        private final boolean needsSortedOrder;
+>>>>>>> Initial commit for stats framework
 
         SynopsisType(boolean isMergeable, boolean isJoinable, boolean needsSortedOrder) {
             this.isMergeable = isMergeable;
@@ -66,10 +75,26 @@ public interface ISynopsis<T extends ISynopsisElement> extends Serializable {
 
     Collection<T> getElements();
 
+<<<<<<< HEAD
     void merge(ISynopsis<T> mergeSynopsis) throws HyracksDataException;
 
     double pointQuery(long position);
 
+=======
+    /**
+     * Updates the current synopses by merging it with 'mergedSynopsis'
+     */
+    void merge(ISynopsis<T> mergedSynopsis) throws HyracksDataException;
+
+    /**
+     * Estimates cardinality at 'position'
+     */
+    double pointQuery(long position);
+
+    /**
+     * Estimates range cardinality between 'startPosition' and 'endPosition'
+     */
+>>>>>>> Initial commit for stats framework
     double rangeQuery(long startPosition, long endPosition);
 
 }

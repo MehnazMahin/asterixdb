@@ -28,6 +28,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -87,6 +88,8 @@ import org.apache.asterix.common.exceptions.WarningUtil;
 import org.apache.asterix.common.external.IDataSourceAdapter;
 import org.apache.asterix.common.functions.ExternalFunctionLanguage;
 import org.apache.asterix.common.functions.FunctionSignature;
+import org.apache.asterix.common.messaging.api.ICCMessageBroker;
+import org.apache.asterix.common.messaging.api.INcAddressedMessage;
 import org.apache.asterix.common.metadata.DatasetFullyQualifiedName;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.common.metadata.IMetadataLockUtil;
@@ -151,6 +154,7 @@ import org.apache.asterix.lang.common.statement.StopFeedStatement;
 import org.apache.asterix.lang.common.statement.SynonymDropStatement;
 import org.apache.asterix.lang.common.statement.TypeDecl;
 import org.apache.asterix.lang.common.statement.TypeDropStatement;
+import org.apache.asterix.lang.common.statement.UpdateStatisticsStatement;
 import org.apache.asterix.lang.common.statement.ViewDecl;
 import org.apache.asterix.lang.common.statement.ViewDropStatement;
 import org.apache.asterix.lang.common.statement.WriteStatement;
@@ -166,6 +170,7 @@ import org.apache.asterix.metadata.bootstrap.MetadataBuiltinEntities;
 import org.apache.asterix.metadata.dataset.hints.DatasetHints;
 import org.apache.asterix.metadata.dataset.hints.DatasetHints.DatasetNodegroupCardinalityHint;
 import org.apache.asterix.metadata.declared.MetadataProvider;
+import org.apache.asterix.metadata.declared.StatisticsEntry;
 import org.apache.asterix.metadata.entities.BuiltinTypeMap;
 import org.apache.asterix.metadata.entities.CompactionPolicy;
 import org.apache.asterix.metadata.entities.Dataset;
@@ -194,6 +199,7 @@ import org.apache.asterix.metadata.utils.IndexUtil;
 import org.apache.asterix.metadata.utils.KeyFieldTypeUtil;
 import org.apache.asterix.metadata.utils.MetadataConstants;
 import org.apache.asterix.metadata.utils.MetadataUtil;
+import org.apache.asterix.metadata.utils.SynopsisUtils;
 import org.apache.asterix.metadata.utils.TypeUtil;
 import org.apache.asterix.om.base.ANull;
 import org.apache.asterix.om.base.IAObject;
@@ -206,6 +212,7 @@ import org.apache.asterix.runtime.fulltext.AbstractFullTextFilterDescriptor;
 import org.apache.asterix.runtime.fulltext.FullTextConfigDescriptor;
 import org.apache.asterix.runtime.fulltext.IFullTextFilterDescriptor;
 import org.apache.asterix.runtime.fulltext.StopwordsFullTextFilterDescriptor;
+import org.apache.asterix.statistics.message.UpdateStatisticsRequestMessage;
 import org.apache.asterix.transaction.management.service.transaction.DatasetIdFactory;
 import org.apache.asterix.translator.AbstractLangTranslator;
 import org.apache.asterix.translator.ClientRequest;
@@ -230,6 +237,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableObject;
+import org.apache.hyracks.algebricks.common.constraints.AlgebricksAbsolutePartitionConstraint;
+import org.apache.hyracks.algebricks.common.constraints.AlgebricksPartitionConstraint;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.algebricks.common.utils.Triple;
@@ -255,8 +264,12 @@ import org.apache.hyracks.api.result.IResultSet;
 import org.apache.hyracks.api.result.ResultSetId;
 import org.apache.hyracks.control.cc.ClusterControllerService;
 import org.apache.hyracks.control.common.controllers.CCConfig;
+import org.apache.hyracks.dataflow.std.file.IFileSplitProvider;
+import org.apache.hyracks.storage.am.common.dataflow.IIndexDataflowHelperFactory;
+import org.apache.hyracks.storage.am.common.dataflow.IndexDataflowHelperFactory;
 import org.apache.hyracks.storage.am.common.dataflow.IndexDropOperatorDescriptor.DropOption;
 import org.apache.hyracks.storage.am.lsm.common.api.ILSMMergePolicyFactory;
+import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 import org.apache.hyracks.storage.am.lsm.invertedindex.fulltext.TokenizerCategory;
 import org.apache.hyracks.util.OptionalBoolean;
 import org.apache.logging.log4j.Level;
@@ -503,6 +516,9 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
                         final ExtensionStatement extStmt = (ExtensionStatement) stmt;
                         statementProperties.setName(extStmt.getName());
                         extStmt.handle(hcc, this, requestParameters, metadataProvider, resultSetIdCounter);
+                        break;
+                    case STATISTICS_UPDATE:
+                        handleUpdateStatisticsStatement(metadataProvider, stmt, hcc);
                         break;
                     default:
                         throw new CompilationException(ErrorCode.COMPILATION_ILLEGAL_STATE, stmt.getSourceLocation(),
@@ -1372,6 +1388,93 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
             if (bActiveTxn) {
                 abort(e, e, mdTxnCtx);
             }
+            throw e;
+        }
+    }
+
+    public void handleUpdateStatisticsStatement(MetadataProvider metadataProvider, Statement stmt,
+            IHyracksClientConnection hcc) throws Exception {
+        UpdateStatisticsStatement stmtUpdateStatistics = (UpdateStatisticsStatement) stmt;
+        DataverseName dataverseName = getActiveDataverseName(stmtUpdateStatistics.getDataverseName());
+        String datasetName = stmtUpdateStatistics.getDatasetName();
+        metadataProvider.validateDatabaseObjectName(dataverseName, datasetName, stmt.getSourceLocation());
+        List<String> indexes = stmtUpdateStatistics.getIndexNames();
+        lockUtil.updateStatisticsBegin(lockManager, metadataProvider.getLocks(), dataverseName, datasetName, indexes);
+        try {
+            doUpdateStatistics(metadataProvider, stmtUpdateStatistics, dataverseName, datasetName, hcc);
+        } finally {
+            metadataProvider.getLocks().unlock();
+        }
+    }
+
+    protected void doUpdateStatistics(MetadataProvider metadataProvider, UpdateStatisticsStatement stmtUpdateStatistics,
+            DataverseName dataverseName, String datasetName, IHyracksClientConnection hcc) throws Exception {
+        SourceLocation sourceLoc = stmtUpdateStatistics.getSourceLocation();
+        MetadataTransactionContext mdTxnCtx = MetadataManager.INSTANCE.beginTransaction();
+        metadataProvider.setMetadataTxnContext(mdTxnCtx);
+        try {
+            // Check if the dataverse exists
+            Dataverse dataverse = MetadataManager.INSTANCE.getDataverse(mdTxnCtx, dataverseName);
+            if (dataverse == null) {
+                throw new CompilationException(ErrorCode.UNKNOWN_DATAVERSE, sourceLoc, dataverseName);
+            }
+
+            Dataset dataset = metadataProvider.findDataset(dataverseName, datasetName);
+            if (dataset == null) {
+                throw new CompilationException(ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE, sourceLoc, datasetName,
+                        dataverseName);
+            }
+
+            List<String> indexNames = stmtUpdateStatistics.getIndexNames();
+            for (String indexName : indexNames) {
+                Index index = MetadataManager.INSTANCE.getIndex(metadataProvider.getMetadataTxnContext(), dataverseName,
+                        datasetName, indexName);
+
+                if (index != null && index.getIndexType() == IndexType.BTREE && !index.isPrimaryIndex()) {
+                    Pair<IFileSplitProvider, AlgebricksPartitionConstraint> splitAndConstraint =
+                            metadataProvider.getSplitProviderAndConstraints(dataset, indexName);
+                    List<String> locations = Arrays.asList(
+                            ((AlgebricksAbsolutePartitionConstraint) splitAndConstraint.second).getLocations());
+                    IIndexDataflowHelperFactory indexHelperFactory = new IndexDataflowHelperFactory(
+                            metadataProvider.getStorageComponentProvider().getStorageManager(), splitAndConstraint.first);
+
+                    ICCMessageBroker messageBroker = (ICCMessageBroker)
+                            metadataProvider.getApplicationContext().getServiceContext().getMessageBroker();
+                    long reqId = 0L;
+                    long timeout = 5000;
+                    List<INcAddressedMessage> requestMessages = new ArrayList<>();
+                    for (int i = 0; i < locations.size(); i++) {
+                        UpdateStatisticsRequestMessage message = new UpdateStatisticsRequestMessage(indexHelperFactory, i);
+                        requestMessages.add(message);
+                    }
+                    List<List<StatisticsEntry>> partitionStatEntries =
+                            (List<List<StatisticsEntry>>) messageBroker.sendSyncRequestToNCs(reqId, locations, requestMessages, timeout , false);
+                    // Statistics collection is now for only one field of the index
+                    String fieldName = ((Index.ValueIndexDetails)index.getIndexDetails()).getKeyFieldNames().get(0).get(0);
+                    List<StatisticsEntry>[] combinedSynopses =
+                            SynopsisUtils.getCombinedEquiHeightSynopses(partitionStatEntries, dataverseName.getCanonicalForm(),
+                                    datasetName, indexName, fieldName);
+                    if (combinedSynopses.length > 0) {
+                        if (combinedSynopses[0].size() > 0) {
+                            metadataProvider.updateStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,
+                                    "", "", new ComponentStatisticsId(0L, 0L), false, fieldName,
+                                    combinedSynopses[0].get(0).getSynopsis());
+                        }
+                        if (combinedSynopses[1].size() > 0) {
+                            metadataProvider.updateStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,
+                                    "", "", new ComponentStatisticsId(0L, 0L), true, fieldName,
+                                    combinedSynopses[1].get(0).getSynopsis());
+                        } else {
+                            // This can happen if all antimatter tuples are resolved during merge operations
+                            metadataProvider.dropStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,
+                                    "", "", true, fieldName);
+                        }
+                    }
+                }
+            }
+            MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);
+        } catch (Exception e) {
+            abort(e, e, mdTxnCtx);
             throw e;
         }
     }
