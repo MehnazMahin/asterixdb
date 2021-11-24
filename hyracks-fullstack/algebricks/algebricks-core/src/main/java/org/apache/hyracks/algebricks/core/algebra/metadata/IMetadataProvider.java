@@ -243,5 +243,4 @@ public interface IMetadataProvider<S, I> {
 
     public void dropStatistics(String dataverse, String datasetName, String indexName, String node, String partition,
             boolean isAntimatter, String fieldName) throws AlgebricksException;
-
 }

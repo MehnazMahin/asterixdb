@@ -1433,27 +1433,29 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
                 if (index != null && index.getIndexType() == IndexType.BTREE && !index.isPrimaryIndex()) {
                     Pair<IFileSplitProvider, AlgebricksPartitionConstraint> splitAndConstraint =
                             metadataProvider.getSplitProviderAndConstraints(dataset, indexName);
-                    List<String> locations = Arrays.asList(
-                            ((AlgebricksAbsolutePartitionConstraint) splitAndConstraint.second).getLocations());
+                    List<String> locations = Arrays
+                            .asList(((AlgebricksAbsolutePartitionConstraint) splitAndConstraint.second).getLocations());
                     IIndexDataflowHelperFactory indexHelperFactory = new IndexDataflowHelperFactory(
-                            metadataProvider.getStorageComponentProvider().getStorageManager(), splitAndConstraint.first);
+                            metadataProvider.getStorageComponentProvider().getStorageManager(),
+                            splitAndConstraint.first);
 
-                    ICCMessageBroker messageBroker = (ICCMessageBroker)
-                            metadataProvider.getApplicationContext().getServiceContext().getMessageBroker();
+                    ICCMessageBroker messageBroker = (ICCMessageBroker) metadataProvider.getApplicationContext()
+                            .getServiceContext().getMessageBroker();
                     long reqId = 0L;
                     long timeout = 5000;
                     List<INcAddressedMessage> requestMessages = new ArrayList<>();
                     for (int i = 0; i < locations.size(); i++) {
-                        UpdateStatisticsRequestMessage message = new UpdateStatisticsRequestMessage(indexHelperFactory, i);
+                        UpdateStatisticsRequestMessage message =
+                                new UpdateStatisticsRequestMessage(indexHelperFactory, i);
                         requestMessages.add(message);
                     }
-                    List<List<StatisticsEntry>> partitionStatEntries =
-                            (List<List<StatisticsEntry>>) messageBroker.sendSyncRequestToNCs(reqId, locations, requestMessages, timeout , false);
+                    List<List<StatisticsEntry>> partitionStatEntries = (List<List<StatisticsEntry>>) messageBroker
+                            .sendSyncRequestToNCs(reqId, locations, requestMessages, timeout, false);
                     // Statistics collection is now for only one field of the index
-                    String fieldName = ((Index.ValueIndexDetails)index.getIndexDetails()).getKeyFieldNames().get(0).get(0);
-                    List<StatisticsEntry>[] combinedSynopses =
-                            SynopsisUtils.getCombinedEquiHeightSynopses(partitionStatEntries, dataverseName.getCanonicalForm(),
-                                    datasetName, indexName, fieldName);
+                    String fieldName =
+                            ((Index.ValueIndexDetails) index.getIndexDetails()).getKeyFieldNames().get(0).get(0);
+                    List<StatisticsEntry>[] combinedSynopses = SynopsisUtils.getCombinedEquiHeightSynopses(
+                            partitionStatEntries, dataverseName.getCanonicalForm(), datasetName, indexName, fieldName);
                     if (combinedSynopses.length > 0) {
                         if (combinedSynopses[0].size() > 0) {
                             metadataProvider.updateStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,

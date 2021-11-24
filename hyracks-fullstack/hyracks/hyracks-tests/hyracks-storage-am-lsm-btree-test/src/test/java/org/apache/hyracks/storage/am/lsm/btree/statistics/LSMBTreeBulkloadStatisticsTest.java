@@ -18,8 +18,6 @@
  */
 package org.apache.hyracks.storage.am.lsm.btree.statistics;
 
-import java.util.ArrayList;
-
 import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.dataflow.common.data.accessors.ITupleReference;
 import org.apache.hyracks.dataflow.common.data.marshalling.IntegerSerializerDeserializer;
@@ -27,7 +25,6 @@ import org.apache.hyracks.dataflow.common.data.marshalling.UTF8StringSerializerD
 import org.apache.hyracks.storage.am.btree.OrderedIndexTestContext;
 import org.apache.hyracks.storage.am.btree.OrderedIndexTestUtils;
 import org.apache.hyracks.storage.am.btree.frames.BTreeLeafFrameType;
-import org.apache.hyracks.storage.am.lsm.btree.impl.TestStatisticsManager;
 import org.apache.hyracks.storage.am.lsm.btree.util.LSMBTreeTestHarness;
 
 public class LSMBTreeBulkloadStatisticsTest extends StatisticsTestDriver {
@@ -51,8 +48,8 @@ public class LSMBTreeBulkloadStatisticsTest extends StatisticsTestDriver {
             orderedIndexTestUtils.bulkLoadStringTuples(ctx, numTuplesToInsert, getRandom());
         }
         for (int i = 0; i < fieldSerdes.length; i++) {
-            checkStatistics((TestStatisticsManager) harness.getStatisticsManager(),
-                    new ArrayList<>(ctx.getCheckTuples()), 1, i);
+            //            checkStatistics((TestStatisticsManager) harness.getStatisticsManager(),
+            //                    new ArrayList<>(ctx.getCheckTuples()), 1, i);
         }
         ctx.getIndex().validate();
         ctx.getIndex().deactivate();

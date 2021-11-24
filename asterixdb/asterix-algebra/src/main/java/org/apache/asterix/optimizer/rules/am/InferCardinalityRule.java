@@ -291,9 +291,9 @@ public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
                         if (funcVarIndex == -1) {
                             continue;
                         }
-                        List<String> fieldName = getFieldNameFromSubTree(null, subTree, assignOrUnnestIndex, varIndex,
-                                subTree.getRecordType(), -1, null, subTree.getMetaRecordType(), datasetMetaVar,
-                                fieldSource);
+                        List<String> fieldName = AccessMethodUtils.getFieldNameFromSubTree(null, subTree,
+                                assignOrUnnestIndex, varIndex, subTree.getRecordType(), -1, null,
+                                subTree.getMetaRecordType(), datasetMetaVar, fieldSource, false);
                         if (fieldName.isEmpty()) {
                             return false;
                         }

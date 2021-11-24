@@ -46,6 +46,16 @@ public class TestStatisticsMessageBroker implements INCMessageBroker {
     }
 
     @Override
+    public void sendRealTimeMessageToPrimaryCC(ICcAddressedMessage message) throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void sendRealTimeMessageToCC(CcId ccId, ICcAddressedMessage message) throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void sendMessageToNC(String nodeId, INcAddressedMessage message) throws Exception {
         throw new UnsupportedOperationException();
     }
