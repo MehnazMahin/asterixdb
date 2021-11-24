@@ -250,7 +250,7 @@ public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
                 || funcIdent == AlgebricksBuiltinFunctions.LT || funcIdent == AlgebricksBuiltinFunctions.GT
                 || funcIdent == AlgebricksBuiltinFunctions.EQ) {
             boolean matches = AccessMethodUtils.analyzeFuncExprArgsForOneConstAndVarAndUpdateAnalysisCtx(funcExpr,
-                    analysisCtx, context, typeEnvironment);
+                    analysisCtx, context, typeEnvironment, false);
             if (!matches) {
                 AccessMethodUtils.analyzeFuncExprArgsForTwoVarsAndUpdateAnalysisCtx(funcExpr, analysisCtx);
             }
@@ -291,7 +291,7 @@ public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
                         if (funcVarIndex == -1) {
                             continue;
                         }
-                        List<String> fieldName = AccessMethodUtils.getFieldNameFromSubTree(null, subTree,
+                        List<String> fieldName = AccessMethodUtils.getFieldNameAndStepsFromSubTree(null, subTree,
                                 assignOrUnnestIndex, varIndex, subTree.getRecordType(), -1, null,
                                 subTree.getMetaRecordType(), datasetMetaVar, fieldSource, false);
                         if (fieldName.isEmpty()) {

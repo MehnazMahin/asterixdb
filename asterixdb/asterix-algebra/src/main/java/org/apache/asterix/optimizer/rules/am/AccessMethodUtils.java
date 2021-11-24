@@ -2918,7 +2918,7 @@ public class AccessMethodUtils {
      *
      * @throws AlgebricksException
      */
-    private static List<String> getFieldNameAndStepsFromSubTree(IOptimizableFuncExpr optFuncExpr,
+    public static List<String> getFieldNameAndStepsFromSubTree(IOptimizableFuncExpr optFuncExpr,
             OptimizableOperatorSubTree subTree, int opIndex, int assignVarIndex, ARecordType recordType,
             int funcVarIndex, ILogicalExpression parentFuncExpr, ARecordType metaType, LogicalVariable metaVar,
             MutableInt fieldSource, boolean isUnnestOverVarAllowed) throws AlgebricksException {
