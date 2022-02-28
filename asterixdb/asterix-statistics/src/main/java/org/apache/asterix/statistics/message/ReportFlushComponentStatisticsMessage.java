@@ -92,9 +92,9 @@ public class ReportFlushComponentStatisticsMessage implements ICcAddressedMessag
             mdTxnCtx = MetadataManager.INSTANCE.beginTransaction();
             mdProvider.setMetadataTxnContext(mdTxnCtx);
             bActiveTxn = true;
-            //            MetadataLockUtil.insertStatisticsBegin(cs.getMetadataLockManager(), mdProvider.getLocks(),
-            //                    PROPERTIES_STATISTICS.getDatasetName(), DataverseName.createFromCanonicalForm(entry.getDataverse()),
-            //                    entry.getDataset(), entry.getIndex(), entry.getField(), node, partition, isAntimatter);
+//            MetadataLockUtil.insertStatisticsBegin(cs.getMetadataLockManager(), mdProvider.getLocks(),
+//                    PROPERTIES_STATISTICS.getDatasetName(), DataverseName.createFromCanonicalForm(entry.getDataverse()),
+//                    entry.getDataset(), entry.getIndex(), entry.getField(), node, partition, isAntimatter);
             MetadataLockUtil.insertStatisticsBegin(cs.getMetadataLockManager(), mdProvider.getLocks(),
                     DataverseName.createFromCanonicalForm(entry.getDataverse()), entry.getDataset(), entry.getIndex());
 

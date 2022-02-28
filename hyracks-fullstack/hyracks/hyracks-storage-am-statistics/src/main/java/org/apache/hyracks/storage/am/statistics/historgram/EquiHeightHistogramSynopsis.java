@@ -27,15 +27,9 @@ public abstract class EquiHeightHistogramSynopsis<T extends HistogramBucket> ext
     private static final long serialVersionUID = 1L;
     private final long elementsPerBucket;
 
-<<<<<<< HEAD
-    public EquiHeightHistogramSynopsis(long domainStart, long domainEnd, int maxLevel, long elementsNum, int bucketsNum,
-            List<T> buckets) {
-        super(domainStart, domainEnd, maxLevel, bucketsNum, buckets);
-=======
     public EquiHeightHistogramSynopsis(long domainStart, long domainEnd, long elementsNum, int bucketsNum,
             List<T> buckets) {
         super(domainStart, domainEnd, bucketsNum, buckets);
->>>>>>> Initial commit for stats framework
         elementsPerBucket = Math.max((long) Math.ceil((double) elementsNum / bucketsNum), 1);
     }
 

@@ -35,20 +35,11 @@ public class SynopsisFactory {
             long synopsisElementsNum, int synopsisSize) throws HyracksDataException {
         long domainStart = TypeTraitsDomainUtils.minDomainValue(keyTypeTraits);
         long domainEnd = TypeTraitsDomainUtils.maxDomainValue(keyTypeTraits);
-<<<<<<< HEAD
-        int maxLevel = TypeTraitsDomainUtils.maxLevel(keyTypeTraits);
-        switch (type) {
-            case ContinuousHistogram:
-            case QuantileSketch:
-                return new ContinuousHistogramSynopsis(domainStart, domainEnd, maxLevel, synopsisElementsNum,
-                        synopsisSize, (List<HistogramBucket>) synopsisElements);
-=======
         switch (type) {
             case ContinuousHistogram:
             case QuantileSketch:
                 return new ContinuousHistogramSynopsis(domainStart, domainEnd, synopsisElementsNum, synopsisSize,
                         (List<HistogramBucket>) synopsisElements);
->>>>>>> Initial commit for stats framework
             default:
                 throw new HyracksDataException("Cannot instantiate new synopsis of type " + type);
         }

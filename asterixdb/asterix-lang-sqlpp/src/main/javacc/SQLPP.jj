@@ -835,6 +835,7 @@ Statement SingleStatement() throws ParseException:
     | stmt = DeleteStatement()
     | stmt = UpdateStatement()
     | stmt = UpsertStatement()
+    | stmt = UpdateStatisticsStatement()
     | stmt = ConnectionStatement()
     | stmt = CompactStatement()
     | stmt = Query()
@@ -2749,6 +2750,43 @@ AbstractStatement ConnectStatement(Token startStmtToken) throws ParseException:
   {
     return addSourceLocation(stmt, startStmtToken);
   }
+}
+
+UpdateStatisticsStatement UpdateStatisticsStatement() throws ParseException:
+{
+ Token startToken = null;
+ UpdateStatisticsStatement stmt = null;
+}
+{
+  <UPDATE_STATISTICS> stmt = UpdateStatisticsSpecification(startToken)
+  {
+    return stmt;
+  }
+}
+
+UpdateStatisticsStatement UpdateStatisticsSpecification(Token startToken) throws ParseException:
+{
+  UpdateStatisticsStatement stmt = new UpdateStatisticsStatement();
+  Pair<DataverseName, Identifier> nameComponents = null;
+  String indexName = null;
+}
+{
+  (<FOR> nameComponents = QualifiedName()
+  <LEFTPAREN> (indexName = Identifier()
+    {
+      stmt.addIndexNames(indexName);
+    }
+  ) (<COMMA> indexName = Identifier()
+    {
+      stmt.addIndexNames(indexName);
+    }
+  )* <RIGHTPAREN>
+  )
+    {
+      stmt.setDataverseName(nameComponents.first);
+      stmt.setDatasetName(nameComponents.second.getValue());
+      return addSourceLocation(stmt, startToken);
+    }
 }
 
 Map<String,String> Configuration()  throws ParseException :
@@ -5432,6 +5470,7 @@ TOKEN [IGNORE_CASE]:
   | <UNKNOWN : "unknown">
   | <UNNEST : "unnest">
   | <UPDATE : "update">
+  | <UPDATE_STATISTICS : "update statistics">
   | <UPSERT : "upsert">
   | <USE : "use">
   | <USING : "using">

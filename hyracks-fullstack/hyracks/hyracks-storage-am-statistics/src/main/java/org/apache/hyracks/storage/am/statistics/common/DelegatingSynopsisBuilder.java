@@ -28,12 +28,10 @@ import org.apache.hyracks.storage.am.lsm.common.api.IStatisticsManager;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisBuilder;
 import org.apache.hyracks.storage.common.buffercache.ICachedPage;
 
-<<<<<<< HEAD
-=======
+
 /**
  * An implementation of ISynopsisBuilder which acts as a simple pass-through for a list of synopsis builders
  */
->>>>>>> Initial commit for stats framework
 public class DelegatingSynopsisBuilder implements ISynopsisBuilder {
     private List<ISynopsisBuilder> builders;
 

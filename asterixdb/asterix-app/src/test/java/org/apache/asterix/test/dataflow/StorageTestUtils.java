@@ -284,6 +284,11 @@ public class StorageTestUtils {
         dsInfo.waitForIO();
     }
 
+    public static void updateStats(TestLsmBtree lsmBtree) throws Exception {
+        waitForOperations(lsmBtree);
+        lsmBtree.createAccessor(NoOpIndexAccessParameters.INSTANCE).sendDiskComponentsStatistics();
+    }
+
     public static void waitForOperations(ILSMIndex index) throws InterruptedException {
         // wait until number of activeOperation reaches 0
         PrimaryIndexOperationTracker opTracker = (PrimaryIndexOperationTracker) index.getOperationTracker();

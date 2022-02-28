@@ -18,6 +18,8 @@
  */
 package org.apache.asterix.metadata.utils;
 
+import org.apache.hyracks.storage.am.common.dataflow.IndexDropOperatorDescriptor.DropOption;
+
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -44,7 +46,6 @@ import org.apache.hyracks.api.exceptions.SourceLocation;
 import org.apache.hyracks.api.job.IJobletEventListenerFactory;
 import org.apache.hyracks.api.job.JobSpecification;
 import org.apache.hyracks.util.OptionalBoolean;
-import org.apache.hyracks.storage.am.common.dataflow.IndexDropOperatorDescriptor.DropOption;
 
 public class IndexUtil {
 

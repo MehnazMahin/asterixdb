@@ -26,14 +26,8 @@ import java.util.List;
 import org.apache.hyracks.storage.am.statistics.common.AbstractSynopsis;
 
 public abstract class HistogramSynopsis<T extends HistogramBucket> extends AbstractSynopsis<T> {
-<<<<<<< HEAD
-    public HistogramSynopsis(long domainStart, long domainEnd, int maxLevel, int bucketsNum,
-            Collection<T> synopsisElements) {
-        super(domainStart, domainEnd, maxLevel, bucketsNum, synopsisElements);
-=======
     public HistogramSynopsis(long domainStart, long domainEnd, int bucketsNum, Collection<T> synopsisElements) {
         super(domainStart, domainEnd, bucketsNum, synopsisElements);
->>>>>>> Initial commit for stats framework
     }
 
     //implicit cast to operate with buckets as a list
@@ -90,11 +84,7 @@ public abstract class HistogramSynopsis<T extends HistogramBucket> extends Abstr
         return getBuckets().get(bucketIdx).getValue() * (endPosition - startPosition + 1) / getBucketSpan(bucketIdx);
     }
 
-<<<<<<< HEAD
-    public abstract void appendToBucket(int bucketId, int bucketNum, long tuplePos, double frequency);
-=======
     public abstract void appendToBucket(int bucketId, double frequency);
->>>>>>> Initial commit for stats framework
 
     public abstract boolean advanceBucket(int activeBucket, int activeBucketElementsNum, long currTuplePosition,
             long lastAddedTuplePosition);

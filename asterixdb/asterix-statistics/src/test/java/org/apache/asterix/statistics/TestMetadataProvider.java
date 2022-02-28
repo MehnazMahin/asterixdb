@@ -18,6 +18,7 @@
  */
 package org.apache.asterix.statistics;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -109,8 +110,7 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
 
         private ISynopsis<? extends ISynopsisElement<Long>> synopsis;
 
-        public TestStatisticsEntry(ComponentStatisticsId componentId,
-                ISynopsis<? extends ISynopsisElement<Long>> synopsis) {
+        public TestStatisticsEntry(ComponentStatisticsId componentId, ISynopsis<? extends ISynopsisElement<Long>> synopsis) {
             this.componentId = componentId;
             this.synopsis = synopsis;
         }
@@ -145,11 +145,11 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
     }
 
     private static Comparator<ComponentStatisticsId> componentIdComparator = (o1, o2) -> {
-        int startTimestampCompare = o1.getMinTimestamp().compareTo(o2.getMinTimestamp());
+        int startTimestampCompare = o1.getMinTimestamp() == o2.getMinTimestamp() ? 1 : 0;
         if (startTimestampCompare != 0) {
             return startTimestampCompare;
         }
-        return o1.getMaxTimestamp().compareTo(o2.getMaxTimestamp());
+        return o1.getMaxTimestamp() == o2.getMaxTimestamp() ? 1 : 0;
     };
 
     private Map<TestStatisticsID, Collection<TestStatisticsEntry>> stats = new HashMap<>();
@@ -171,6 +171,7 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
         PriorityQueue<TestStatisticsEntry> entries =
                 (PriorityQueue<TestStatisticsEntry>) stats.computeIfAbsent(statsId, (k) -> new PriorityQueue<>());
         entries.add(new TestStatisticsEntry(componentId, synopsis));
+
     }
 
     @Override

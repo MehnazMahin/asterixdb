@@ -19,27 +19,19 @@
 
 package org.apache.hyracks.storage.am.statistics.common;
 
-<<<<<<< HEAD
-=======
 import java.util.ArrayList;
->>>>>>> Initial commit for stats framework
 import java.util.List;
 import java.util.logging.Logger;
 
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisType;
-<<<<<<< HEAD
-import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatistics;
-import org.apache.hyracks.storage.am.statistics.historgram.EquiHeightHistogramSynopsis;
-=======
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatistics;
 import org.apache.hyracks.storage.am.statistics.historgram.EquiHeightHistogramSynopsis;
 import org.apache.hyracks.storage.am.statistics.historgram.HistogramBucket;
 import org.apache.hyracks.storage.am.statistics.historgram.HistogramBuilder;
 import org.apache.hyracks.storage.am.statistics.historgram.HistogramSynopsis;
->>>>>>> Initial commit for stats framework
 import org.apache.hyracks.storage.am.statistics.sketch.quantile.QuantileSketchBuilder;
 
 public class StatisticsFactory extends AbstractStatisticsFactory {
@@ -49,34 +41,16 @@ public class StatisticsFactory extends AbstractStatisticsFactory {
     private final String datasetName;
     private final String indexName;
     private final int size;
-<<<<<<< HEAD
-    private final double energyAccuracy;
-    private final int fanout;
-    private double failureProbability;
-    private double accuracy;
-
-    public StatisticsFactory(SynopsisType type, String dataverseName, String datasetName, String indexName,
-            List<IFieldExtractor> extractors, int size, int fanout, double failureProbability, double accuracy,
-            double energyAccuracy) {
-=======
     private double accuracy;
 
     public StatisticsFactory(SynopsisType type, String dataverseName, String datasetName, String indexName,
             List<IFieldExtractor> extractors, int size, double accuracy) {
->>>>>>> Initial commit for stats framework
         super(extractors, type);
         this.dataverseName = dataverseName;
         this.datasetName = datasetName;
         this.indexName = indexName;
         this.size = size;
-<<<<<<< HEAD
-        this.fanout = fanout;
-        this.failureProbability = failureProbability;
         this.accuracy = accuracy;
-        this.energyAccuracy = energyAccuracy;
-=======
-        this.accuracy = accuracy;
->>>>>>> Initial commit for stats framework
     }
 
     @Override
@@ -100,11 +74,6 @@ public class StatisticsFactory extends AbstractStatisticsFactory {
             boolean isAntimatter, IFieldExtractor fieldExtractor) throws HyracksDataException {
         long numElements =
                 isAntimatter ? componentStatistics.getNumAntimatterTuples() : componentStatistics.getNumTuples();
-<<<<<<< HEAD
-        ISynopsis synopsis = SynopsisFactory.createSynopsis(type, fieldExtractor.getFieldTypeTraits(),
-                SynopsisElementFactory.createSynopsisElementsCollection(type, size), numElements, size);
-        switch (type) {
-=======
         List<ISynopsisElement> synopsisElements = new ArrayList<>(size);
         ISynopsis synopsis = SynopsisFactory.createSynopsis(type, fieldExtractor.getFieldTypeTraits(), synopsisElements,
                 numElements, size);
@@ -113,7 +82,6 @@ public class StatisticsFactory extends AbstractStatisticsFactory {
                 return new HistogramBuilder((HistogramSynopsis<? extends HistogramBucket>) synopsis, dataverseName,
                         datasetName, indexName, fieldExtractor.getFieldName(), isAntimatter, fieldExtractor,
                         componentStatistics);
->>>>>>> Initial commit for stats framework
             case QuantileSketch:
                 return new QuantileSketchBuilder((EquiHeightHistogramSynopsis) synopsis, dataverseName, datasetName,
                         indexName, fieldExtractor.getFieldName(), isAntimatter, fieldExtractor, componentStatistics,

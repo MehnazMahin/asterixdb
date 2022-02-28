@@ -55,10 +55,11 @@ public class Statistics implements IMetadataEntity {
         return temp == that.temp && Objects.equals(dataverseName, that.dataverseName)
                 && Objects.equals(dataset, that.dataset) && Objects.equals(index, that.index)
                 && Objects.equals(node, that.node)
-                //                && Objects.equals(partition, that.partition)
-                //                && Objects.equals(componentId, that.componentId)
-                && isAntimatter == that.isAntimatter && Objects.equals(field, that.field)
-                && Objects.equals(synopsis, that.synopsis);
+//                && Objects.equals(partition, that.partition)
+//                && Objects.equals(componentId, that.componentId)
+                && isAntimatter == that.isAntimatter
+                && Objects.equals(field, that.field) && Objects.equals(synopsis, that.synopsis);
+
     }
 
     @Override
@@ -127,7 +128,7 @@ public class Statistics implements IMetadataEntity {
 
     @Override
     public Object addToCache(MetadataCache cache) {
-        //        return cache.addStatisticsIfNotExists(this);
+//        return cache.addStatisticsIfNotExists(this);
         return cache.addStatisticsToCache(this);
     }
 

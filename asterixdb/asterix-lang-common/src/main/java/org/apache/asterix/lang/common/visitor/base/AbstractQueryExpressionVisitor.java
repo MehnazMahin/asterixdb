@@ -64,6 +64,7 @@ import org.apache.asterix.lang.common.statement.SynonymDropStatement;
 import org.apache.asterix.lang.common.statement.TypeDecl;
 import org.apache.asterix.lang.common.statement.TypeDropStatement;
 import org.apache.asterix.lang.common.statement.UpdateStatement;
+import org.apache.asterix.lang.common.statement.UpdateStatisticsStatement;
 import org.apache.asterix.lang.common.statement.ViewDecl;
 import org.apache.asterix.lang.common.statement.ViewDropStatement;
 import org.apache.asterix.lang.common.statement.WriteStatement;
@@ -307,6 +308,11 @@ public abstract class AbstractQueryExpressionVisitor<R, T> implements ILangVisit
 
     @Override
     public R visit(ViewDecl vd, T arg) throws CompilationException {
+        return null;
+    }
+
+    @Override
+    public R visit(UpdateStatisticsStatement cis, T arg) throws CompilationException {
         return null;
     }
 }

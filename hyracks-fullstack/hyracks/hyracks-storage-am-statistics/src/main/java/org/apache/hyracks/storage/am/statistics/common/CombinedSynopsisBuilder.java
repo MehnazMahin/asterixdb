@@ -29,14 +29,11 @@ import org.apache.hyracks.storage.am.lsm.common.api.IStatisticsManager;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisBuilder;
 import org.apache.hyracks.storage.common.buffercache.ICachedPage;
 
-<<<<<<< HEAD
-=======
 /**
  * Implementation of ISynopsisBuilder which creates two synopses builders underneath:
  * one for regular tuples, one for antimatter tuples.
  * Incoming tuples are routed to appropriate builder according to their antimatter bit.
  */
->>>>>>> Initial commit for stats framework
 public class CombinedSynopsisBuilder implements ISynopsisBuilder {
 
     private final ISynopsisBuilder synopsisBuilder;

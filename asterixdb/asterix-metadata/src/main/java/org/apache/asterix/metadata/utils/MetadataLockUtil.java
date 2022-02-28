@@ -112,6 +112,16 @@ public class MetadataLockUtil implements IMetadataLockUtil {
     }
 
     @Override
+    public void updateStatisticsBegin(IMetadataLockManager lockMgr, LockList locks, DataverseName dataverseName,
+            String datasetName, List<String> indexNames) throws AlgebricksException {
+        lockMgr.acquireDataverseReadLock(locks, dataverseName);
+        lockMgr.acquireDatasetReadLock(locks, dataverseName, datasetName);
+        for (String indexName : indexNames) {
+            lockMgr.acquireStatisticsReadLock(locks, dataverseName, indexName);
+        }
+    }
+
+    @Override
     public void createTypeBegin(IMetadataLockManager lockMgr, LockList locks, DataverseName dataverseName,
             String typeName) throws AlgebricksException {
         lockMgr.acquireDataverseReadLock(locks, dataverseName);

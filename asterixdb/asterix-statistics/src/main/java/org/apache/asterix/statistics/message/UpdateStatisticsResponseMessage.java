@@ -124,8 +124,8 @@ public class UpdateStatisticsResponseMessage implements ICcAddressedMessage, INc
                     try {
                         // drop the corresponding statistics if empty-synopsis, otherwise update
                         if (entry.getSynopsis() != null) {
-                            //                            mdProvider.updateStatistics(entry.getDataverse(), entry.getDataset(), entry.getIndex(), node,
-                            //                                    partition, componentId, entry.getField(), isAntimatter, entry.getSynopsis());
+//                            mdProvider.updateStatistics(entry.getDataverse(), entry.getDataset(), entry.getIndex(), node,
+//                                    partition, componentId, entry.getField(), isAntimatter, entry.getSynopsis());
                         } else {
                             mdProvider.dropStatistics(entry.getDataverse(), entry.getDataset(), entry.getIndex(), node,
                                     partition, isAntimatter, entry.getField());

@@ -215,6 +215,10 @@ public class LSMInvertedIndexAccessor implements ILSMIndexAccessor, IInvertedInd
         throw HyracksDataException.create(ErrorCode.DISK_COMPONENT_SCAN_NOT_ALLOWED_FOR_SECONDARY_INDEX);
     }
 
+    @Override public void sendDiskComponentsStatistics() throws HyracksDataException {
+        throw HyracksDataException.create(ErrorCode.STATISTICS_ALLOWED_ONLY_FOR_BTREE);
+    }
+
     @Override
     public void sendDiskComponentsStatistics() throws HyracksDataException {
         throw HyracksDataException.create(ErrorCode.STATISTICS_ALLOWED_ONLY_FOR_BTREE);

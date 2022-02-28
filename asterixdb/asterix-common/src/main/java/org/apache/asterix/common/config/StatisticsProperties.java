@@ -44,24 +44,10 @@ public class StatisticsProperties extends AbstractProperties {
                 INTEGER,
                 -1,
                 "The timeout in milliseconds between the statistics merge operation invocations"),
-        STATISTICS_SKETCH_FANOUT(
-                INTEGER,
-                2,
-                "Fanout of the search tree for GroupCount sketch. Determines the tradeoff "
-                        + "between sketch query and update time."),
-        STATISTICS_SKETCH_FAILURE_PROBABILITY(
-                DOUBLE,
-                0.01,
-                "Probability that sketched result will not be within " + "accuracy bounds"),
         STATISTICS_SKETCH_ACCURACY(
                 DOUBLE,
                 0.1,
-                "Parameter specifying that sketched result is within a factor of " + "(1±accuracy) of the true result"),
-        STATISTICS_SKETCH_ENERGY_ACCURACY(
-                DOUBLE,
-                0.1,
-                "Parameter specifying that sketched synopsis has energy (sum of squares) at least "
-                        + "(1±accuracy)*energy_accuracy of the total result energy");
+                "Parameter specifying that sketched result is within a factor of " + "(1±accuracy) of the true result");
 
         private final IOptionType type;
         private final Object defaultValue;
@@ -124,19 +110,19 @@ public class StatisticsProperties extends AbstractProperties {
         return accessor.getInt(Option.STATISTICS_MERGE_STRATEGY_TIMEOUT);
     }
 
-    public int getSketchFanout() {
-        return accessor.getInt(Option.STATISTICS_SKETCH_FANOUT);
-    }
+//    public int getSketchFanout() {
+//        return accessor.getInt(Option.STATISTICS_SKETCH_FANOUT);
+//    }
 
     public double getSketchAccuracy() {
         return accessor.getDouble(Option.STATISTICS_SKETCH_ACCURACY);
     }
 
-    public double getSketchEnergyAccuracy() {
-        return accessor.getDouble(Option.STATISTICS_SKETCH_ENERGY_ACCURACY);
-    }
+//    public double getSketchEnergyAccuracy() {
+//        return accessor.getDouble(Option.STATISTICS_SKETCH_ENERGY_ACCURACY);
+//    }
 
-    public double getSketchFailureProbability() {
-        return accessor.getDouble(Option.STATISTICS_SKETCH_FAILURE_PROBABILITY);
-    }
+//    public double getSketchFailureProbability() {
+//        return accessor.getDouble(Option.STATISTICS_SKETCH_FAILURE_PROBABILITY);
+//    }
 }

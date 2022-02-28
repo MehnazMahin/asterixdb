@@ -22,10 +22,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-<<<<<<< HEAD
-import org.apache.commons.collections4.CollectionUtils;
-=======
->>>>>>> Initial commit for stats framework
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
@@ -36,24 +32,13 @@ public abstract class AbstractSynopsis<T extends ISynopsisElement> implements IS
 
     protected final long domainEnd;
     protected final long domainStart;
-<<<<<<< HEAD
-    protected final int maxLevel;
-=======
->>>>>>> Initial commit for stats framework
     protected final int size;
 
     protected Collection<T> synopsisElements;
 
-<<<<<<< HEAD
-    public AbstractSynopsis(long domainStart, long domainEnd, int maxLevel, int size, Collection<T> synopsisElements) {
-        this.domainStart = domainStart;
-        this.domainEnd = domainEnd;
-        this.maxLevel = maxLevel;
-=======
     public AbstractSynopsis(long domainStart, long domainEnd, int size, Collection<T> synopsisElements) {
         this.domainStart = domainStart;
         this.domainEnd = domainEnd;
->>>>>>> Initial commit for stats framework
         this.size = size;
         this.synopsisElements = synopsisElements;
     }
@@ -66,13 +51,6 @@ public abstract class AbstractSynopsis<T extends ISynopsisElement> implements IS
         return domainStart;
     }
 
-<<<<<<< HEAD
-    public int getMaxLevel() {
-        return maxLevel;
-    }
-
-=======
->>>>>>> Initial commit for stats framework
     @Override
     public int getSize() {
         return size;
@@ -99,16 +77,12 @@ public abstract class AbstractSynopsis<T extends ISynopsisElement> implements IS
         if (o == null || getClass() != o.getClass())
             return false;
         AbstractSynopsis<?> that = (AbstractSynopsis<?>) o;
-<<<<<<< HEAD
-        return CollectionUtils.isEqualCollection(synopsisElements, that.synopsisElements);
-=======
         if (that.getDomainStart() == getDomainStart() && that.getDomainEnd() == getDomainEnd()) {
             if (that.getElements() != null && synopsisElements != null) {
                 return that.getElements().size() == synopsisElements.size();
             }
         }
         return false;
->>>>>>> Initial commit for stats framework
     }
 
     @Override

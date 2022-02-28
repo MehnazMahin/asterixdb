@@ -106,6 +106,7 @@ import org.apache.asterix.lang.common.statement.SynonymDropStatement;
 import org.apache.asterix.lang.common.statement.TypeDecl;
 import org.apache.asterix.lang.common.statement.TypeDropStatement;
 import org.apache.asterix.lang.common.statement.UpdateStatement;
+import org.apache.asterix.lang.common.statement.UpdateStatisticsStatement;
 import org.apache.asterix.lang.common.statement.ViewDecl;
 import org.apache.asterix.lang.common.statement.ViewDropStatement;
 import org.apache.asterix.lang.common.statement.WriteStatement;
@@ -634,6 +635,27 @@ public abstract class FormatPrintVisitor implements ILangVisitor<Void, Integer> 
             }
             out.println();
         }
+        return null;
+    }
+
+    @Override
+    public Void visit(UpdateStatisticsStatement updateStat, Integer step) throws CompilationException {
+        out.print(skip(step) + "update statistics for ");
+        out.print(generateFullName(updateStat.getDataverseName(), updateStat.getDatasetName()));
+
+        out.print(" (");
+        List<String> indexNames = updateStat.getIndexNames();
+        int index = 0;
+        int size = indexNames.size();
+        for (String indexName : indexNames) {
+            out.print(indexName);
+            if (++index < size) {
+                out.print(COMMA);
+            }
+        }
+        out.print(")");
+        out.println(SEMICOLON);
+        out.println();
         return null;
     }
 

@@ -460,10 +460,7 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
     }
 
     public boolean hasStatistics() {
-        if (!hasStatistics) {
-            return false;
-        }
-        return true;
+        return hasStatistics;
     }
 
     @Override

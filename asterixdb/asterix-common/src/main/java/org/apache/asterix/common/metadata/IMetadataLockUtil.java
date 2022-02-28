@@ -27,6 +27,8 @@ import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 
 import com.google.common.collect.ImmutableList;
 
+import java.util.List;
+
 public interface IMetadataLockUtil {
 
     // Dataverse helpers

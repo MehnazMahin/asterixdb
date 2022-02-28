@@ -132,14 +132,16 @@ public class BTreeResourceFactoryProvider implements IResourceFactoryProvider {
                             mdProvider.getApplicationContext().getStatisticsProperties().getStatisticsSize());
                     boolean statsOnPrimaryKeys = isStatsOnPrimaryKeysEnabled(mdProvider.getConfig(), mdProvider
                             .getApplicationContext().getStatisticsProperties().isStatisticsOnPrimaryKeysEnabled());
-                    statisticsFactory =
-                            new StatisticsFactory(statisticsType, dataset.getDataverseName().getCanonicalForm(),
-                                    dataset.getDatasetName(), index.getIndexName(),
-                                    StatisticsUtil.computeStatisticsFieldExtractors(mdProvider.getStorageComponentProvider(),
-                                            recordType, ((Index.ValueIndexDetails) index.getIndexDetails()).getKeyFieldNames(),
-                                            index.isPrimaryIndex(), statsOnPrimaryKeys, unorderedStatisticsFields),
-                                    statsSize, mdProvider.getApplicationContext().getStatisticsProperties().getSketchAccuracy());
+                    statisticsFactory = new StatisticsFactory(statisticsType,
+                            dataset.getDataverseName().getCanonicalForm(), dataset.getDatasetName(),
+                            index.getIndexName(),
+                            StatisticsUtil.computeStatisticsFieldExtractors(mdProvider.getStorageComponentProvider(),
+                                    recordType, ((Index.ValueIndexDetails) index.getIndexDetails()).getKeyFieldNames(),
+                                    index.isPrimaryIndex(), statsOnPrimaryKeys, unorderedStatisticsFields),
+                            statsSize,
+                            mdProvider.getApplicationContext().getStatisticsProperties().getSketchAccuracy());
                 }
+
                 return new LSMBTreeLocalResourceFactory(storageManager, typeTraits, cmpFactories, filterTypeTraits,
                         filterCmpFactories, filterFields, opTrackerFactory, ioOpCallbackFactory,
                         pageWriteCallbackFactory, metadataPageManagerFactory, vbcProvider, ioSchedulerProvider,

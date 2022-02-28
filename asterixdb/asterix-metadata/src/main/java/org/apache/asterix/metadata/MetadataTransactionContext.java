@@ -231,7 +231,7 @@ public class MetadataTransactionContext extends MetadataCache {
             String partition, boolean isAntimatter, String fieldName) {
         Statistics stat = new Statistics(dataverseName, datasetName, indexName, node, partition,
                 new ComponentStatisticsId(0L, 0L), false, isAntimatter, fieldName, null);
-        //        droppedCache.addStatisticsIfNotExists(stat);
+//        droppedCache.addStatisticsIfNotExists(stat);
         droppedCache.addStatisticsToCache(stat);
         logAndApply(new MetadataLogicalOperation(stat, false));
     }
