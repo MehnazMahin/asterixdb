@@ -202,11 +202,10 @@ public class StatisticsTest {
         PrimaryIndexInfo primaryIndexInfo = nc.createPrimaryIndex(STATS_DATASET, StorageTestUtils.KEY_TYPES,
                 RECORD_TYPE, StorageTestUtils.META_TYPE, null, storageProvider, StorageTestUtils.KEY_INDEXES,
                 StorageTestUtils.KEY_INDICATORS_LIST, PARTITION);
-        Index secondaryIndex =
-                new Index(dvName, StorageTestUtils.DATASET_NAME, INDEX_NAME,
-                        IndexType.BTREE, new Index.ValueIndexDetails(INDEX_FIELD_NAMES, INDEX_FIELD_INDICATORS,
-                                INDEX_FIELD_TYPES, false, OptionalBoolean.empty(), OptionalBoolean.empty()),
-                        false, false, 0);
+        Index secondaryIndex = new Index(dvName, StorageTestUtils.DATASET_NAME, INDEX_NAME,
+                IndexType.BTREE, new Index.ValueIndexDetails(INDEX_FIELD_NAMES, INDEX_FIELD_INDICATORS,
+                        INDEX_FIELD_TYPES, false, OptionalBoolean.empty(), OptionalBoolean.empty(), null, null, null),
+                false, false, 0);
         SecondaryIndexInfo secondaryIndexInfo =
                 nc.createSecondaryIndex(primaryIndexInfo, secondaryIndex, storageProvider, 0);
         IndexDataflowHelperFactory[] idxHelperFactories = new IndexDataflowHelperFactory[] {
