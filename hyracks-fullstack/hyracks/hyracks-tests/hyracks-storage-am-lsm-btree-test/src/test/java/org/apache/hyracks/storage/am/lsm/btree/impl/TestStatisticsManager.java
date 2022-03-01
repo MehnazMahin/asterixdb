@@ -79,8 +79,7 @@ public class TestStatisticsManager implements IStatisticsManager {
     }
 
     @Override
-    public void sendDiskComponentsStatistics(List<ILSMDiskComponent> diskComponents)
-            throws HyracksDataException {
+    public void sendDiskComponentsStatistics(List<ILSMDiskComponent> diskComponents) throws HyracksDataException {
         for (ILSMDiskComponent c : diskComponents) {
             for (TestStatisticsEntry entry : componentIndex.get(c)) {
                 flushed.add(entry.synopsis);

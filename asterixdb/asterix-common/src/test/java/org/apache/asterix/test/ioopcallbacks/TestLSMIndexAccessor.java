@@ -171,10 +171,6 @@ public class TestLSMIndexAccessor implements ILSMIndexAccessor {
         throw new UnsupportedOperationException();
     }
 
-    @Override public void sendDiskComponentsStatistics() throws HyracksDataException {
-        throw new UnsupportedOperationException();
-    }
-
     @Override
     public void sendDiskComponentsStatistics() throws HyracksDataException {
         throw new UnsupportedOperationException();

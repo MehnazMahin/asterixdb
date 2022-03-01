@@ -134,8 +134,9 @@ public class MetadataPrimaryIndexes {
                     Arrays.asList(MetadataRecordTypes.FIELD_NAME_DATASET_NAME),
                     Arrays.asList(MetadataRecordTypes.FIELD_NAME_FILE_NUMBER)),
             0, MetadataRecordTypes.EXTERNAL_FILE_RECORDTYPE, true, new int[] { 0, 1, 2 });
-    public static final IMetadataIndex STATISTICS_DATASET = new MetadataIndex(PROPERTIES_STATISTICS,6,
-            new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ABOOLEAN, BuiltinType.ASTRING },
+    public static final IMetadataIndex STATISTICS_DATASET = new MetadataIndex(PROPERTIES_STATISTICS, 6,
+            new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ABOOLEAN,
+                    BuiltinType.ASTRING },
             Arrays.asList(Arrays.asList(MetadataRecordTypes.FIELD_NAME_DATAVERSE_NAME),
                     Arrays.asList(MetadataRecordTypes.FIELD_NAME_DATASET_NAME),
                     Arrays.asList(MetadataRecordTypes.FIELD_NAME_INDEX_NAME),

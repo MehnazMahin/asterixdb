@@ -559,8 +559,8 @@ public final class MetadataRecordTypes {
             new String[] { FIELD_NAME_DATAVERSE_NAME, FIELD_NAME_DATASET_NAME, FIELD_NAME_INDEX_NAME,
                     FIELD_NAME_IS_ANTIMATTER, FIELD_NAME_FIELD_NAME, FIELD_NAME_SYNOPSIS },
             // FieldTypes
-            new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING,
-                    BuiltinType.ABOOLEAN, BuiltinType.ASTRING, STATISTICS_SYNOPSIS_RECORDTYPE },
+            new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ABOOLEAN,
+                    BuiltinType.ASTRING, STATISTICS_SYNOPSIS_RECORDTYPE },
             //IsOpen?
             true);
 
