@@ -28,7 +28,6 @@ import org.apache.hyracks.storage.am.lsm.common.api.IStatisticsManager;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisBuilder;
 import org.apache.hyracks.storage.common.buffercache.ICachedPage;
 
-
 /**
  * An implementation of ISynopsisBuilder which acts as a simple pass-through for a list of synopsis builders
  */

@@ -63,8 +63,8 @@ public class LSMBTreeLocalResourceFactory extends LsmResourceFactory {
             Map<String, String> mergePolicyProperties, boolean durable, int[] bloomFilterKeyFields,
             double bloomFilterFalsePositiveRate, boolean isPrimary, int[] btreeFields,
             ICompressorDecompressorFactory compressorDecompressorFactory, boolean hasBloomFilter,
-            ITypeTraits nullTypeTraits, INullIntrospector nullIntrospector,
-            IStatisticsFactory statisticsFactory, IStatisticsManagerProvider statisticsManagerProvider) {
+            ITypeTraits nullTypeTraits, INullIntrospector nullIntrospector, IStatisticsFactory statisticsFactory,
+            IStatisticsManagerProvider statisticsManagerProvider) {
         super(storageManager, typeTraits, cmpFactories, filterTypeTraits, filterCmpFactories, filterFields,
                 opTrackerFactory, ioOpCallbackFactory, pageWriteCallbackFactory, metadataPageManagerFactory,
                 vbcProvider, ioSchedulerProvider, mergePolicyFactory, mergePolicyProperties, durable, nullTypeTraits,

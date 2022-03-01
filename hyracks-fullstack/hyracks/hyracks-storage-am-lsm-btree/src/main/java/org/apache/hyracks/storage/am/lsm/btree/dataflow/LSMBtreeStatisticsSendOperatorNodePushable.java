@@ -15,7 +15,7 @@ public class LSMBtreeStatisticsSendOperatorNodePushable extends AbstractOperator
     private final IIndexDataflowHelper indexHelper;
 
     public LSMBtreeStatisticsSendOperatorNodePushable(IHyracksTaskContext ctx, int partition,
-            IIndexDataflowHelperFactory indexHelperFactory) throws HyracksDataException{
+            IIndexDataflowHelperFactory indexHelperFactory) throws HyracksDataException {
         indexHelper = indexHelperFactory.create(ctx.getJobletContext().getServiceContext(), partition);
     }
 

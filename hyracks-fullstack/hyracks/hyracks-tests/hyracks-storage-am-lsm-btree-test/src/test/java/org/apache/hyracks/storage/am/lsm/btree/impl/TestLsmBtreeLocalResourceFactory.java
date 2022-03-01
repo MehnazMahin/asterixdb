@@ -56,8 +56,8 @@ public class TestLsmBtreeLocalResourceFactory extends LSMBTreeLocalResourceFacto
                 opTrackerFactory, ioOpCallbackFactory, pageWriteCallbackFactory, metadataPageManagerFactory,
                 vbcProvider, ioSchedulerProvider, mergePolicyFactory, mergePolicyProperties, durable,
                 bloomFilterKeyFields, bloomFilterFalsePositiveRate, isPrimary, btreeFields,
-                NoOpCompressorDecompressorFactory.INSTANCE, hasBloomFilter, null, null,
-                statisticsFactory, statisticsManagerProvider);
+                NoOpCompressorDecompressorFactory.INSTANCE, hasBloomFilter, null, null, statisticsFactory,
+                statisticsManagerProvider);
         this.updateAware = updateAware;
     }
 

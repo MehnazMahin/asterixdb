@@ -106,8 +106,7 @@ public final class LSMBTreeTestContext extends OrderedIndexTestContext {
                     cmpFactories, bloomFilterKeyFields, bloomFilterFalsePositiveRate, mergePolicy, opTracker,
                     ioScheduler, ioOpCallbackFactory, pageWriteCallbackFactory, needKeyDupCheck, filterTypeTraits,
                     filterCmp, btreefields, filterfields, true, metadataPageManagerFactory, updateAware, ITracer.NONE,
-                    NoOpCompressorDecompressorFactory.INSTANCE, true, null, null,
-                    statisticsFactory, statisticsManager);
+                    NoOpCompressorDecompressorFactory.INSTANCE, true, null, null, statisticsFactory, statisticsManager);
         } else {
             lsmTree = LSMBTreeUtil.createLSMTree(ioManager, virtualBufferCaches, file, diskBufferCache, typeTraits,
                     cmpFactories, bloomFilterKeyFields, bloomFilterFalsePositiveRate, mergePolicy, opTracker,

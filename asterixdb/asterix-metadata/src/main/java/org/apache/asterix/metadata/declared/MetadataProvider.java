@@ -472,6 +472,11 @@ public class MetadataProvider implements IMetadataProvider<DataSourceId, String>
         return MetadataManagerUtil.findFullTextFilterDescriptor(mdTxnCtx, dataverseName, ftFilterName);
     }
 
+    public List<Statistics> getMergedStatistics(DataverseName dataverseName, String datasetName, String indexName,
+            String fieldName) throws AlgebricksException {
+        return MetadataManager.INSTANCE.getMergedStatistics(mdTxnCtx, dataverseName, datasetName, indexName, fieldName);
+    }
+
     @Override
     public void dropStatistics(String dataverse, String datasetName, String indexName, String node, String partition,
             boolean isAntimatter, String fieldName) throws AlgebricksException {

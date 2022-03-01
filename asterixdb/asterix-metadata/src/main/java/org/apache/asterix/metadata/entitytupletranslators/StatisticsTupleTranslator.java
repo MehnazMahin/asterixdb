@@ -134,10 +134,10 @@ public class StatisticsTupleTranslator extends AbstractTupleTranslator<Statistic
                 elems.add(new HistogramBucket(
                         ((AInt64) coeff
                                 .getValueByPos(MetadataRecordTypes.STATISTICS_SYNOPSIS_ELEMENT_ARECORD_KEY_FIELD_INDEX))
-                                .getLongValue(),
+                                        .getLongValue(),
                         ((ADouble) coeff.getValueByPos(
                                 MetadataRecordTypes.STATISTICS_SYNOPSIS_ELEMENT_ARECORD_VALUE_FIELD_INDEX))
-                                .getDoubleValue()));
+                                        .getDoubleValue()));
             }
         }
         AbstractSynopsis synopsis = null;

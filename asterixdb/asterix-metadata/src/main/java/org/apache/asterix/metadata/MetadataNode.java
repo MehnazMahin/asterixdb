@@ -1227,7 +1227,7 @@ public class MetadataNode implements IMetadataNode {
                     throw new AsterixException(
                             org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS,
                             "function", functionSignature, "feed connection", MetadataUtil.getFullyQualifiedDisplayName(
-                            feedConnection.getDataverseName(), feedConnection.getFeedName()));
+                                    feedConnection.getDataverseName(), feedConnection.getFeedName()));
                 }
             }
         }
@@ -1244,7 +1244,7 @@ public class MetadataNode implements IMetadataNode {
                 throw new AsterixException(
                         org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "function",
                         signature, "feed connection", MetadataUtil.getFullyQualifiedDisplayName(
-                        feedConnection.getDataverseName(), feedConnection.getFeedName()));
+                                feedConnection.getDataverseName(), feedConnection.getFeedName()));
             }
         }
     }
@@ -1359,7 +1359,7 @@ public class MetadataNode implements IMetadataNode {
                                 "full-text config",
                                 MetadataUtil.getFullyQualifiedDisplayName(dataverseNameFullTextConfig, configName),
                                 "index", DatasetUtil.getFullyQualifiedDisplayName(index.getDataverseName(),
-                                index.getDatasetName()) + "." + index.getIndexName());
+                                        index.getDatasetName()) + "." + index.getIndexName());
                     }
                 }
             }
@@ -1434,7 +1434,7 @@ public class MetadataNode implements IMetadataNode {
             if ((dataset.getItemTypeName().equals(datatypeName)
                     && dataset.getItemTypeDataverseName().equals(dataverseName))
                     || ((dataset.hasMetaPart() && dataset.getMetaItemTypeName().equals(datatypeName)
-                    && dataset.getMetaItemTypeDataverseName().equals(dataverseName)))) {
+                            && dataset.getMetaItemTypeDataverseName().equals(dataverseName)))) {
                 throw new AsterixException(
                         org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "type",
                         TypeUtil.getFullyQualifiedDisplayName(dataverseName, datatypeName), dataset(),
@@ -2517,7 +2517,7 @@ public class MetadataNode implements IMetadataNode {
             } else {
                 throw new MetadataException("A statistics with this name "
                         + String.join(".", statistics.getDatasetName(), statistics.getFieldName(), statistics.getNode(),
-                        statistics.getPartition(), statistics.getComponentId().toString())
+                                statistics.getPartition(), statistics.getComponentId().toString())
                         + " already exists in dataverse '" + statistics.getDataverseName() + "'.", e);
             }
         } catch (ACIDException e) {

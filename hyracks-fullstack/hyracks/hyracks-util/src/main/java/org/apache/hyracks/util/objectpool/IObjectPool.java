@@ -26,11 +26,11 @@ public interface IObjectPool<E, T> {
 
     /**
      * Give client an E instance
-<<<<<<< HEAD
+    <<<<<<< HEAD
      * 
-=======
+    =======
      *
->>>>>>> Initial commit for stats framework
+    >>>>>>> Initial commit for stats framework
      * @param arg
      *            the argument to create E
      * @return an E instance

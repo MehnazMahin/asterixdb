@@ -74,8 +74,8 @@ public class LSMBTreeLocalResource extends LsmResource {
             IMetadataPageManagerFactory metadataPageManagerFactory, IVirtualBufferCacheProvider vbcProvider,
             ILSMIOOperationSchedulerProvider ioSchedulerProvider, boolean durable,
             ICompressorDecompressorFactory compressorDecompressorFactory, boolean hasBloomFilter,
-            ITypeTraits nullTypeTraits, INullIntrospector nullIntrospector,
-            IStatisticsFactory statisticsFactory, IStatisticsManagerProvider statisticsManagerProvider) {
+            ITypeTraits nullTypeTraits, INullIntrospector nullIntrospector, IStatisticsFactory statisticsFactory,
+            IStatisticsManagerProvider statisticsManagerProvider) {
         super(path, storageManager, typeTraits, cmpFactories, filterTypeTraits, filterCmpFactories, filterFields,
                 opTrackerProvider, ioOpCallbackFactory, pageWriteCallbackFactory, metadataPageManagerFactory,
                 vbcProvider, ioSchedulerProvider, mergePolicyFactory, mergePolicyProperties, durable, nullTypeTraits,

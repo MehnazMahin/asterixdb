@@ -205,7 +205,7 @@ public class StatisticsTest {
         Index secondaryIndex =
                 new Index(dvName, StorageTestUtils.DATASET_NAME, INDEX_NAME,
                         IndexType.BTREE, new Index.ValueIndexDetails(INDEX_FIELD_NAMES, INDEX_FIELD_INDICATORS,
-                        INDEX_FIELD_TYPES, false, OptionalBoolean.empty(), OptionalBoolean.empty()),
+                                INDEX_FIELD_TYPES, false, OptionalBoolean.empty(), OptionalBoolean.empty()),
                         false, false, 0);
         SecondaryIndexInfo secondaryIndexInfo =
                 nc.createSecondaryIndex(primaryIndexInfo, secondaryIndex, storageProvider, 0);

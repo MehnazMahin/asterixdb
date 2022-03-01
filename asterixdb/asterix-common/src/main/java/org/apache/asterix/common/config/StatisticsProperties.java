@@ -110,19 +110,19 @@ public class StatisticsProperties extends AbstractProperties {
         return accessor.getInt(Option.STATISTICS_MERGE_STRATEGY_TIMEOUT);
     }
 
-//    public int getSketchFanout() {
-//        return accessor.getInt(Option.STATISTICS_SKETCH_FANOUT);
-//    }
+    //    public int getSketchFanout() {
+    //        return accessor.getInt(Option.STATISTICS_SKETCH_FANOUT);
+    //    }
 
     public double getSketchAccuracy() {
         return accessor.getDouble(Option.STATISTICS_SKETCH_ACCURACY);
     }
 
-//    public double getSketchEnergyAccuracy() {
-//        return accessor.getDouble(Option.STATISTICS_SKETCH_ENERGY_ACCURACY);
-//    }
+    //    public double getSketchEnergyAccuracy() {
+    //        return accessor.getDouble(Option.STATISTICS_SKETCH_ENERGY_ACCURACY);
+    //    }
 
-//    public double getSketchFailureProbability() {
-//        return accessor.getDouble(Option.STATISTICS_SKETCH_FAILURE_PROBABILITY);
-//    }
+    //    public double getSketchFailureProbability() {
+    //        return accessor.getDouble(Option.STATISTICS_SKETCH_FAILURE_PROBABILITY);
+    //    }
 }

@@ -86,7 +86,6 @@ public abstract class AbstractLSMIndexFileManager implements ILSMIndexFileManage
     public static final String TXN_PREFIX = ".T";
     public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss-SSS");
     public static final long UNINITIALIZED_COMPONENT_SEQ = -1;
-    public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss-SSS");
     public static final FilenameFilter COMPONENT_FILES_FILTER = (dir, name) -> !name.startsWith(".");
     protected static final FilenameFilter txnFileNameFilter = (dir, name) -> name.startsWith(TXN_PREFIX);
     protected static FilenameFilter bloomFilterFilter =

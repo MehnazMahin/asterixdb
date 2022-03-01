@@ -93,16 +93,6 @@ public interface ILSMHarness {
     void scanDiskComponents(ILSMIndexOperationContext ctx, IIndexCursor cursor) throws HyracksDataException;
 
     /**
-     * Send the statistics stored in the metadata pages of all disk components
-     *
-     * @param ctx
-     *            the operation context
-     * @throws HyracksDataException
-     *            throws exception for the primary indexes, as statistics are not collected for them
-     */
-    void sendDiskComponentsStatistics(ILSMIndexOperationContext ctx) throws HyracksDataException;
-
-    /**
      * End the scan
      *
      * @param ctx
