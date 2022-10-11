@@ -82,6 +82,18 @@ import com.google.common.base.Strings;
 public abstract class AbstractIntroduceAccessMethodRule implements IAlgebraicRewriteRule {
     protected MetadataProvider metadataProvider;
 
+<<<<<<< HEAD
+=======
+    // Function Identifier sets that retain the original field variable through each function's arguments
+    private static final ImmutableSet<FunctionIdentifier> funcIDSetThatRetainFieldName =
+            ImmutableSet.of(BuiltinFunctions.WORD_TOKENS, BuiltinFunctions.GRAM_TOKENS, BuiltinFunctions.SUBSTRING,
+                    BuiltinFunctions.SUBSTRING_BEFORE, BuiltinFunctions.SUBSTRING_AFTER,
+                    BuiltinFunctions.CREATE_POLYGON, BuiltinFunctions.CREATE_MBR, BuiltinFunctions.CREATE_RECTANGLE,
+                    BuiltinFunctions.CREATE_CIRCLE, BuiltinFunctions.CREATE_LINE, BuiltinFunctions.CREATE_POINT,
+                    BuiltinFunctions.NUMERIC_ADD, BuiltinFunctions.NUMERIC_SUBTRACT, BuiltinFunctions.NUMERIC_MULTIPLY,
+                    BuiltinFunctions.NUMERIC_DIVIDE, BuiltinFunctions.NUMERIC_DIV, BuiltinFunctions.NUMERIC_MOD);
+
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     public abstract Map<FunctionIdentifier, List<IAccessMethod>> getAccessMethods();
 
     protected static void registerAccessMethod(IAccessMethod accessMethod,

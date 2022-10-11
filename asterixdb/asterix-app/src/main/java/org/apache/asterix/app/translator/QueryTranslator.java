@@ -3756,8 +3756,13 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
             CompiledDeleteStatement clfrqs = new CompiledDeleteStatement(stmtDelete.getVariableExpr(), dataverseName,
                     datasetName, stmtDelete.getCondition(), stmtDelete.getVarCounter(), stmtDelete.getQuery());
             clfrqs.setSourceLocation(stmt.getSourceLocation());
+<<<<<<< HEAD
             JobSpecification jobSpec =
                     rewriteCompileQuery(hcc, metadataProvider, clfrqs.getQuery(), clfrqs, stmtParams, null);
+=======
+            JobSpecification jobSpec = rewriteCompileQuery(hcc, metadataProvider, clfrqs.getQuery(), clfrqs, stmtParams,
+                    stmtRewriter, null);
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
             afterCompile();
 
             MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);
@@ -3780,7 +3785,11 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
     @Override
     public JobSpecification rewriteCompileQuery(IClusterInfoCollector clusterInfoCollector,
             MetadataProvider metadataProvider, Query query, ICompiledDmlStatement stmt,
+<<<<<<< HEAD
             Map<String, IAObject> stmtParams, IRequestParameters requestParameters)
+=======
+            Map<String, IAObject> stmtParams, IStatementRewriter stmtRewriter, Stats stats)
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
             throws AlgebricksException, ACIDException {
 
         Map<VarIdentifier, IAObject> externalVars = createExternalVariables(query, stmtParams);
@@ -3794,7 +3803,11 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
         // Query Compilation (happens under the same ongoing metadata transaction)
         return apiFramework.compileQuery(clusterInfoCollector, metadataProvider, (Query) rewrittenResult.first,
                 rewrittenResult.second, stmt == null ? null : stmt.getDatasetName(), sessionOutput, stmt, externalVars,
+<<<<<<< HEAD
                 responsePrinter, warningCollector, requestParameters);
+=======
+                responsePrinter, warningCollector, stats);
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     }
 
     protected JobSpecification rewriteCompileInsertUpsert(IClusterInfoCollector clusterInfoCollector,
@@ -3963,7 +3976,6 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
                     throw new CompilationException(ErrorCode.COMPILATION_ERROR, sourceLoc,
                             "There is no feed with this name " + feedName + ".");
                 }
-                MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);
                 return;
             }
             doDropFeed(hcc, metadataProvider, feed, sourceLoc);
@@ -4700,7 +4712,11 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
             metadataProvider.setMetadataTxnContext(mdTxnCtx);
             try {
                 final JobSpecification jobSpec =
+<<<<<<< HEAD
                         rewriteCompileQuery(hcc, metadataProvider, query, null, stmtParams, requestParameters);
+=======
+                        rewriteCompileQuery(hcc, metadataProvider, query, null, stmtParams, stmtRewriter, stats);
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
                 // update stats with count of compile-time warnings. needs to be adapted for multi-statement.
                 stats.updateTotalWarningsCount(warningCollector.getTotalWarningsCount());
                 afterCompile();

@@ -37,7 +37,17 @@ public class IntegerPrimitiveValueProviderFactory implements IPrimitiveValueProv
 
     @Override
     public IPrimitiveValueProvider createPrimitiveValueProvider() {
+<<<<<<< HEAD
         return IntegerPointable::getInteger;
+=======
+        return new IPrimitiveValueProvider() {
+
+            @Override
+            public double getValue(byte[] bytes, int offset) {
+                return IntegerPointable.getInteger(bytes, offset);
+            }
+        };
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     }
 
     @Override

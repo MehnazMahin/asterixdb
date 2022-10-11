@@ -84,11 +84,19 @@ import org.apache.hyracks.algebricks.core.algebra.visitors.ILogicalOperatorVisit
  * 5. the cardinality is some unknown value.
  */
 public class CardinalityInferenceVisitor implements ILogicalOperatorVisitor<Long, Void> {
+<<<<<<< HEAD
     private static final long ZERO_OR_ONE = 0L;
     private static final long ONE = 1L;
     private static final long ZERO_OR_ONE_GROUP = 2L;
     private static final long ONE_GROUP = 3L;
     private static final long UNKNOWN = 100L; // so it fits into the auto-boxing cache
+=======
+    public static final long ZERO_OR_ONE = 0L;
+    public static final long ONE = 1L;
+    public static final long ZERO_OR_ONE_GROUP = -2L;
+    public static final long ONE_GROUP = -3L;
+    public static final long UNKNOWN = -1L;
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
     private final Set<LogicalVariable> keyVariables = new HashSet<>();
 

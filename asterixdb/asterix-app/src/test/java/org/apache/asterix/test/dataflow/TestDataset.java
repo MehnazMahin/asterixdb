@@ -45,13 +45,17 @@ import org.apache.hyracks.storage.common.IResourceFactory;
 public class TestDataset extends Dataset {
 
     private static final long serialVersionUID = 1L;
+    private final boolean hasStatistics;
+    private final boolean updateAware;
 
     public TestDataset(DataverseName dataverseName, String datasetName, DataverseName recordTypeDataverseName,
             String recordTypeName, String nodeGroupName, String compactionPolicy,
             Map<String, String> compactionPolicyProperties, IDatasetDetails datasetDetails, Map<String, String> hints,
-            DatasetType datasetType, int datasetId, int pendingOp) {
+            DatasetType datasetType, int datasetId, int pendingOp, boolean hasStatistics, boolean updateAware) {
         super(dataverseName, datasetName, recordTypeDataverseName, recordTypeName, nodeGroupName, compactionPolicy,
                 compactionPolicyProperties, datasetDetails, hints, datasetType, datasetId, pendingOp);
+        this.hasStatistics = hasStatistics;
+        this.updateAware = updateAware;
     }
 
     @Override
@@ -73,10 +77,17 @@ public class TestDataset extends Dataset {
             throws AlgebricksException {
         ITypeTraits[] filterTypeTraits = DatasetUtil.computeFilterTypeTraits(this, recordType, metaType);
         IBinaryComparatorFactory[] filterCmpFactories = DatasetUtil.computeFilterBinaryComparatorFactories(this,
+<<<<<<< HEAD
                 recordType, metaType, mdProvider.getStorageComponentProvider().getComparatorFactoryProvider());
         IResourceFactory resourceFactory =
                 TestLsmBTreeResourceFactoryProvider.INSTANCE.getResourceFactory(mdProvider, this, index, recordType,
                         metaType, mergePolicyFactory, mergePolicyProperties, filterTypeTraits, filterCmpFactories);
+=======
+                recordType, mdProvider.getStorageComponentProvider().getComparatorFactoryProvider());
+        IResourceFactory resourceFactory = new TestLsmBTreeResourceFactoryProvider(hasStatistics, updateAware)
+                .getResourceFactory(mdProvider, this, index, recordType, metaType, mergePolicyFactory,
+                        mergePolicyProperties, filterTypeTraits, filterCmpFactories);
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
         return new DatasetLocalResourceFactory(getDatasetId(), resourceFactory);
     }
 

@@ -43,9 +43,14 @@ import org.apache.asterix.metadata.entities.Function;
 import org.apache.asterix.metadata.entities.Index;
 import org.apache.asterix.metadata.entities.Library;
 import org.apache.asterix.metadata.entities.NodeGroup;
+import org.apache.asterix.metadata.entities.Statistics;
 import org.apache.asterix.metadata.entities.Synonym;
 import org.apache.asterix.metadata.utils.IndexUtil;
+<<<<<<< HEAD
 import org.apache.asterix.runtime.fulltext.FullTextConfigDescriptor;
+=======
+import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
 /**
  * Caches metadata entities such that the MetadataManager does not have to
@@ -82,10 +87,16 @@ public class MetadataCache {
     protected final Map<DataverseName, Map<String, FeedConnection>> feedConnections = new HashMap<>();
     // Key is synonym dataverse. Key of value map is the synonym name
     protected final Map<DataverseName, Map<String, Synonym>> synonyms = new HashMap<>();
+<<<<<<< HEAD
     // Key is DataverseName. Key of value map is the full-text filter name
     protected final Map<DataverseName, Map<String, FullTextFilterMetadataEntity>> fullTextFilters = new HashMap<>();
     // Key is DataverseName. Key of value map is the full-text config name
     protected final Map<DataverseName, Map<String, FullTextConfigMetadataEntity>> fullTextConfigs = new HashMap<>();
+=======
+    // Key is dataverse name. Key of value map is dataset name. Key of value map of value map is index name.
+    protected final Map<String, Map<String, Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>>>> statistics =
+            new HashMap<>();
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
     // Atomically executes all metadata operations in ctx's log.
     public void commit(MetadataTransactionContext ctx) {
@@ -120,6 +131,7 @@ public class MetadataCache {
                     synchronized (indexes) {
                         synchronized (datatypes) {
                             synchronized (functions) {
+<<<<<<< HEAD
                                 synchronized (fullTextConfigs) {
                                     synchronized (fullTextFilters) {
                                         synchronized (adapters) {
@@ -139,6 +151,24 @@ public class MetadataCache {
                                                         compactionPolicies.clear();
                                                         synonyms.clear();
                                                     }
+=======
+                                synchronized (adapters) {
+                                    synchronized (libraries) {
+                                        synchronized (compactionPolicies) {
+                                            synchronized (synonyms) {
+                                                synchronized (statistics) {
+                                                    dataverses.clear();
+                                                    nodeGroups.clear();
+                                                    datasets.clear();
+                                                    indexes.clear();
+                                                    datatypes.clear();
+                                                    functions.clear();
+                                                    adapters.clear();
+                                                    libraries.clear();
+                                                    compactionPolicies.clear();
+                                                    synonyms.clear();
+                                                    statistics.clear();
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
                                                 }
                                             }
                                         }
@@ -150,6 +180,7 @@ public class MetadataCache {
                 }
             }
         }
+
     }
 
     public Dataverse addDataverseIfNotExists(Dataverse dataverse) {
@@ -234,6 +265,58 @@ public class MetadataCache {
         }
     }
 
+    public Object addStatisticsIfNotExists(Statistics stats) {
+        synchronized (statistics) {
+            Map<String, Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>>> datasetMap =
+                    statistics.get(stats.getDataverseName());
+            if (datasetMap == null) {
+                datasetMap = new HashMap<>();
+                statistics.put(stats.getDataverseName(), datasetMap);
+            }
+            Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>> indexMap =
+                    datasetMap.get(stats.getDatasetName());
+            if (indexMap == null) {
+                indexMap = new HashMap<>();
+                datasetMap.put(stats.getDatasetName(), indexMap);
+            }
+            Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]> fieldMap =
+                    indexMap.get(stats.getIndexName());
+            if (fieldMap == null) {
+                fieldMap = new HashMap<>();
+                datasetMap.put(stats.getDatasetName(), indexMap);
+            }
+            Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[] matterAntimatterArray =
+                    fieldMap.get(stats.getFieldName());
+            if (matterAntimatterArray == null) {
+                matterAntimatterArray = new Map[2];
+                fieldMap.put(stats.getFieldName(), matterAntimatterArray);
+            }
+            Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>> nodeMap =
+                    stats.isAntimatter() ? matterAntimatterArray[1] : matterAntimatterArray[0];
+            if (nodeMap == null) {
+                nodeMap = new HashMap<>();
+                matterAntimatterArray[stats.isAntimatter() ? 1 : 0] = nodeMap;
+                //create an empty nodeMap for the opposite synopsis to cache empty stats
+                matterAntimatterArray[stats.isAntimatter() ? 0 : 1] = new HashMap<>();
+            }
+            Map<String, Map<ComponentStatisticsId, Statistics>> partitionMap = nodeMap.get(stats.getNode());
+            if (partitionMap == null) {
+                partitionMap = new HashMap<>();
+                nodeMap.put(stats.getNode(), partitionMap);
+            }
+            Map<ComponentStatisticsId, Statistics> componentIdMap = partitionMap.get(stats.getPartition());
+            if (componentIdMap == null) {
+                componentIdMap = new HashMap<>();
+                partitionMap.put(stats.getPartition(), componentIdMap);
+            }
+
+            if (!componentIdMap.containsKey(stats.getComponentID())) {
+                return componentIdMap.put(stats.getComponentID(), stats);
+            }
+        }
+        return null;
+    }
+
     public CompactionPolicy dropCompactionPolicy(CompactionPolicy compactionPolicy) {
         synchronized (compactionPolicies) {
             Map<String, CompactionPolicy> p = compactionPolicies.get(compactionPolicy.getDataverseName());
@@ -250,6 +333,7 @@ public class MetadataCache {
                 synchronized (indexes) {
                     synchronized (datatypes) {
                         synchronized (functions) {
+<<<<<<< HEAD
                             synchronized (fullTextConfigs) {
                                 synchronized (fullTextFilters) {
                                     synchronized (adapters) {
@@ -279,7 +363,35 @@ public class MetadataCache {
                                                         feeds.remove(dataverse.getDataverseName());
                                                         synonyms.remove(dataverse.getDataverseName());
                                                         return dataverses.remove(dataverse.getDataverseName());
+=======
+                            synchronized (adapters) {
+                                synchronized (libraries) {
+                                    synchronized (feeds) {
+                                        synchronized (compactionPolicies) {
+                                            synchronized (synonyms) {
+                                                synchronized (statistics) {
+                                                    datasets.remove(dataverse.getDataverseName());
+                                                    indexes.remove(dataverse.getDataverseName());
+                                                    datatypes.remove(dataverse.getDataverseName());
+                                                    adapters.remove(dataverse.getDataverseName());
+                                                    compactionPolicies.remove(dataverse.getDataverseName());
+                                                    List<FunctionSignature> markedFunctionsForRemoval =
+                                                            new ArrayList<>();
+                                                    for (FunctionSignature signature : functions.keySet()) {
+                                                        if (signature.getDataverseName()
+                                                                .equals(dataverse.getDataverseName())) {
+                                                            markedFunctionsForRemoval.add(signature);
+                                                        }
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
                                                     }
+                                                    for (FunctionSignature signature : markedFunctionsForRemoval) {
+                                                        functions.remove(signature);
+                                                    }
+                                                    libraries.remove(dataverse.getDataverseName());
+                                                    feeds.remove(dataverse.getDataverseName());
+                                                    synonyms.remove(dataverse.getDataverseName());
+                                                    statistics.remove(dataverse.getDataverseName());
+                                                    return dataverses.remove(dataverse.getDataverseName());
                                                 }
                                             }
                                         }
@@ -296,35 +408,57 @@ public class MetadataCache {
     public Dataset dropDataset(Dataset dataset) {
         synchronized (datasets) {
             synchronized (indexes) {
+                synchronized (statistics) {
 
-                //remove the indexes of the dataset from indexes' cache
-                Map<String, Map<String, Index>> datasetMap = indexes.get(dataset.getDataverseName());
-                if (datasetMap != null) {
-                    datasetMap.remove(dataset.getDatasetName());
-                }
+                    //remove the indexes of the dataset from indexes' cache
+                    Map<String, Map<String, Index>> datasetMap = indexes.get(dataset.getDataverseName());
+                    if (datasetMap != null) {
+                        datasetMap.remove(dataset.getDatasetName());
+                    }
 
-                //remove the dataset from datasets' cache
-                Map<String, Dataset> m = datasets.get(dataset.getDataverseName());
-                if (m == null) {
-                    return null;
+                    //remove the index statistics of the dataset from statistics' cache
+                    Map<String, Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>>> datasetStatsMap =
+                            statistics.get(dataset.getDataverseName());
+                    if (datasetStatsMap != null) {
+                        datasetStatsMap.remove(dataset.getDatasetName());
+                    }
+
+                    //remove the dataset from datasets' cache
+                    Map<String, Dataset> m = datasets.get(dataset.getDataverseName());
+                    if (m == null) {
+                        return null;
+                    }
+                    return m.remove(dataset.getDatasetName());
                 }
-                return m.remove(dataset.getDatasetName());
             }
         }
     }
 
     public Index dropIndex(Index index) {
         synchronized (indexes) {
-            Map<String, Map<String, Index>> datasetMap = indexes.get(index.getDataverseName());
-            if (datasetMap == null) {
-                return null;
-            }
+            synchronized (statistics) {
+                //remove the index statistics of the dataset from statistics' cache
+                Map<String, Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>>> datasetStatsMap =
+                        statistics.get(index.getDataverseName());
+                if (datasetStatsMap != null) {
+                    Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>> indexStatsMap =
+                            datasetStatsMap.get(index.getDatasetName());
+                    if (indexStatsMap != null) {
+                        indexStatsMap.remove(index.getIndexName());
+                    }
+                }
 
-            Map<String, Index> indexMap = datasetMap.get(index.getDatasetName());
-            if (indexMap == null) {
-                return null;
+                Map<String, Map<String, Index>> datasetMap = indexes.get(index.getDataverseName());
+                if (datasetMap == null) {
+                    return null;
+                }
+
+                Map<String, Index> indexMap = datasetMap.get(index.getDatasetName());
+                if (indexMap == null) {
+                    return null;
+                }
+                return indexMap.remove(index.getIndexName());
             }
-            return indexMap.remove(index.getIndexName());
         }
     }
 
@@ -341,6 +475,51 @@ public class MetadataCache {
     public NodeGroup dropNodeGroup(NodeGroup nodeGroup) {
         synchronized (nodeGroups) {
             return nodeGroups.remove(nodeGroup.getNodeGroupName());
+        }
+    }
+
+    public Object dropStatistics(Statistics stat) {
+        synchronized (statistics) {
+            Map<String, Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>>> datasetMap =
+                    statistics.get(stat.getDataverseName());
+            if (datasetMap == null) {
+                return null;
+            }
+
+            Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>> indexMap =
+                    datasetMap.get(stat.getDatasetName());
+            if (indexMap == null) {
+                return null;
+            }
+
+            Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]> fieldMap =
+                    indexMap.get(stat.getIndexName());
+            if (fieldMap == null) {
+                return null;
+            }
+
+            Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[] matterAntimatterList =
+                    fieldMap.get(stat.getFieldName());
+            if (matterAntimatterList == null) {
+                return null;
+            }
+
+            Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>> nodeMap =
+                    stat.isAntimatter() ? matterAntimatterList[1] : matterAntimatterList[0];
+            if (nodeMap == null) {
+                return null;
+            }
+
+            Map<String, Map<ComponentStatisticsId, Statistics>> partitionMap = nodeMap.get(stat.getNode());
+            if (partitionMap == null) {
+                return null;
+            }
+
+            Map<ComponentStatisticsId, Statistics> componentIdMap = partitionMap.get(stat.getPartition());
+            if (componentIdMap == null) {
+                return null;
+            }
+            return componentIdMap.remove(stat.getComponentID());
         }
     }
 
@@ -433,6 +612,95 @@ public class MetadataCache {
                 return Collections.emptyList();
             }
             return new ArrayList<>(map.values());
+        }
+    }
+
+    public Statistics getStatistics(String dataverseName, String datasetName, String indexName, String fieldName,
+            String node, String partition, ComponentStatisticsId componentId, boolean isAntimatter) {
+        synchronized (statistics) {
+            Map<String, Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>>> datasetMap =
+                    statistics.get(dataverseName);
+            if (datasetMap == null) {
+                return null;
+            }
+
+            Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>> indexMap =
+                    datasetMap.get(datasetName);
+            if (indexMap == null) {
+                return null;
+            }
+
+            Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]> fieldMap =
+                    indexMap.get(indexName);
+            if (fieldMap == null) {
+                return null;
+            }
+
+            Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[] antimatterMap = fieldMap.get(fieldName);
+            if (antimatterMap == null) {
+                return null;
+            }
+
+            Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>> nodeMap =
+                    isAntimatter ? antimatterMap[1] : antimatterMap[0];
+            if (nodeMap == null) {
+                return null;
+            }
+
+            Map<String, Map<ComponentStatisticsId, Statistics>> partitionMap = nodeMap.get(node);
+            if (partitionMap == null) {
+                return null;
+            }
+
+            Map<ComponentStatisticsId, Statistics> componentIdMap = partitionMap.get(partition);
+            if (componentIdMap == null) {
+                return null;
+            }
+            return componentIdMap.get(componentId);
+        }
+    }
+
+    public List<Statistics> getFieldStatistics(String dataverseName, String datasetName, String indexName,
+            String fieldName, boolean isAntimatter) {
+        synchronized (statistics) {
+            List<Statistics> results = new ArrayList<>();
+
+            Map<String, Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>>> datasetMap =
+                    statistics.get(dataverseName);
+            if (datasetMap == null) {
+                return null;
+            }
+            Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>> indexMap =
+                    datasetMap.get(datasetName);
+            if (indexMap == null) {
+                return null;
+            }
+            Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]> fieldMap =
+                    indexMap.get(indexName);
+            if (fieldMap == null) {
+                return null;
+            }
+            Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[] matterAntimatterList =
+                    fieldMap.get(fieldName);
+            if (matterAntimatterList == null) {
+                return null;
+            }
+            Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>> nodeMap =
+                    isAntimatter ? matterAntimatterList[1] : matterAntimatterList[0];
+            if (nodeMap == null) {
+                return null;
+            }
+
+            for (Map.Entry<String, Map<String, Map<ComponentStatisticsId, Statistics>>> partitionMap : nodeMap
+                    .entrySet()) {
+                for (Map.Entry<String, Map<ComponentStatisticsId, Statistics>> componentIdMap : partitionMap.getValue()
+                        .entrySet()) {
+                    for (Map.Entry<ComponentStatisticsId, Statistics> statsMap : componentIdMap.getValue().entrySet()) {
+                        results.add(statsMap.getValue());
+                    }
+                }
+            }
+            return results;
         }
     }
 

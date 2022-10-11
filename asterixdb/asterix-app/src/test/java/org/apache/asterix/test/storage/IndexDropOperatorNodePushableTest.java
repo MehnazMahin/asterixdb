@@ -105,11 +105,19 @@ public class IndexDropOperatorNodePushableTest {
             DataverseName dvName = DataverseName.createSinglePartName(DATAVERSE_NAME);
             List<List<String>> partitioningKeys = new ArrayList<>();
             partitioningKeys.add(Collections.singletonList("key"));
+<<<<<<< HEAD
             Dataset dataset = new Dataset(dvName, DATASET_NAME, dvName, DATA_TYPE_NAME, NODE_GROUP_NAME,
                     NoMergePolicyFactory.NAME, null,
                     new InternalDatasetDetails(null, InternalDatasetDetails.PartitioningStrategy.HASH, partitioningKeys,
                             null, null, null, false, null, null),
                     null, DatasetConfig.DatasetType.INTERNAL, DATASET_ID, 0);
+=======
+            Dataset dataset = new Dataset(DATAVERSE_NAME, DATASET_NAME, DATAVERSE_NAME, DATA_TYPE_NAME, NODE_GROUP_NAME,
+                    NoMergePolicyFactory.NAME, null,
+                    new InternalDatasetDetails(null, InternalDatasetDetails.PartitioningStrategy.HASH, partitioningKeys,
+                            null, null, null, false, null),
+                    Collections.EMPTY_MAP, DatasetConfig.DatasetType.INTERNAL, DATASET_ID, 0);
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
             // create dataset
             TestNodeController.PrimaryIndexInfo indexInfo = nc.createPrimaryIndex(dataset, KEY_TYPES, RECORD_TYPE,
                     META_TYPE, null, storageManager, KEY_INDEXES, KEY_INDICATORS_LIST, 0);

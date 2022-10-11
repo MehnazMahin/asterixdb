@@ -91,6 +91,7 @@
     <module>hyracks-storage-am-lsm-btree-column</module>
     <module>hyracks-storage-am-lsm-rtree</module>
     <module>hyracks-storage-am-rtree</module>
+    <module>hyracks-storage-am-statistics</module>
     <module>hyracks-test-support</module>
     <module>hyracks-tests</module>
     <module>hyracks-server</module>

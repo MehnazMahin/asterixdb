@@ -61,10 +61,15 @@ public class MetadataPrimaryIndexes {
             new MetadataIndexImmutableProperties(MetadataConstants.EXTERNAL_FILE_DATASET_NAME, 14, 14);
     public static final MetadataIndexImmutableProperties PROPERTIES_SYNONYM =
             new MetadataIndexImmutableProperties(MetadataConstants.SYNONYM_DATASET_NAME, 15, 15);
+<<<<<<< HEAD
     public static final MetadataIndexImmutableProperties PROPERTIES_FULL_TEXT_CONFIG =
             new MetadataIndexImmutableProperties(MetadataConstants.FULL_TEXT_CONFIG_DATASET_NAME, 16, 16);
     public static final MetadataIndexImmutableProperties PROPERTIES_FULL_TEXT_FILTER =
             new MetadataIndexImmutableProperties(MetadataConstants.FULL_TEXT_FILTER_DATASET_NAME, 17, 17);
+=======
+    public static final MetadataIndexImmutableProperties PROPERTIES_STATISTICS =
+            new MetadataIndexImmutableProperties(MetadataConstants.STATISTICS_DATASET_NAME, 16, 16);
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
     public static final IMetadataIndex DATAVERSE_DATASET =
             new MetadataIndex(PROPERTIES_DATAVERSE, 2, new IAType[] { BuiltinType.ASTRING },
@@ -132,6 +137,26 @@ public class MetadataPrimaryIndexes {
                     Arrays.asList(MetadataRecordTypes.FIELD_NAME_DATASET_NAME),
                     Arrays.asList(MetadataRecordTypes.FIELD_NAME_FILE_NUMBER)),
             0, MetadataRecordTypes.EXTERNAL_FILE_RECORDTYPE, true, new int[] { 0, 1, 2 });
+    public static final IMetadataIndex STATISTICS_DATASET = new MetadataIndex(PROPERTIES_STATISTICS, 8 + 1,
+            new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING,
+                    BuiltinType.ABOOLEAN, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING },
+            Arrays.asList(Arrays.asList(MetadataRecordTypes.FIELD_NAME_DATAVERSE_NAME),
+                    Arrays.asList(MetadataRecordTypes.FIELD_NAME_DATASET_NAME),
+                    Arrays.asList(MetadataRecordTypes.FIELD_NAME_INDEX_NAME),
+                    Arrays.asList(MetadataRecordTypes.FIELD_NAME_FIELD_NAME),
+                    Arrays.asList(MetadataRecordTypes.FIELD_NAME_IS_ANTIMATTER),
+                    Arrays.asList(MetadataRecordTypes.FIELD_NAME_NODE_NAME),
+                    Arrays.asList(MetadataRecordTypes.FIELD_NAME_PARTITION),
+                    Arrays.asList(MetadataRecordTypes.FIELD_NAME_MIN_ID)),
+            0, MetadataRecordTypes.STATISTICS_RECORDTYPE, true,
+            new int[] { MetadataRecordTypes.STATISTICS_ARECORD_DATAVERSE_NAME_FIELD_INDEX,
+                    MetadataRecordTypes.STATISTICS_ARECORD_DATASET_NAME_FIELD_INDEX,
+                    MetadataRecordTypes.STATISTICS_ARECORD_INDEX_NAME_FIELD_INDEX,
+                    MetadataRecordTypes.STATISTICS_ARECORD_FIELD_NAME_FIELD_INDEX,
+                    MetadataRecordTypes.STATISTICS_ARECORD_ISANTIMATTER_FIELD_INDEX,
+                    MetadataRecordTypes.STATISTICS_ARECORD_NODE_FIELD_INDEX,
+                    MetadataRecordTypes.STATISTICS_ARECORD_PARTITION_FIELD_INDEX,
+                    MetadataRecordTypes.STATISTICS_ARECORD_COMPONENT_MIN_TIMESTAMP_INDEX });
 
     public static final IMetadataIndex FEED_CONNECTION_DATASET = new MetadataIndex(PROPERTIES_FEED_CONNECTION, 4,
             new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING },

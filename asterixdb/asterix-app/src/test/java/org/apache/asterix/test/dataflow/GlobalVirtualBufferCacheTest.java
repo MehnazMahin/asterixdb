@@ -191,18 +191,31 @@ public class GlobalVirtualBufferCacheTest {
     }
 
     private void createIndex() throws Exception {
+<<<<<<< HEAD
         DataverseName dvName = DataverseName.createSinglePartName(StorageTestUtils.DATAVERSE_NAME);
         dataset = new TestDataset(dvName, "ds", dvName, StorageTestUtils.DATA_TYPE_NAME,
                 StorageTestUtils.NODE_GROUP_NAME, NoMergePolicyFactory.NAME,
                 null, new InternalDatasetDetails(null, PartitioningStrategy.HASH, StorageTestUtils.PARTITIONING_KEYS,
                         null, null, null, false, null, null),
                 null, DatasetType.INTERNAL, StorageTestUtils.DATASET_ID, 0);
+=======
+        dataset = new TestDataset(StorageTestUtils.DATAVERSE_NAME, "ds", StorageTestUtils.DATAVERSE_NAME,
+                StorageTestUtils.DATA_TYPE_NAME, StorageTestUtils.NODE_GROUP_NAME, NoMergePolicyFactory.NAME, null,
+                new InternalDatasetDetails(null, PartitioningStrategy.HASH, StorageTestUtils.PARTITIONING_KEYS, null,
+                        null, null, false, null),
+                null, DatasetType.INTERNAL, StorageTestUtils.DATASET_ID, 0, false, false);
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
         filteredDataset = new TestDataset(dvName, "filtered_ds", dvName, StorageTestUtils.DATA_TYPE_NAME,
                 StorageTestUtils.NODE_GROUP_NAME, NoMergePolicyFactory.NAME, null,
                 new InternalDatasetDetails(null, PartitioningStrategy.HASH, StorageTestUtils.PARTITIONING_KEYS, null,
+<<<<<<< HEAD
                         null, null, false, 0, Collections.singletonList("value")),
                 null, DatasetType.INTERNAL, StorageTestUtils.DATASET_ID + 1, 0);
+=======
+                        null, null, false, Collections.singletonList("value")),
+                null, DatasetType.INTERNAL, StorageTestUtils.DATASET_ID + 1, 0, false, false);
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
         primaryIndexInfos = new PrimaryIndexInfo[NUM_PARTITIONS];
         filteredPrimaryIndexInfos = new PrimaryIndexInfo[NUM_PARTITIONS];

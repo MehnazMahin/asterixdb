@@ -41,6 +41,8 @@ import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.algebricks.core.algebra.plan.PlanStabilityVerifier;
 import org.apache.hyracks.algebricks.core.algebra.plan.PlanStructureVerifier;
 import org.apache.hyracks.algebricks.core.algebra.prettyprint.IPlanPrettyPrinter;
+import org.apache.hyracks.algebricks.core.algebra.prettyprint.LogicalOperatorPrettyPrintVisitor;
+import org.apache.hyracks.algebricks.core.algebra.prettyprint.PlanPrettyPrinter;
 import org.apache.hyracks.algebricks.core.algebra.properties.DefaultNodeGroupDomain;
 import org.apache.hyracks.algebricks.core.algebra.properties.FunctionalDependency;
 import org.apache.hyracks.algebricks.core.algebra.properties.ILogicalPropertiesVector;
@@ -75,21 +77,41 @@ public class AlgebricksOptimizationContext implements IOptimizationContext {
     private final IPlanPrettyPrinter prettyPrinter;
     private final IConflictingTypeResolver conflictingTypeResovler;
     private final IWarningCollector warningCollector;
+<<<<<<< HEAD
     private final PlanStructureVerifier planStructureVerifier;
     private final PlanStabilityVerifier planStabilityVerifier;
 
     private int varCounter;
     private IMetadataProvider metadataProvider;
     private Object compilerFactory;
+=======
+    private final ICardinalityEstimator cardinalityEstimator;
+
+    public AlgebricksOptimizationContext(int varCounter, IExpressionEvalSizeComputer expressionEvalSizeComputer,
+            IMergeAggregationExpressionFactory mergeAggregationExpressionFactory,
+            IExpressionTypeComputer expressionTypeComputer, IMissableTypeComputer missableTypeComputer,
+            IConflictingTypeResolver conflictingTypeResovler, ICardinalityEstimator cardinalityEstimator,
+            PhysicalOptimizationConfig physicalOptimizationConfig, AlgebricksPartitionConstraint clusterLocations) {
+        this(varCounter, expressionEvalSizeComputer, mergeAggregationExpressionFactory, expressionTypeComputer,
+                missableTypeComputer, conflictingTypeResovler, cardinalityEstimator, physicalOptimizationConfig,
+                clusterLocations, PlanPrettyPrinter.createStringPlanPrettyPrinter(), null);
+    }
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
     public AlgebricksOptimizationContext(IOptimizationContextFactory optContextFactory, int varCounter,
             IExpressionEvalSizeComputer expressionEvalSizeComputer,
             IMergeAggregationExpressionFactory mergeAggregationExpressionFactory,
             IExpressionTypeComputer expressionTypeComputer, IMissableTypeComputer nullableTypeComputer,
+<<<<<<< HEAD
             IConflictingTypeResolver conflictingTypeResovler, PhysicalOptimizationConfig physicalOptimizationConfig,
             AlgebricksPartitionConstraint clusterLocations, IPlanPrettyPrinter prettyPrinter,
             IWarningCollector warningCollector) {
         this.optContextFactory = optContextFactory;
+=======
+            IConflictingTypeResolver conflictingTypeResovler, ICardinalityEstimator cardinalityEstimator,
+            PhysicalOptimizationConfig physicalOptimizationConfig, AlgebricksPartitionConstraint clusterLocations,
+            IPlanPrettyPrinter prettyPrinter, IWarningCollector warningCollector) {
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
         this.varCounter = varCounter;
         this.expressionEvalSizeComputer = expressionEvalSizeComputer;
         this.mergeAggregationExpressionFactory = mergeAggregationExpressionFactory;
@@ -100,6 +122,7 @@ public class AlgebricksOptimizationContext implements IOptimizationContext {
         this.prettyPrinter = prettyPrinter;
         this.conflictingTypeResovler = conflictingTypeResovler;
         this.warningCollector = warningCollector;
+<<<<<<< HEAD
         boolean isSanityCheckEnabled = physicalOptimizationConfig.isSanityCheckEnabled();
         this.planStructureVerifier = isSanityCheckEnabled ? new PlanStructureVerifier(prettyPrinter, this) : null;
         this.planStabilityVerifier = isSanityCheckEnabled ? new PlanStabilityVerifier(prettyPrinter) : null;
@@ -132,6 +155,9 @@ public class AlgebricksOptimizationContext implements IOptimizationContext {
         fdGlobalMap.putAll(from.fdGlobalMap);
         eqClassGlobalMap.putAll(from.eqClassGlobalMap);
         logicalProps.putAll(from.logicalProps);
+=======
+        this.cardinalityEstimator = cardinalityEstimator;
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     }
 
     @Override
@@ -364,6 +390,7 @@ public class AlgebricksOptimizationContext implements IOptimizationContext {
         return warningCollector;
     }
 
+<<<<<<< HEAD
     @Override
     public PlanStructureVerifier getPlanStructureVerifier() {
         return planStructureVerifier;
@@ -402,5 +429,14 @@ public class AlgebricksOptimizationContext implements IOptimizationContext {
         public int getVariableEvalSize(LogicalVariable var) {
             return varSizeMap.get(var);
         }
+=======
+    public ICardinalityEstimator getCardinalityEstimator() {
+        return cardinalityEstimator;
+    }
+
+    @Override
+    public LogicalOperatorPrettyPrintVisitor getPrettyPrintVisitor() {
+        return null;
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     }
 }

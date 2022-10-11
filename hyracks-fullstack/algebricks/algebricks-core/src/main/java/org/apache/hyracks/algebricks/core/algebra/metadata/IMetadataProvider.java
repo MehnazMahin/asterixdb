@@ -41,6 +41,8 @@ import org.apache.hyracks.api.dataflow.value.RecordDescriptor;
 import org.apache.hyracks.api.job.JobSpecification;
 import org.apache.hyracks.api.result.IResultMetadata;
 import org.apache.hyracks.storage.am.common.api.ITupleFilterFactory;
+import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
+import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 
 public interface IMetadataProvider<S, I> {
     public IDataSource<S> findDataSource(S id) throws AlgebricksException;
@@ -232,6 +234,15 @@ public interface IMetadataProvider<S, I> {
 
     public Map<String, Object> getConfig();
 
+<<<<<<< HEAD
     public boolean isBlockingOperatorDisabled();
 
+=======
+    void addStatistics(String dataverseName, String datasetName, String indexName, String fieldName, String node,
+            String partition, ComponentStatisticsId componentId, boolean isAntimatter, ISynopsis synopsis)
+            throws AlgebricksException;
+
+    void dropStatistics(String dataverseName, String datasetName, String indexName, String fieldName, String node,
+            String partition, ComponentStatisticsId componentId, boolean isAntimatter) throws AlgebricksException;
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 }

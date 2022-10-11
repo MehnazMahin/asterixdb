@@ -65,8 +65,12 @@ public class ExternalBTreeWithBuddyLocalResource extends LSMBTreeLocalResource {
                 mergePolicyFactory, mergePolicyProperties, filterTypeTraits, filterCmpFactories, btreeFields,
                 filterFields, opTrackerProvider, ioOpCallbackFactory, pageWriteCallbackFactory,
                 metadataPageManagerFactory, null, ioSchedulerProvider, durable,
+<<<<<<< HEAD
                 NoOpCompressorDecompressorFactory.INSTANCE, hasBloomFilter, nullTypeTraits, nullIntrospector,
                 isSecondaryNoIncrementalMaintenance);
+=======
+                NoOpCompressorDecompressorFactory.INSTANCE, hasBloomFilter, null, null);
+>>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     }
 
     private ExternalBTreeWithBuddyLocalResource(IPersistedResourceRegistry registry, JsonNode json,
