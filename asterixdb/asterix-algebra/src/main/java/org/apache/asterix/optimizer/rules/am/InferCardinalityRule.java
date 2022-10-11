@@ -24,12 +24,11 @@ import static org.apache.asterix.optimizer.rules.am.OptimizableOperatorSubTree.D
 import java.util.List;
 import java.util.Map;
 
-import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.om.base.AIntegerObject;
 import org.apache.asterix.om.base.IAObject;
 import org.apache.asterix.om.constants.AsterixConstantValue;
-import org.apache.asterix.om.types.hierachy.ATypeHierarchy;
+import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.optimizer.rules.am.BTreeAccessMethod.LimitType;
 import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.commons.lang3.mutable.MutableInt;
@@ -59,7 +58,6 @@ import org.apache.hyracks.algebricks.core.algebra.operators.logical.visitors.Car
  * (join) <-- (assign)? <--(datasource scan)
  * <-- (assign)? <-- (datasource scan)
  */
-//public class InferCardinalityRule implements IAlgebraicRewriteRule {
 public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
 
     private OptimizableOperatorSubTree leftSubTree;
@@ -196,11 +194,11 @@ public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
         }
         if (leftField != null && rightField != null) {
             //estimate join cardinality
-            return context.getCardinalityEstimator().getJoinCardinality(context.getMetadataProvider(),
-                    leftSubTree.getDataset().getDataverseName().getCanonicalForm(),
-                    leftSubTree.getDataset().getDatasetName(), leftField,
-                    rightSubTree.getDataset().getDataverseName().getCanonicalForm(),
-                    rightSubTree.getDataset().getDatasetName(), rightField);
+            //            return context.getCardinalityEstimator().getJoinCardinality(context.getMetadataProvider(),
+            //                    leftSubTree.getDataset().getDataverseName().getCanonicalForm(),
+            //                    leftSubTree.getDataset().getDatasetName(), leftField,
+            //                    rightSubTree.getDataset().getDataverseName().getCanonicalForm(),
+            //                    rightSubTree.getDataset().getDatasetName(), rightField);
         } else if (leftField != null || rightField != null) {
             Long lowKeyValue = null;
             Long highKeyValue = null;
@@ -214,11 +212,11 @@ public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
             } else if (lowKey != null) {
                 highKeyValue = lowKey.maxDomainValue();
             }
-            if (lowKeyValue != null && highKeyValue != null) {
-                return context.getCardinalityEstimator().getRangeCardinality(context.getMetadataProvider(),
-                        leftSubTree.getDataset().getDataverseName().getCanonicalForm(),
-                        leftSubTree.getDataset().getDatasetName(), leftField, lowKeyValue, highKeyValue);
-            }
+            //            if (lowKeyValue != null && highKeyValue != null) {
+            //                return context.getCardinalityEstimator().getRangeCardinality(context.getMetadataProvider(),
+            //                        leftSubTree.getDataset().getDataverseName().getCanonicalForm(),
+            //                        leftSubTree.getDataset().getDatasetName(), leftField, lowKeyValue, highKeyValue);
+            //            }
         }
         return CardinalityInferenceVisitor.UNKNOWN;
     }
@@ -252,20 +250,20 @@ public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
                 || funcIdent == AlgebricksBuiltinFunctions.LT || funcIdent == AlgebricksBuiltinFunctions.GT
                 || funcIdent == AlgebricksBuiltinFunctions.EQ) {
             boolean matches = AccessMethodUtils.analyzeFuncExprArgsForOneConstAndVarAndUpdateAnalysisCtx(funcExpr,
-                    analysisCtx, context, typeEnvironment);
+                    analysisCtx, context, typeEnvironment, false);
             if (!matches) {
                 AccessMethodUtils.analyzeFuncExprArgsForTwoVarsAndUpdateAnalysisCtx(funcExpr, analysisCtx);
             }
         }
     }
 
-    private AIntegerObject extractConstantIntegerExpr(ILogicalExpression expr) throws AsterixException {
+    private AIntegerObject extractConstantIntegerExpr(ILogicalExpression expr) {
         if (expr == null) {
             return null;
         }
         if (expr.getExpressionTag() == LogicalExpressionTag.CONSTANT) {
             IAObject constExprValue = ((AsterixConstantValue) ((ConstantExpression) expr).getValue()).getObject();
-            if (ATypeHierarchy.getTypeDomain(constExprValue.getType().getTypeTag()) == ATypeHierarchy.Domain.INTEGER) {
+            if (constExprValue.getType().getTypeTag() == ATypeTag.INTEGER) {
                 return (AIntegerObject) constExprValue;
             }
         }
@@ -293,14 +291,14 @@ public class InferCardinalityRule extends AbstractIntroduceAccessMethodRule {
                         if (funcVarIndex == -1) {
                             continue;
                         }
-                        List<String> fieldName = getFieldNameFromSubTree(null, subTree, assignOrUnnestIndex, varIndex,
-                                subTree.getRecordType(), -1, null, subTree.getMetaRecordType(), datasetMetaVar,
-                                fieldSource);
-                        if (fieldName.isEmpty()) {
-                            return false;
-                        }
-                        optFuncExpr.setFieldName(funcVarIndex, fieldName, fieldSource.intValue());
-                        optFuncExpr.setOptimizableSubTree(funcVarIndex, subTree);
+                        //                        List<String> fieldName = AccessMethodUtils.getFieldNameAndStepsFromSubTree(null, subTree,
+                        //                                assignOrUnnestIndex, varIndex, subTree.getRecordType(), -1, null,
+                        //                                subTree.getMetaRecordType(), datasetMetaVar, fieldSource, false);
+                        //                        if (fieldName.isEmpty()) {
+                        //                            return false;
+                        //                        }
+                        //                        optFuncExpr.setFieldName(funcVarIndex, fieldName, fieldSource.intValue());
+                        //                        optFuncExpr.setOptimizableSubTree(funcVarIndex, subTree);
                         return true;
                     }
                 }
