@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.hyracks.storage.am.statistics.historgram;
 
 import org.apache.hyracks.api.exceptions.HyracksDataException;
@@ -46,7 +47,7 @@ public class HistogramBuilder extends AbstractIntegerSynopsisBuilder<HistogramSy
             activeBucket++;
             activeBucketElementsNum = 0;
         }
-        synopsis.appendToBucket(activeBucket, synopsis.getBuckets().size(), currTuplePosition, 1.0);
+        synopsis.appendToBucket(activeBucket, 1.0);
         activeBucketElementsNum++;
         lastAddedTuplePosition = currTuplePosition;
     }
@@ -54,7 +55,7 @@ public class HistogramBuilder extends AbstractIntegerSynopsisBuilder<HistogramSy
     @Override
     public void finishSynopsisBuild() throws HyracksDataException {
         if (activeBucketElementsNum == 0) {
-            synopsis.appendToBucket(0, 0, synopsis.getDomainEnd(), 0.0);
+            synopsis.appendToBucket(0, 0.0);
         }
         synopsis.finishBucket(activeBucket);
     }
@@ -62,7 +63,6 @@ public class HistogramBuilder extends AbstractIntegerSynopsisBuilder<HistogramSy
     @Override
     public void writeFailed(ICachedPage page, Throwable failure) {
         // TODO Auto-generated method stub
-
     }
 
     @Override
@@ -80,6 +80,5 @@ public class HistogramBuilder extends AbstractIntegerSynopsisBuilder<HistogramSy
     @Override
     public void force() throws HyracksDataException {
         // TODO Auto-generated method stub
-
     }
 }

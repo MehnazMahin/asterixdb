@@ -95,12 +95,11 @@ public class QuantileSketchTest<T extends Comparable<T>> {
         init(inputData);
         Collections.sort(inputData);
         List<T> approximateRanks = sketch.finish();
-        //        Collections.sort(inputData);
+
         assertEquals(QUANTILE_NUM, approximateRanks.size());
         for (int i = 1; i <= QUANTILE_NUM; i++) {
             // inner loop for all ε-accurate values of the rank
             Set<T> rankValues = new HashSet<>();
-            //rankValues.add(domainMax);
             double rank = ((double) i) / QUANTILE_NUM;
             int remainder = 0;
             if (rank == 1) {

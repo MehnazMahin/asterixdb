@@ -61,9 +61,9 @@ public class LSMBTreeLocalResource extends LsmResource {
     protected final boolean isPrimary;
     protected final int[] btreeFields;
     protected final ICompressorDecompressorFactory compressorDecompressorFactory;
-    protected final boolean isSecondaryNoIncrementalMaintenance;
     protected final IStatisticsFactory statisticsFactory;
     protected final IStatisticsManagerProvider statisticsManagerProvider;
+    protected final boolean isSecondaryNoIncrementalMaintenance;
 
     public LSMBTreeLocalResource(ITypeTraits[] typeTraits, IBinaryComparatorFactory[] cmpFactories,
             int[] bloomFilterKeyFields, double bloomFilterFalsePositiveRate, boolean isPrimary, String path,
@@ -75,9 +75,8 @@ public class LSMBTreeLocalResource extends LsmResource {
             IMetadataPageManagerFactory metadataPageManagerFactory, IVirtualBufferCacheProvider vbcProvider,
             ILSMIOOperationSchedulerProvider ioSchedulerProvider, boolean durable,
             ICompressorDecompressorFactory compressorDecompressorFactory, boolean hasBloomFilter,
-            ITypeTraits nullTypeTraits, INullIntrospector nullIntrospector,
-            boolean isSecondaryNoIncrementalMaintenance,
-            IStatisticsFactory statisticsFactory, IStatisticsManagerProvider statisticsManagerProvider) {
+            ITypeTraits nullTypeTraits, INullIntrospector nullIntrospector, IStatisticsFactory statisticsFactory,
+            IStatisticsManagerProvider statisticsManagerProvider, boolean isSecondaryNoIncrementalMaintenance) {
         super(path, storageManager, typeTraits, cmpFactories, filterTypeTraits, filterCmpFactories, filterFields,
                 opTrackerProvider, ioOpCallbackFactory, pageWriteCallbackFactory, metadataPageManagerFactory,
                 vbcProvider, ioSchedulerProvider, mergePolicyFactory, mergePolicyProperties, durable, nullTypeTraits,

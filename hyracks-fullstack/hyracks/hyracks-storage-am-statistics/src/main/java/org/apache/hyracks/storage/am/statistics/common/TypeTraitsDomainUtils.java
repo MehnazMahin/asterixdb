@@ -33,13 +33,6 @@ public class TypeTraitsDomainUtils {
         if (!typeTraits.isFixedLength())
             throw new HyracksDataException("Cannot calculate domain for variable size type");
         // subtract 1 from fixedLength assuming that 1 byte is reserved for type tag
-        return (1l << (((typeTraits.getFixedLength() - 1) * 8) - 1)) - 1;
-    }
-
-    public static int maxLevel(ITypeTraits typeTraits) throws HyracksDataException {
-        if (!typeTraits.isFixedLength())
-            throw new HyracksDataException("Cannot calculate domain for variable size type");
-        // subtract 1 from fixedLength assuming that 1 byte is reserved for type tag
-        return ((typeTraits.getFixedLength() - 1) * 8);
+        return (1L << (((typeTraits.getFixedLength() - 1) * 8) - 1)) - 1;
     }
 }

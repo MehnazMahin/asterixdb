@@ -248,7 +248,7 @@ public abstract class AbstractIntroduceAccessMethodRule implements IAlgebraicRew
                         // 1) the full-text ftcontains() function
                         // 2) functions that take keyword as an argument, e.g. edit_distance_check() when the threshold is 1
                         || (chosenAccessMethod == InvertedIndexAccessMethod.INSTANCE && isKeywordIndexChosen
-                        && isSameFullTextConfigInIndexAndQuery(analysisCtx, chosenIndex.getIndexDetails()))) {
+                                && isSameFullTextConfigInIndexAndQuery(analysisCtx, chosenIndex.getIndexDetails()))) {
 
                     if (resultVarsToIndexTypesMap.containsKey(indexEntry.getValue())) {
                         List<IndexType> appliedIndexTypes = resultVarsToIndexTypesMap.get(indexEntry.getValue());
@@ -435,7 +435,7 @@ public abstract class AbstractIntroduceAccessMethodRule implements IAlgebraicRew
                     List<IAType> elementTypes = matchedTypes;
                     if (optFuncExpr.getFuncExpr().getFunctionIdentifier() == BuiltinFunctions.FULLTEXT_CONTAINS
                             || optFuncExpr.getFuncExpr()
-                            .getFunctionIdentifier() == BuiltinFunctions.FULLTEXT_CONTAINS_WO_OPTION) {
+                                    .getFunctionIdentifier() == BuiltinFunctions.FULLTEXT_CONTAINS_WO_OPTION) {
                         for (int j = 0; j < matchedTypes.size(); j++) {
                             if (matchedTypes.get(j).getTypeTag() == ATypeTag.ARRAY
                                     || matchedTypes.get(j).getTypeTag() == ATypeTag.MULTISET) {
@@ -539,7 +539,7 @@ public abstract class AbstractIntroduceAccessMethodRule implements IAlgebraicRew
             AccessMethodAnalysisContext analysisCtx) {
         Set<Index> preferredSecondaryIndexes = null;
         for (Iterator<Map.Entry<Index, List<Pair<Integer, Integer>>>> indexExprAndVarIt =
-             analysisCtx.getIteratorForIndexExprsAndVars(); indexExprAndVarIt.hasNext();) {
+                analysisCtx.getIteratorForIndexExprsAndVars(); indexExprAndVarIt.hasNext();) {
             Map.Entry<Index, List<Pair<Integer, Integer>>> indexExprAndVarEntry = indexExprAndVarIt.next();
             Index index = indexExprAndVarEntry.getKey();
             if (index.isSecondaryIndex()) {
@@ -562,7 +562,7 @@ public abstract class AbstractIntroduceAccessMethodRule implements IAlgebraicRew
     private void removeNonPreferredSecondaryIndexes(AccessMethodAnalysisContext analysisCtx,
             Collection<Index> preferredIndexes) {
         for (Iterator<Map.Entry<Index, List<Pair<Integer, Integer>>>> indexExprAndVarIt =
-             analysisCtx.getIteratorForIndexExprsAndVars(); indexExprAndVarIt.hasNext();) {
+                analysisCtx.getIteratorForIndexExprsAndVars(); indexExprAndVarIt.hasNext();) {
             Map.Entry<Index, List<Pair<Integer, Integer>>> indexExprAndVarEntry = indexExprAndVarIt.next();
             Index index = indexExprAndVarEntry.getKey();
             if (index.isSecondaryIndex() && !preferredIndexes.contains(index)) {

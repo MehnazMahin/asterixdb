@@ -106,15 +106,14 @@ public final class LSMBTreeTestContext extends OrderedIndexTestContext {
                     cmpFactories, bloomFilterKeyFields, bloomFilterFalsePositiveRate, mergePolicy, opTracker,
                     ioScheduler, ioOpCallbackFactory, pageWriteCallbackFactory, needKeyDupCheck, filterTypeTraits,
                     filterCmp, btreefields, filterfields, true, metadataPageManagerFactory, updateAware, ITracer.NONE,
-                    NoOpCompressorDecompressorFactory.INSTANCE, true, null, null,
-                    statisticsFactory, statisticsManager);
+                    NoOpCompressorDecompressorFactory.INSTANCE, true, null, null, statisticsFactory, statisticsManager);
         } else {
             lsmTree = LSMBTreeUtil.createLSMTree(ioManager, virtualBufferCaches, file, diskBufferCache, typeTraits,
                     cmpFactories, bloomFilterKeyFields, bloomFilterFalsePositiveRate, mergePolicy, opTracker,
                     ioScheduler, ioOpCallbackFactory, pageWriteCallbackFactory, needKeyDupCheck, null, null, null, null,
-                    true, metadataPageManagerFactory,
-                    updateAware, new Tracer(LSMBTreeTestContext.class.getSimpleName(),
-                            ITraceCategoryRegistry.CATEGORIES_ALL, new TraceCategoryRegistry()),
+                    true, metadataPageManagerFactory, updateAware,
+                    new Tracer(LSMBTreeTestContext.class.getSimpleName(), ITraceCategoryRegistry.CATEGORIES_ALL,
+                            new TraceCategoryRegistry()),
                     NoOpCompressorDecompressorFactory.INSTANCE, true, null, null, statisticsFactory, statisticsManager);
         }
         LSMBTreeTestContext testCtx = new LSMBTreeTestContext(fieldSerdes, lsmTree, filtered);

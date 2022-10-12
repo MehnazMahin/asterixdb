@@ -123,7 +123,7 @@ public class LSMTreeRunner implements IExperimentRunner {
                 new ThreadCountingTracker(), ioScheduler, NoOpIOOperationCallbackFactory.INSTANCE,
                 NoOpPageWriteCallbackFactory.INSTANCE, true, null, null, null, null, true,
                 TestStorageManagerComponentHolder.getMetadataPageManagerFactory(), false, ITracer.NONE,
-                NoOpCompressorDecompressorFactory.INSTANCE, bloomFilterKeyFields != null, null, null);
+                NoOpCompressorDecompressorFactory.INSTANCE, bloomFilterKeyFields != null, null, null, null, null);
     }
 
     @Override

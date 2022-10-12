@@ -191,16 +191,17 @@ public class GlobalVirtualBufferCacheTest {
     }
 
     private void createIndex() throws Exception {
-        dataset = new TestDataset(StorageTestUtils.DATAVERSE_NAME, "ds", StorageTestUtils.DATAVERSE_NAME,
-                StorageTestUtils.DATA_TYPE_NAME, StorageTestUtils.NODE_GROUP_NAME, NoMergePolicyFactory.NAME, null,
+        DataverseName dvName = DataverseName.createSinglePartName(StorageTestUtils.DATAVERSE_NAME);
+        dataset = new TestDataset(dvName, "ds", dvName, StorageTestUtils.DATA_TYPE_NAME,
+                StorageTestUtils.NODE_GROUP_NAME, NoMergePolicyFactory.NAME, null,
                 new InternalDatasetDetails(null, PartitioningStrategy.HASH, StorageTestUtils.PARTITIONING_KEYS, null,
-                        null, null, false, null),
+                        null, null, false, null, null),
                 null, DatasetType.INTERNAL, StorageTestUtils.DATASET_ID, 0, false, false);
 
         filteredDataset = new TestDataset(dvName, "filtered_ds", dvName, StorageTestUtils.DATA_TYPE_NAME,
                 StorageTestUtils.NODE_GROUP_NAME, NoMergePolicyFactory.NAME, null,
                 new InternalDatasetDetails(null, PartitioningStrategy.HASH, StorageTestUtils.PARTITIONING_KEYS, null,
-                        null, null, false, Collections.singletonList("value")),
+                        null, null, false, null, Collections.singletonList("value")),
                 null, DatasetType.INTERNAL, StorageTestUtils.DATASET_ID + 1, 0, false, false);
 
         primaryIndexInfos = new PrimaryIndexInfo[NUM_PARTITIONS];

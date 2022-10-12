@@ -18,4 +18,7 @@
  */
 use test;
 
+set `statistics.synopsis.type` `ContinuousHistogram`;
+set `statistics.synopsis.size` `4`;
+
 compact dataset TestDataset;

@@ -60,20 +60,20 @@ public class TestLsmBtreeLocalResource extends LSMBTreeLocalResource {
             ILSMPageWriteCallbackFactory pageWriteCallbackFactory,
             IMetadataPageManagerFactory metadataPageManagerFactory, IVirtualBufferCacheProvider vbcProvider,
             ILSMIOOperationSchedulerProvider ioSchedulerProvider, boolean durable, boolean hasBloomFilter,
-            boolean isSecondaryNoIncrementalMaintenance, IStatisticsFactory statisticsFactory,
-            IStatisticsManagerProvider statisticsManagerProvider, boolean updateAware) {
+            IStatisticsFactory statisticsFactory, IStatisticsManagerProvider statisticsManagerProvider,
+            boolean updateAware, boolean isSecondaryNoIncrementalMaintenance) {
         super(typeTraits, cmpFactories, bloomFilterKeyFields, bloomFilterFalsePositiveRate, isPrimary, path,
                 storageManager, mergePolicyFactory, mergePolicyProperties, filterTypeTraits, filterCmpFactories,
                 btreeFields, filterFields, opTrackerProvider, ioOpCallbackFactory, pageWriteCallbackFactory,
                 metadataPageManagerFactory, vbcProvider, ioSchedulerProvider, durable,
-                NoOpCompressorDecompressorFactory.INSTANCE, hasBloomFilter, null, null,
-                isSecondaryNoIncrementalMaintenance, statisticsFactory, statisticsManagerProvider);
+                NoOpCompressorDecompressorFactory.INSTANCE, hasBloomFilter, null, null, statisticsFactory,
+                statisticsManagerProvider, isSecondaryNoIncrementalMaintenance);
         this.updateAware = updateAware;
     }
 
     protected TestLsmBtreeLocalResource(IPersistedResourceRegistry registry, JsonNode json, int[] bloomFilterKeyFields,
             double bloomFilterFalsePositiveRate, boolean isPrimary, int[] btreeFields, boolean hasBloomFilter,
-            boolean isSecondaryNoIncrementalMaintenance, boolean updateAware) throws HyracksDataException {
+            boolean updateAware, boolean isSecondaryNoIncrementalMaintenance) throws HyracksDataException {
         super(registry, json, bloomFilterKeyFields, bloomFilterFalsePositiveRate, isPrimary, btreeFields,
                 NoOpCompressorDecompressorFactory.INSTANCE, hasBloomFilter, isSecondaryNoIncrementalMaintenance);
         this.updateAware = updateAware;
@@ -119,6 +119,6 @@ public class TestLsmBtreeLocalResource extends LSMBTreeLocalResource {
         final int[] btreeFields = OBJECT_MAPPER.convertValue(json.get("btreeFields"), int[].class);
         boolean isSecondaryNoIncrementalMaintenance = json.get("isSecondaryNoIncrementalMaintenance").asBoolean();
         return new TestLsmBtreeLocalResource(registry, json, bloomFilterKeyFields, bloomFilterFalsePositiveRate,
-                isPrimary, btreeFields, hasBloomFilter, isSecondaryNoIncrementalMaintenance, false);
+                isPrimary, btreeFields, hasBloomFilter, false, isSecondaryNoIncrementalMaintenance);
     }
 }

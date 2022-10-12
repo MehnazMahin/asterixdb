@@ -74,9 +74,8 @@ import org.junit.Assert;
 public class StorageTestUtils {
 
     public static final IAType[] KEY_TYPES = { BuiltinType.AINT32 };
-    public static final String[] FIELD_NAMES = new String[] { "key", "value" };
-    public static final IAType[] FIELD_TYPES = new IAType[] { BuiltinType.AINT32, BuiltinType.AINT64 };
-    public static final ARecordType RECORD_TYPE = new ARecordType("TestRecordType", FIELD_NAMES, FIELD_TYPES, false);
+    public static final ARecordType RECORD_TYPE = new ARecordType("TestRecordType", new String[] { "key", "value" },
+            new IAType[] { BuiltinType.AINT32, BuiltinType.AINT64 }, false);
     public static final GenerationFunction[] RECORD_GEN_FUNCTION =
             { GenerationFunction.DETERMINISTIC, GenerationFunction.DETERMINISTIC };
     public static final boolean[] UNIQUE_RECORD_FIELDS = { true, false };
@@ -96,11 +95,19 @@ public class StorageTestUtils {
     public static final StorageComponentProvider STORAGE_MANAGER = new StorageComponentProvider();
     public static final List<List<String>> PARTITIONING_KEYS =
             new ArrayList<>(Collections.singletonList(Collections.singletonList(RECORD_TYPE.getFieldNames()[0])));
-    public static final TestDataset DATASET = new TestDataset(DATAVERSE_NAME, DATASET_NAME, DATAVERSE_NAME,
-            DATA_TYPE_NAME, NODE_GROUP_NAME,
-            NoMergePolicyFactory.NAME, null, new InternalDatasetDetails(null, PartitioningStrategy.HASH,
-                    PARTITIONING_KEYS, null, null, null, false, null),
-            Collections.EMPTY_MAP, DatasetType.INTERNAL, DATASET_ID, 0, false, false);
+    public static final TestDataset DATASET;
+
+    static {
+        try {
+            DataverseName dvName = DataverseName.createSinglePartName(DATAVERSE_NAME);
+            DATASET = new TestDataset(dvName, DATASET_NAME, dvName, DATA_TYPE_NAME, NODE_GROUP_NAME,
+                    NoMergePolicyFactory.NAME, null, new InternalDatasetDetails(null, PartitioningStrategy.HASH,
+                            PARTITIONING_KEYS, null, null, null, false, null, null),
+                    null, DatasetType.INTERNAL, DATASET_ID, 0, false, false);
+        } catch (AsterixException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
 
     private StorageTestUtils() {
     }
@@ -275,6 +282,11 @@ public class StorageTestUtils {
         DatasetInfo dsInfo = dsLifecycleMgr.getDatasetInfo(dataset.getDatasetId());
         lsmBtree.createAccessor(NoOpIndexAccessParameters.INSTANCE).scheduleMerge(components);
         dsInfo.waitForIO();
+    }
+
+    public static void updateStats(TestLsmBtree lsmBtree) throws Exception {
+        waitForOperations(lsmBtree);
+        lsmBtree.createAccessor(NoOpIndexAccessParameters.INSTANCE).sendDiskComponentsStatistics();
     }
 
     public static void waitForOperations(ILSMIndex index) throws InterruptedException {

@@ -152,7 +152,7 @@ final class MetadataLockKey implements IMetadataLock.LockKey {
         return new MetadataLockKey(EntityKind.MERGE_POLICY, null, null, mergePolicyName);
     }
 
-    public static MetadataLockKey createStatisticsLockKey(DataverseName dataverse, String fieldName) {
-        return new MetadataLockKey(EntityKind.STATISTICS, null, dataverse, fieldName);
+    public static MetadataLockKey createStatisticsLockKey(DataverseName dataverse, String datasetName) {
+        return new MetadataLockKey(EntityKind.STATISTICS, null, dataverse, datasetName);
     }
 }

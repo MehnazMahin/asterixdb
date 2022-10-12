@@ -54,17 +54,14 @@ public class MetadataConstants {
     public static final String COMPACTION_POLICY_DATASET_NAME = "CompactionPolicy";
     public static final String EXTERNAL_FILE_DATASET_NAME = "ExternalFile";
     public static final String SYNONYM_DATASET_NAME = "Synonym";
-<<<<<<< HEAD
     public static final String FULL_TEXT_CONFIG_DATASET_NAME = "FullTextConfig";
     public static final String FULL_TEXT_FILTER_DATASET_NAME = "FullTextFilter";
+    public static final String STATISTICS_DATASET_NAME = "Statistics";
 
     public static final String PRIMARY_INDEX_PREFIX = "primary_idx_";
     public static final String SAMPLE_INDEX_PREFIX = "sample_idx_";
     public static final String SAMPLE_INDEX_1_PREFIX = SAMPLE_INDEX_PREFIX + "1_";
     public static final String SAMPLE_INDEX_2_PREFIX = SAMPLE_INDEX_PREFIX + "2_";
-=======
-    public static final String STATISTICS_DATASET_NAME = "Statistics";
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
     private MetadataConstants() {
     }

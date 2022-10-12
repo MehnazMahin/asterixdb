@@ -221,6 +221,12 @@ public class LSMTreeIndexAccessor implements ILSMIndexAccessor {
     }
 
     @Override
+    public void sendDiskComponentsStatistics() throws HyracksDataException {
+        ctx.setOperation(IndexOperation.DISK_COMPONENTS_STATISTICS_SEND);
+        lsmHarness.sendDiskComponentsStatistics(ctx);
+    }
+
+    @Override
     public String toString() {
         return getClass().getSimpleName() + ':' + lsmHarness.toString();
     }

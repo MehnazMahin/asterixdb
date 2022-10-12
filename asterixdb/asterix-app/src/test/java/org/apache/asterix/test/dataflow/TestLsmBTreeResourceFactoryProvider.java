@@ -28,7 +28,6 @@ import org.apache.asterix.common.context.IStorageComponentProvider;
 import org.apache.asterix.external.indexing.FilesIndexDescription;
 import org.apache.asterix.external.indexing.IndexingConstants;
 import org.apache.asterix.metadata.api.IResourceFactoryProvider;
-import org.apache.asterix.metadata.declared.BTreeResourceFactoryProvider;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.metadata.entities.Dataset;
 import org.apache.asterix.metadata.entities.Index;
@@ -71,11 +70,8 @@ public class TestLsmBTreeResourceFactoryProvider implements IResourceFactoryProv
         int[] filterFields = IndexUtil.getFilterFields(dataset, index, filterTypeTraits);
         int[] btreeFields = IndexUtil.getBtreeFieldsIfFiltered(dataset, index);
         IStorageComponentProvider storageComponentProvider = mdProvider.getStorageComponentProvider();
-        ITypeTraitProvider typeTraitProvider = storageComponentProvider.getTypeTraitProvider();
-        ITypeTraits[] typeTraits =
-                BTreeResourceFactoryProvider.getTypeTraits(mdProvider, dataset, index, recordType, metaType);
-        IBinaryComparatorFactory[] cmpFactories =
-                BTreeResourceFactoryProvider.getCmpFactories(mdProvider, dataset, index, recordType, metaType);
+        ITypeTraits[] typeTraits = getTypeTraits(mdProvider, dataset, index, recordType, metaType);
+        IBinaryComparatorFactory[] cmpFactories = getCmpFactories(mdProvider, dataset, index, recordType, metaType);
         int[] bloomFilterFields = getBloomFilterFields(dataset, index);
         double bloomFilterFalsePositiveRate = mdProvider.getStorageProperties().getBloomFilterFalsePositiveRate();
         ILSMOperationTrackerFactory opTrackerFactory = dataset.getIndexOperationTrackerFactory(index);
@@ -94,12 +90,13 @@ public class TestLsmBTreeResourceFactoryProvider implements IResourceFactoryProv
                 filterCmpFactories, filterFields, opTrackerFactory, ioOpCallbackFactory, pageWriteCallbackFactory,
                 metadataPageManagerFactory, vbcProvider, ioSchedulerProvider, mergePolicyFactory, mergePolicyProperties,
                 true, bloomFilterFields, bloomFilterFalsePositiveRate, index.isPrimaryIndex(), btreeFields,
-                bloomFilterFields != null, false,
+                bloomFilterFields != null,
                 new TestCountingStatisticsFactory(dataset.getDataverseName().getCanonicalForm(),
                         dataset.getDatasetName(), index.getIndexName(),
-                        StatisticsUtil.computeStatisticsFieldExtractors(typeTraitProvider, recordType,
-                                index.getKeyFieldNames(), index.isPrimaryIndex(), true, null)),
-                hasStatistics ? storageComponentProvider.getStatisticsManagerProvider() : null, updateAware);
+                        StatisticsUtil.computeStatisticsFieldExtractors(storageComponentProvider, recordType,
+                                ((Index.ValueIndexDetails) index.getIndexDetails()).getKeyFieldNames(),
+                                index.isPrimaryIndex(), true, null)),
+                hasStatistics ? storageComponentProvider.getStatisticsManagerProvider() : null, updateAware, false);
     }
 
     private static ITypeTraits[] getTypeTraits(MetadataProvider metadataProvider, Dataset dataset, Index index,

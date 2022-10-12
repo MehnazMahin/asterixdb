@@ -18,20 +18,15 @@
  */
 package org.apache.hyracks.storage.am.statistics.historgram;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
 
-public class ContinuousHistogramSynopsis extends EquiHeightHistogramSynopsis<HistogramBucket> {
+import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 
-    private static final long serialVersionUID = 1L;
+public class NonEquiHeightHistogramSynopsis<T extends HistogramBucket> extends HistogramSynopsis<T> {
 
-    public ContinuousHistogramSynopsis(long domainStart, long domainEnd, long elementsNum, int bucketsNum) {
-        this(domainStart, domainEnd, elementsNum, bucketsNum, new ArrayList<>(bucketsNum));
-    }
-
-    public ContinuousHistogramSynopsis(long domainStart, long domainEnd, long elementsNum, int bucketsNum,
-            List<HistogramBucket> buckets) {
-        super(domainStart, domainEnd, elementsNum, bucketsNum, buckets);
+    public NonEquiHeightHistogramSynopsis(long domainStart, long domainEnd, int bucketsNum,
+            Collection<T> synopsisElements) {
+        super(domainStart, domainEnd, bucketsNum, synopsisElements);
     }
 
     @Override
@@ -39,12 +34,20 @@ public class ContinuousHistogramSynopsis extends EquiHeightHistogramSynopsis<His
         return SynopsisType.ContinuousHistogram;
     }
 
-    public void appendToBucket(int bucketId, double frequency) {
-        if (bucketId >= getBuckets().size()) {
-            getBuckets().add(new HistogramBucket(0L, frequency));
-        } else {
-            getBuckets().get(bucketId).appendToValue(frequency);
-        }
+    @Override
+    public void merge(ISynopsis<T> mergedSynopsis) {
+        throw new UnsupportedOperationException();
     }
 
+    @Override
+    public void appendToBucket(int bucketId, double frequency) {
+        //TODO: Stub method
+    }
+
+    @Override
+    public boolean advanceBucket(int activeBucket, int activeBucketElementsNum, long currTuplePosition,
+            long lastAddedTuplePosition) {
+        //TODO: Stub method
+        return false;
+    }
 }

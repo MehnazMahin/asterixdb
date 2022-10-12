@@ -258,6 +258,22 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
     }
 
     @Override
+    public void sendDiskComponentsStatistics(ILSMIndexOperationContext ictx) throws HyracksDataException {
+        if (isPrimaryIndex()) {
+            throw HyracksDataException.create(ErrorCode.CANNOT_SEND_PRIMARY_INDEX_STATISTICS);
+        }
+        LSMBTreeOpContext ctx = (LSMBTreeOpContext) ictx;
+        List<ILSMComponent> operationalComponents = ctx.getComponentHolder();
+        List<ILSMDiskComponent> diskComponents = new ArrayList<>();
+        for (ILSMComponent component : operationalComponents) {
+            diskComponents.add((ILSMDiskComponent) component);
+        }
+        if (statisticsManager != null) {
+            statisticsManager.sendDiskComponentsStatistics(diskComponents);
+        }
+    }
+
+    @Override
     public ILSMDiskComponent doFlush(ILSMIOOperation operation) throws HyracksDataException {
         LSMBTreeFlushOperation flushOp = (LSMBTreeFlushOperation) operation;
         LSMBTreeMemoryComponent flushingComponent = (LSMBTreeMemoryComponent) flushOp.getFlushingComponent();
@@ -353,7 +369,7 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
                 search(mergeOp.getAccessor().getOpContext(), cursor, rangePred);
                 try {
                     List<ILSMComponent> mergedComponents = mergeOp.getMergingComponents();
-                    long numElements = 0L;
+                    long numElements = getNumberOfElements(mergedComponents);
                     long numAntimatterElements = 0L;
                     if (hasBloomFilter) {
                         //count elements in btree for creating Bloomfilter
@@ -414,6 +430,18 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
         return mergedComponent;
     }
 
+    private long getNumberOfElements(List<ILSMComponent> mergedComponents) throws HyracksDataException {
+        long numElements = 0L;
+        if (hasBloomFilter) {
+            //count elements in btree for creating Bloomfilter
+            for (int i = 0; i < mergedComponents.size(); ++i) {
+                numElements += ((AbstractLSMWithBloomFilterDiskComponent) mergedComponents.get(i)).getBloomFilter()
+                        .getNumElements();
+            }
+        }
+        return numElements;
+    }
+
     @Override
     protected ILSMIOOperation createFlushOperation(AbstractLSMIndexOperationContext opCtx,
             LSMComponentFileReferences componentFileRefs, ILSMIOOperationCallback callback) {
@@ -432,10 +460,7 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
     }
 
     public boolean hasStatistics() {
-        if (!hasStatistics) {
-            return false;
-        }
-        return true;
+        return hasStatistics;
     }
 
     @Override
@@ -544,13 +569,4 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
     protected ICursorFactory getCursorFactory() {
         return cursorFactory;
     }
-    //    public IIndexBulkLoader createBulkLoader(float fillLevel, boolean verifyInput, long numElementsHint)
-    //            throws HyracksDataException {
-    //        AbstractLSMIndexOperationContext opCtx = createOpContext(NoOpIndexAccessParameters.INSTANCE);
-    //        opCtx.get
-    //        opCtx.setIoOperationType(LSMIOOperationType.LOAD);
-    //        ioOpCallback.beforeOperation(opCtx.getIoOperation());
-    //        return new LSMIndexDiskComponentBulkLoader(this, opCtx, getStatisticsAwareIOOperationCallback(ioOpCallback),
-    //                fillLevel, verifyInput, numElementsHint);
-    //    }
 }

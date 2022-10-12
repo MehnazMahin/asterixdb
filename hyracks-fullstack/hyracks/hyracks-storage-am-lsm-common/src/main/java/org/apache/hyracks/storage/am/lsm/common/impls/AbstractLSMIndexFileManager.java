@@ -84,13 +84,8 @@ public abstract class AbstractLSMIndexFileManager implements ILSMIndexFileManage
      * Hides transaction components until they are either committed by removing this file or deleted along with the file
      */
     public static final String TXN_PREFIX = ".T";
-<<<<<<< HEAD
-    public static final long UNINITIALIZED_COMPONENT_SEQ = -1;
-=======
-
     public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss-SSS");
-
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
+    public static final long UNINITIALIZED_COMPONENT_SEQ = -1;
     public static final FilenameFilter COMPONENT_FILES_FILTER = (dir, name) -> !name.startsWith(".");
     protected static final FilenameFilter txnFileNameFilter = (dir, name) -> name.startsWith(TXN_PREFIX);
     protected static FilenameFilter bloomFilterFilter =
@@ -396,6 +391,7 @@ public abstract class AbstractLSMIndexFileManager implements ILSMIndexFileManage
             final String path = baseDir.getChildPath(name);
             return new CompressedFileReference(baseDir.getDeviceHandle(), compDecomp, path, path + LAF_SUFFIX);
         }
+
         return baseDir.getChild(name);
     }
 

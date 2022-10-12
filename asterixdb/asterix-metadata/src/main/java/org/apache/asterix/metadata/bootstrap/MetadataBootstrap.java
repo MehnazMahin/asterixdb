@@ -423,17 +423,18 @@ public class MetadataBootstrap {
         if (createMetadataDataset) {
             final double bloomFilterFalsePositiveRate =
                     appContext.getStorageProperties().getBloomFilterFalsePositiveRate();
-            LSMBTreeLocalResourceFactory lsmBtreeFactory = new LSMBTreeLocalResourceFactory(
-                    storageComponentProvider.getStorageManager(), typeTraits, cmpFactories, null, null, null,
-                    opTrackerFactory, ioOpCallbackFactory, pageWriteCallbackFactory,
-                    storageComponentProvider.getMetadataPageManagerFactory(),
-                    new AsterixVirtualBufferCacheProvider(datasetId),
-                    storageComponentProvider.getIoOperationSchedulerProvider(),
-                    appContext.getMetadataMergePolicyFactory(), StorageConstants.DEFAULT_COMPACTION_POLICY_PROPERTIES,
-                    true, bloomFilterKeyFields, bloomFilterFalsePositiveRate, true, null,
-                    NoOpCompressorDecompressorFactory.INSTANCE, true,
-                    TypeTraitProvider.INSTANCE.getTypeTrait(BuiltinType.ANULL), NullIntrospector.INSTANCE, false,
-                    null, null);
+            LSMBTreeLocalResourceFactory lsmBtreeFactory =
+                    new LSMBTreeLocalResourceFactory(storageComponentProvider.getStorageManager(), typeTraits,
+                            cmpFactories, null, null, null, opTrackerFactory, ioOpCallbackFactory,
+                            pageWriteCallbackFactory, storageComponentProvider.getMetadataPageManagerFactory(),
+                            new AsterixVirtualBufferCacheProvider(datasetId),
+                            storageComponentProvider.getIoOperationSchedulerProvider(),
+                            appContext.getMetadataMergePolicyFactory(),
+                            StorageConstants.DEFAULT_COMPACTION_POLICY_PROPERTIES, true, bloomFilterKeyFields,
+                            bloomFilterFalsePositiveRate, true, null, NoOpCompressorDecompressorFactory.INSTANCE, true,
+                            TypeTraitProvider.INSTANCE.getTypeTrait(BuiltinType.ANULL), NullIntrospector.INSTANCE, null,
+                            null, false);
+
             DatasetLocalResourceFactory dsLocalResourceFactory =
                     new DatasetLocalResourceFactory(datasetId, lsmBtreeFactory);
             // TODO(amoudi) Creating the index should be done through the same code path as
@@ -576,8 +577,9 @@ public class MetadataBootstrap {
                 // and may not exist in an older dataverse
                 && index != MetadataPrimaryIndexes.FULL_TEXT_CONFIG_DATASET
                 && index != MetadataPrimaryIndexes.FULL_TEXT_FILTER_DATASET
-                && index != MetadataPrimaryIndexes.STATISTICS_DATASET)
+                && index != MetadataPrimaryIndexes.STATISTICS_DATASET) {
             throw new IllegalStateException(
                     "attempt to create metadata index " + index.getIndexName() + ". Index should already exist");
+        }
     }
 }

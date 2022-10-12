@@ -357,6 +357,7 @@ public abstract class AbstractLSMIndex implements ILSMIndex {
                 operationalComponents.addAll(ctx.getComponentsToBeReplicated());
                 break;
             case DISK_COMPONENT_SCAN:
+            case DISK_COMPONENTS_STATISTICS_SEND:
                 operationalComponents.addAll(diskComponents);
                 break;
             default:
@@ -367,6 +368,11 @@ public abstract class AbstractLSMIndex implements ILSMIndex {
     @Override
     public void scanDiskComponents(ILSMIndexOperationContext ctx, IIndexCursor cursor) throws HyracksDataException {
         throw HyracksDataException.create(ErrorCode.DISK_COMPONENT_SCAN_NOT_ALLOWED_FOR_SECONDARY_INDEX);
+    }
+
+    @Override
+    public void sendDiskComponentsStatistics(ILSMIndexOperationContext ctx) throws HyracksDataException {
+        throw HyracksDataException.create(ErrorCode.STATISTICS_ALLOWED_ONLY_FOR_BTREE);
     }
 
     @Override
@@ -651,7 +657,6 @@ public abstract class AbstractLSMIndex implements ILSMIndex {
 
     @Override
     public ILSMIOOperationCallback getIOOperationCallback() {
-        //return ioOpCallback;
         return getStatisticsAwareIOOperationCallback(ioOpCallback);
     }
 

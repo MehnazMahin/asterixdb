@@ -216,6 +216,11 @@ public class LSMInvertedIndexAccessor implements ILSMIndexAccessor, IInvertedInd
     }
 
     @Override
+    public void sendDiskComponentsStatistics() throws HyracksDataException {
+        throw HyracksDataException.create(ErrorCode.STATISTICS_ALLOWED_ONLY_FOR_BTREE);
+    }
+
+    @Override
     public String toString() {
         return getClass().getSimpleName() + ':' + lsmHarness.toString();
     }

@@ -72,6 +72,22 @@ public class TestStatisticsManager implements IStatisticsManager {
     }
 
     @Override
+    public void persistComponentStatistics(ILSMDiskComponent newComponent) throws HyracksDataException {
+        for (TestStatisticsEntry e : componentIndex.get(newComponent)) {
+            //
+        }
+    }
+
+    @Override
+    public void sendDiskComponentsStatistics(List<ILSMDiskComponent> diskComponents) throws HyracksDataException {
+        for (ILSMDiskComponent c : diskComponents) {
+            for (TestStatisticsEntry entry : componentIndex.get(c)) {
+                flushed.add(entry.synopsis);
+            }
+        }
+    }
+
+    @Override
     public void addStatistics(ISynopsis synopsis, String dataverse, String dataset, String index, String field,
             boolean isAntimatter, ILSMDiskComponent component) {
         TestStatisticsEntry newEntry = new TestStatisticsEntry(field, synopsis);

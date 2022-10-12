@@ -80,16 +80,15 @@ public class LSMBTreeUtil {
             int[] btreeFields, int[] filterFields, boolean durable, IMetadataPageManagerFactory freePageManagerFactory,
             boolean updateAware, ITracer tracer, ICompressorDecompressorFactory compressorDecompressorFactory,
             boolean hasBloomFilter, ITypeTraits nullTypeTraits, INullIntrospector nullIntrospector,
-            IStatisticsFactory statisticsFactory, IStatisticsManager statisticsManager)
-            throws HyracksDataException {
-        LSMBTreeTupleWriterFactory insertTupleWriterFactory =
-                new LSMBTreeTupleWriterFactory(typeTraits, cmpFactories.length, false, updateAware, nullTypeTraits, nullIntrospector);
-        LSMBTreeTupleWriterFactory deleteTupleWriterFactory =
-                new LSMBTreeTupleWriterFactory(typeTraits, cmpFactories.length, true, updateAware, nullTypeTraits, nullIntrospector);
-        LSMBTreeCopyTupleWriterFactory copyTupleWriterFactory =
-                new LSMBTreeCopyTupleWriterFactory(typeTraits, cmpFactories.length, updateAware, nullTypeTraits, nullIntrospector);
-        LSMBTreeTupleWriterFactory bulkLoadTupleWriterFactory =
-                new LSMBTreeTupleWriterFactory(typeTraits, cmpFactories.length, false, updateAware, nullTypeTraits, nullIntrospector);
+            IStatisticsFactory statisticsFactory, IStatisticsManager statisticsManager) throws HyracksDataException {
+        LSMBTreeTupleWriterFactory insertTupleWriterFactory = new LSMBTreeTupleWriterFactory(typeTraits,
+                cmpFactories.length, false, updateAware, nullTypeTraits, nullIntrospector);
+        LSMBTreeTupleWriterFactory deleteTupleWriterFactory = new LSMBTreeTupleWriterFactory(typeTraits,
+                cmpFactories.length, true, updateAware, nullTypeTraits, nullIntrospector);
+        LSMBTreeCopyTupleWriterFactory copyTupleWriterFactory = new LSMBTreeCopyTupleWriterFactory(typeTraits,
+                cmpFactories.length, updateAware, nullTypeTraits, nullIntrospector);
+        LSMBTreeTupleWriterFactory bulkLoadTupleWriterFactory = new LSMBTreeTupleWriterFactory(typeTraits,
+                cmpFactories.length, false, updateAware, nullTypeTraits, nullIntrospector);
 
         ITreeIndexFrameFactory insertLeafFrameFactory = new BTreeNSMLeafFrameFactory(insertTupleWriterFactory);
         ITreeIndexFrameFactory copyTupleLeafFrameFactory = new BTreeNSMLeafFrameFactory(copyTupleWriterFactory);

@@ -74,12 +74,9 @@ public final class MetadataRecordTypes {
     public static final String FIELD_NAME_INDEX_STRUCTURE = "IndexStructure";
     public static final String FIELD_NAME_INTERNAL_DETAILS = "InternalDetails";
     public static final String FIELD_NAME_IS_ANONYMOUS = "IsAnonymous";
-<<<<<<< HEAD
     public static final String FIELD_NAME_IS_ENFORCED = "IsEnforced";
     public static final String FIELD_NAME_IS_MISSABLE = "IsMissable";
-=======
     public static final String FIELD_NAME_IS_ANTIMATTER = "IsAntimatter";
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     public static final String FIELD_NAME_IS_NULLABLE = "IsNullable";
     public static final String FIELD_NAME_IS_OPEN = "IsOpen";
     public static final String FIELD_NAME_IS_PRIMARY = "IsPrimary";
@@ -91,9 +88,7 @@ public final class MetadataRecordTypes {
     public static final String FIELD_NAME_LIBRARY_NAME = "LibraryName";
     public static final String FIELD_NAME_LAST_REFRESH_TIME = "LastRefreshTime";
     public static final String FIELD_NAME_METATYPE_DATAVERSE_NAME = "MetatypeDataverseName";
-    public static final String FIELD_NAME_MAX_ID = "MaxID";
     public static final String FIELD_NAME_METATYPE_NAME = "MetatypeName";
-    public static final String FIELD_NAME_MIN_ID = "MinID";
     public static final String FIELD_NAME_NAME = "Name";
     public static final String FIELD_NAME_NODE_NAME = "NodeName";
     public static final String FIELD_NAME_NODE_NAMES = "NodeNames";
@@ -102,7 +97,6 @@ public final class MetadataRecordTypes {
     public static final String FIELD_NAME_OBJECT_NAME = "ObjectName";
     public static final String FIELD_NAME_ORDERED_LIST = "OrderedList";
     public static final String FIELD_NAME_PARAMS = "Params";
-    public static final String FIELD_NAME_PARTITION = "Partition";
     public static final String FIELD_NAME_PARTITIONING_KEY = "PartitioningKey";
     public static final String FIELD_NAME_PARTITIONING_STRATEGY = "PartitioningStrategy";
     public static final String FIELD_NAME_PENDING_OP = "PendingOp";
@@ -555,24 +549,18 @@ public final class MetadataRecordTypes {
     public static final int STATISTICS_ARECORD_DATAVERSE_NAME_FIELD_INDEX = 0;
     public static final int STATISTICS_ARECORD_DATASET_NAME_FIELD_INDEX = 1;
     public static final int STATISTICS_ARECORD_INDEX_NAME_FIELD_INDEX = 2;
-    public static final int STATISTICS_ARECORD_FIELD_NAME_FIELD_INDEX = 3;
-    public static final int STATISTICS_ARECORD_ISANTIMATTER_FIELD_INDEX = 4;
-    public static final int STATISTICS_ARECORD_NODE_FIELD_INDEX = 5;
-    public static final int STATISTICS_ARECORD_PARTITION_FIELD_INDEX = 6;
-    public static final int STATISTICS_ARECORD_COMPONENT_MIN_TIMESTAMP_INDEX = 7;
-    public static final int STATISTICS_ARECORD_COMPONENT_MAX_TIMESTAMP_INDEX = 8;
-    public static final int STATISTICS_ARECORD_SYNOPSIS_FIELD_INDEX = 9;
+    public static final int STATISTICS_ARECORD_ISANTIMATTER_FIELD_INDEX = 3;
+    public static final int STATISTICS_ARECORD_FIELD_NAME_FIELD_INDEX = 4;
+    public static final int STATISTICS_ARECORD_SYNOPSIS_FIELD_INDEX = 5;
     public static ARecordType STATISTICS_RECORDTYPE = createRecordType(
             // RecordTypeName
             RECORD_NAME_STATISTICS,
             // FieldNames
             new String[] { FIELD_NAME_DATAVERSE_NAME, FIELD_NAME_DATASET_NAME, FIELD_NAME_INDEX_NAME,
-                    FIELD_NAME_FIELD_NAME, FIELD_NAME_IS_ANTIMATTER, FIELD_NAME_NODE_NAME, FIELD_NAME_PARTITION,
-                    FIELD_NAME_MIN_ID, FIELD_NAME_MAX_ID, FIELD_NAME_SYNOPSIS },
+                    FIELD_NAME_IS_ANTIMATTER, FIELD_NAME_FIELD_NAME, FIELD_NAME_SYNOPSIS },
             // FieldTypes
-            new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING,
-                    BuiltinType.ABOOLEAN, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.AINT64,
-                    BuiltinType.AINT64, STATISTICS_SYNOPSIS_RECORDTYPE },
+            new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ABOOLEAN,
+                    BuiltinType.ASTRING, STATISTICS_SYNOPSIS_RECORDTYPE },
             //IsOpen?
             true);
 

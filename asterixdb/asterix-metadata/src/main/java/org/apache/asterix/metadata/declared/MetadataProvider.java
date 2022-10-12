@@ -477,6 +477,40 @@ public class MetadataProvider implements IMetadataProvider<DataSourceId, String>
         return MetadataManagerUtil.findFullTextFilterDescriptor(mdTxnCtx, dataverseName, ftFilterName);
     }
 
+    public List<Statistics> getMergedStatistics(DataverseName dataverseName, String datasetName, String indexName,
+            String fieldName) throws AlgebricksException {
+        return MetadataManager.INSTANCE.getMergedStatistics(mdTxnCtx, dataverseName, datasetName, indexName, fieldName);
+    }
+
+    @Override
+    public void dropStatistics(String dataverse, String datasetName, String indexName, String node, String partition,
+            boolean isAntimatter, String fieldName) throws AlgebricksException {
+        DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverse);
+        MetadataManager.INSTANCE.dropStatistics(mdTxnCtx, dataverseName, datasetName, indexName, node, partition,
+                isAntimatter, fieldName);
+    }
+
+    //TODO: Delete this function before merge to the main branch
+    @Override
+    public void addStatistics(String dataverse, String datasetName, String indexName, String node, String partition,
+            ComponentStatisticsId componentId, boolean isAntimatter, String fieldName, ISynopsis synopsis)
+            throws AlgebricksException {
+        // add statistics to the metadata using metadata manager
+        DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverse);
+        MetadataManager.INSTANCE.addStatistics(mdTxnCtx, new Statistics(dataverseName, datasetName, indexName, node,
+                partition, componentId, false, isAntimatter, fieldName, synopsis));
+    }
+
+    @Override
+    public void updateStatistics(String dataverse, String datasetName, String indexName, String node, String partition,
+            ComponentStatisticsId componentId, boolean isAntimatter, String fieldName, ISynopsis synopsis)
+            throws AlgebricksException {
+        // add statistics to the metadata using metadata manager
+        DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverse);
+        MetadataManager.INSTANCE.updateStatistics(mdTxnCtx, new Statistics(dataverseName, datasetName, indexName, node,
+                partition, componentId, false, isAntimatter, fieldName, synopsis));
+    }
+
     @Override
     public IFunctionInfo lookupFunction(FunctionIdentifier fid) {
         return BuiltinFunctions.getBuiltinFunctionInfo(fid);

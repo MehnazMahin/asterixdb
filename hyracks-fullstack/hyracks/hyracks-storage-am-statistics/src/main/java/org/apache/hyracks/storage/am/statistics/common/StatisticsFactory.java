@@ -19,23 +19,20 @@
 
 package org.apache.hyracks.storage.am.statistics.common;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisType;
+import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatistics;
 import org.apache.hyracks.storage.am.statistics.historgram.EquiHeightHistogramSynopsis;
 import org.apache.hyracks.storage.am.statistics.historgram.HistogramBucket;
 import org.apache.hyracks.storage.am.statistics.historgram.HistogramBuilder;
 import org.apache.hyracks.storage.am.statistics.historgram.HistogramSynopsis;
-import org.apache.hyracks.storage.am.statistics.sketch.groupcount.GroupCountSketchBuilder;
 import org.apache.hyracks.storage.am.statistics.sketch.quantile.QuantileSketchBuilder;
-import org.apache.hyracks.storage.am.statistics.wavelet.PrefixSumWaveletSynopsis;
-import org.apache.hyracks.storage.am.statistics.wavelet.PrefixSumWaveletTransform;
-import org.apache.hyracks.storage.am.statistics.wavelet.WaveletSynopsis;
-import org.apache.hyracks.storage.am.statistics.wavelet.WaveletTransform;
 
 public class StatisticsFactory extends AbstractStatisticsFactory {
     private static final Logger LOGGER = Logger.getLogger(StatisticsFactory.class.getName());
@@ -44,23 +41,16 @@ public class StatisticsFactory extends AbstractStatisticsFactory {
     private final String datasetName;
     private final String indexName;
     private final int size;
-    private final double energyAccuracy;
-    private final int fanout;
-    private double failureProbability;
     private double accuracy;
 
     public StatisticsFactory(SynopsisType type, String dataverseName, String datasetName, String indexName,
-            List<IFieldExtractor> extractors, int size, int fanout, double failureProbability, double accuracy,
-            double energyAccuracy) {
+            List<IFieldExtractor> extractors, int size, double accuracy) {
         super(extractors, type);
         this.dataverseName = dataverseName;
         this.datasetName = datasetName;
         this.indexName = indexName;
         this.size = size;
-        this.fanout = fanout;
-        this.failureProbability = failureProbability;
         this.accuracy = accuracy;
-        this.energyAccuracy = energyAccuracy;
     }
 
     @Override
@@ -84,25 +74,14 @@ public class StatisticsFactory extends AbstractStatisticsFactory {
             boolean isAntimatter, IFieldExtractor fieldExtractor) throws HyracksDataException {
         long numElements =
                 isAntimatter ? componentStatistics.getNumAntimatterTuples() : componentStatistics.getNumTuples();
-        ISynopsis synopsis = SynopsisFactory.createSynopsis(type, fieldExtractor.getFieldTypeTraits(),
-                SynopsisElementFactory.createSynopsisElementsCollection(type, size), numElements, size);
+        List<ISynopsisElement> synopsisElements = new ArrayList<>(size);
+        ISynopsis synopsis = SynopsisFactory.createSynopsis(type, fieldExtractor.getFieldTypeTraits(), synopsisElements,
+                numElements, size);
         switch (type) {
-            case UniformHistogram:
             case ContinuousHistogram:
-            case EquiWidthHistogram:
                 return new HistogramBuilder((HistogramSynopsis<? extends HistogramBucket>) synopsis, dataverseName,
                         datasetName, indexName, fieldExtractor.getFieldName(), isAntimatter, fieldExtractor,
                         componentStatistics);
-            case PrefixSumWavelet:
-                return new PrefixSumWaveletTransform((PrefixSumWaveletSynopsis) synopsis, dataverseName, datasetName,
-                        indexName, fieldExtractor.getFieldName(), isAntimatter, fieldExtractor, componentStatistics);
-            case Wavelet:
-                return new WaveletTransform((WaveletSynopsis) synopsis, dataverseName, datasetName, indexName,
-                        fieldExtractor.getFieldName(), isAntimatter, fieldExtractor, componentStatistics);
-            case GroupCountSketch:
-                return new GroupCountSketchBuilder((WaveletSynopsis) synopsis, dataverseName, datasetName, indexName,
-                        fieldExtractor.getFieldName(), isAntimatter, fieldExtractor, componentStatistics, fanout,
-                        failureProbability, accuracy, energyAccuracy, numElements, System.currentTimeMillis());
             case QuantileSketch:
                 return new QuantileSketchBuilder((EquiHeightHistogramSynopsis) synopsis, dataverseName, datasetName,
                         indexName, fieldExtractor.getFieldName(), isAntimatter, fieldExtractor, componentStatistics,

@@ -18,7 +18,7 @@
  */
 use test;
 
-set `statistics.synopsis.type` `QuantileSketch`;
+set `statistics.synopsis.type` `ContinuousHistogram`;
 set `statistics.synopsis.size` `256`;
 
 insert into TestDataset ({ "id": 73 , "sid": -92 });

@@ -494,6 +494,24 @@ public class LSMHarness implements ILSMHarness {
     }
 
     @Override
+    public void sendDiskComponentsStatistics(ILSMIndexOperationContext ctx) throws HyracksDataException {
+        if (lsmIndex.isPrimaryIndex()) {
+            throw HyracksDataException.create(ErrorCode.CANNOT_SEND_PRIMARY_INDEX_STATISTICS);
+        }
+        LSMOperationType opType = LSMOperationType.DISK_COMPONENTS_STATISTICS_SEND;
+        getAndEnterComponents(ctx, opType, false);
+        boolean failedOperation = false;
+        try {
+            lsmIndex.sendDiskComponentsStatistics(ctx);
+        } catch (Exception e) {
+            failedOperation = true;
+            throw HyracksDataException.create(e);
+        } finally {
+            exitComponents(ctx, opType, null, failedOperation);
+        }
+    }
+
+    @Override
     public ILSMIOOperation scheduleFlush(ILSMIndexOperationContext ctx) throws HyracksDataException {
         ILSMIOOperation flush;
         LOGGER.debug("Flush is being scheduled on {}", lsmIndex);

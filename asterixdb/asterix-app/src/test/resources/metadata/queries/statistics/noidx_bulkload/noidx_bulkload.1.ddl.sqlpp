@@ -20,12 +20,15 @@ drop  dataverse test if exists;
 create  dataverse test;
 use test;
 
-set `statistics.synopsis.type` `QuantileSketch`;
+set `statistics.synopsis.type` `ContinuousHistogram`;
 set `statistics.synopsis.size` `256`;
 
 create type TestType as open {
   `id`: int8,
-  `sid`: int8
+  `sid`: int8,
+  `age`: int8
 };
-create dataset TestDataset(TestType) primary key id
-hints("statistics"="sid");
+create dataset TestDataset(TestType) primary key id;
+
+create index TestIdx1 on TestDataset(sid);
+create index TestIdx2 on TestDataset(age);

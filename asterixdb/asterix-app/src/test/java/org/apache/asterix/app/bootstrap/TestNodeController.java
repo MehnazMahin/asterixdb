@@ -452,6 +452,43 @@ public class TestNodeController {
         return emptyTupleOp;
     }
 
+    //    public LSMBtreeStatisticsSendOperatorNodePushable getUpdateStatsPipeline(IHyracksTaskContext ctx,
+    //            Dataset dataset, IAType[] primaryKeyTypes, ARecordType recordType, ARecordType metaType,
+    //            int[] filterFields, int[] primaryKeyIndexes, List<Integer> primaryKeyIndicators, StorageComponentProvider storageComponentProvider,
+    //            Index secondaryIndex) throws HyracksDataException, AlgebricksException, RemoteException {
+    //        CcApplicationContext appCtx =
+    //                (CcApplicationContext) ExecutionTestUtil.integrationUtil.cc.getApplicationContext();
+    ////        MetadataProvider mdProvider = MetadataProvider.create(appCtx, null);
+    //        try {
+    //            MetadataTransactionContext mdTxnCtx = MetadataManager.INSTANCE.beginTransaction();
+    //            org.apache.hyracks.algebricks.common.utils.Pair<ILSMMergePolicyFactory, Map<String, String>> mergePolicy =
+    //                    DatasetUtil.getMergePolicyFactory(dataset, mdTxnCtx);
+    //            MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);
+    //            PrimaryIndexInfo primaryIndexInfo =
+    //                    new PrimaryIndexInfo(dataset, primaryKeyTypes, recordType, metaType, mergePolicy.first,
+    //                            mergePolicy.second, filterFields, primaryKeyIndexes, primaryKeyIndicators);
+    //            SecondaryIndexInfo secondaryIndexInfo = new SecondaryIndexInfo(primaryIndexInfo, secondaryIndex);
+    //            JobSpecification spec = new JobSpecification();
+    //            IIndexDataflowHelperFactory indexDataflowHelperFactory =
+    //                    new IndexDataflowHelperFactory(storageComponentProvider.getStorageManager(),
+    //                            secondaryIndexInfo.fileSplitProvider);
+    //            LSMBtreeStatisticsSendOperatorDescriptor sendStatsDesc =
+    //                    new LSMBtreeStatisticsSendOperatorDescriptor(spec, indexDataflowHelperFactory);
+    //            LSMBtreeStatisticsSendOperatorNodePushable sendStatsOp =
+    //                    sendStatsDesc.createPushRuntime(ctx, null, ctx.getTaskAttemptId().getTaskId().getPartition(), 1);
+    ////            IPushRuntime commitOp =
+    ////                    dataset.getCommitRuntimeFactory(mdProvider, secondaryIndexInfo.primaryKeyIndexes, true)
+    ////                            .createPushRuntime(ctx)[0];
+    ////            commitOp.setInputRecordDescriptor(0, primaryIndexInfo.rDesc);
+    //            return sendStatsOp;
+    //        } catch (HyracksDataException e) {
+    //            throw e;
+    //        }
+    ////        finally {
+    ////            mdProvider.getLocks().unlock();
+    ////        }
+    //    }
+
     public LogReader getTransactionLogReader(boolean isRecoveryMode) {
         return (LogReader) getTransactionSubsystem().getLogManager().getLogReader(isRecoveryMode);
     }

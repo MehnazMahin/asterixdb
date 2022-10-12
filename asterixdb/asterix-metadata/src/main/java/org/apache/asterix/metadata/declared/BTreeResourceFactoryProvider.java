@@ -23,7 +23,6 @@ import java.util.Map;
 
 import org.apache.asterix.common.config.DatasetConfig;
 import org.apache.asterix.common.config.DatasetConfig.DatasetType;
-import org.apache.asterix.common.config.DatasetConfig.IndexType;
 import org.apache.asterix.common.config.StatisticsProperties;
 import org.apache.asterix.common.context.AsterixVirtualBufferCacheProvider;
 import org.apache.asterix.common.context.IStorageComponentProvider;
@@ -79,14 +78,14 @@ public class BTreeResourceFactoryProvider implements IResourceFactoryProvider {
         int[] filterFields = IndexUtil.getFilterFields(dataset, index, filterTypeTraits);
         int[] btreeFields = IndexUtil.getBtreeFieldsIfFiltered(dataset, index);
         IStorageComponentProvider storageComponentProvider = mdProvider.getStorageComponentProvider();
-        String statisticsFieldsHint = dataset.getHints().get(DatasetStatisticsHint.NAME);
+        String statisticsFieldsHint =
+                (dataset.getHints() == null) ? null : dataset.getHints().get(DatasetStatisticsHint.NAME);
         SynopsisType statisticsType = getStatsType(mdProvider.getConfig(),
                 mdProvider.getApplicationContext().getStatisticsProperties().getStatisticsSynopsisType());
         String[] unorderedStatisticsFields = null;
         if (!statisticsType.needsSortedOrder() && statisticsFieldsHint != null) {
             unorderedStatisticsFields = statisticsFieldsHint.split(",");
         }
-        ITypeTraitProvider typeTraitProvider = mdProvider.getStorageComponentProvider().getTypeTraitProvider();
         ITypeTraits[] typeTraits = getTypeTraits(mdProvider, dataset, index, recordType, metaType);
         IBinaryComparatorFactory[] cmpFactories = getCmpFactories(mdProvider, dataset, index, recordType, metaType);
         int[] bloomFilterFields = getBloomFilterFields(dataset, index);
@@ -128,36 +127,31 @@ public class BTreeResourceFactoryProvider implements IResourceFactoryProvider {
                     compDecompFactory = NoOpCompressorDecompressorFactory.INSTANCE;
                 }
 
-                boolean isSecondaryNoIncrementalMaintenance = index.getIndexType() == DatasetConfig.IndexType.SAMPLE;
-
                 IStatisticsFactory statisticsFactory = null;
                 if (statisticsType != SynopsisType.None) {
                     int statsSize = getStatsSize(mdProvider.getConfig(),
                             mdProvider.getApplicationContext().getStatisticsProperties().getStatisticsSize());
                     boolean statsOnPrimaryKeys = isStatsOnPrimaryKeysEnabled(mdProvider.getConfig(), mdProvider
                             .getApplicationContext().getStatisticsProperties().isStatisticsOnPrimaryKeysEnabled());
-                    statisticsFactory =
-                            new StatisticsFactory(statisticsType, dataset.getDataverseName().getCanonicalForm(),
-                                    dataset.getDatasetName(), index.getIndexName(),
-                                    StatisticsUtil.computeStatisticsFieldExtractors(typeTraitProvider, recordType,
-                                            index.getKeyFieldNames(), index.isPrimaryIndex(), statsOnPrimaryKeys,
-                                            unorderedStatisticsFields),
-                                    statsSize,
-                                    mdProvider.getApplicationContext().getStatisticsProperties().getSketchFanout(),
-                                    mdProvider.getApplicationContext().getStatisticsProperties()
-                                            .getSketchFailureProbability(),
-                                    mdProvider.getApplicationContext().getStatisticsProperties().getSketchAccuracy(),
-                                    mdProvider.getApplicationContext().getStatisticsProperties()
-                                            .getSketchEnergyAccuracy());
+                    statisticsFactory = new StatisticsFactory(statisticsType,
+                            dataset.getDataverseName().getCanonicalForm(), dataset.getDatasetName(),
+                            index.getIndexName(),
+                            StatisticsUtil.computeStatisticsFieldExtractors(mdProvider.getStorageComponentProvider(),
+                                    recordType, ((Index.ValueIndexDetails) index.getIndexDetails()).getKeyFieldNames(),
+                                    index.isPrimaryIndex(), statsOnPrimaryKeys, unorderedStatisticsFields),
+                            statsSize,
+                            mdProvider.getApplicationContext().getStatisticsProperties().getSketchAccuracy());
                 }
+                boolean isSecondaryNoIncrementalMaintenance = index.getIndexType() == DatasetConfig.IndexType.SAMPLE;
+
                 return new LSMBTreeLocalResourceFactory(storageManager, typeTraits, cmpFactories, filterTypeTraits,
                         filterCmpFactories, filterFields, opTrackerFactory, ioOpCallbackFactory,
                         pageWriteCallbackFactory, metadataPageManagerFactory, vbcProvider, ioSchedulerProvider,
                         mergePolicyFactory, mergePolicyProperties, true, bloomFilterFields,
                         bloomFilterFalsePositiveRate, index.isPrimaryIndex(), btreeFields, compDecompFactory,
                         hasBloomFilter, typeTraitProvider.getTypeTrait(BuiltinType.ANULL), NullIntrospector.INSTANCE,
-                        isSecondaryNoIncrementalMaintenance, statisticsFactory,
-                        mdProvider.getStorageComponentProvider().getStatisticsManagerProvider());
+                        statisticsFactory, mdProvider.getStorageComponentProvider().getStatisticsManagerProvider(),
+                        isSecondaryNoIncrementalMaintenance);
             default:
                 throw new CompilationException(ErrorCode.COMPILATION_UNKNOWN_DATASET_TYPE,
                         dataset.getDatasetType().toString());

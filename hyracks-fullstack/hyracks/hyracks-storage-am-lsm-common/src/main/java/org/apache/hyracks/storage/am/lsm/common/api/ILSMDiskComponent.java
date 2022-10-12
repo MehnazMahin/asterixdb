@@ -128,13 +128,14 @@ public interface ILSMDiskComponent extends ILSMComponent {
      * @param fillFactor
      * @param verifyInput
      * @param numElementsHint
+     * @param numAntimatterElementsHint
      * @param checkIfEmptyIndex
      * @param withFilter
      * @param cleanupEmptyComponent
+     * @param callback
      * @return the created disk component bulk loader
      * @throws HyracksDataException
      */
-
     ILSMDiskComponentBulkLoader createBulkLoader(ILSMIOOperation operation, float fillFactor, boolean verifyInput,
             long numElementsHint, long numAntimatterElementsHint, boolean checkIfEmptyIndex, boolean withFilter,
             boolean cleanupEmptyComponent, IPageWriteCallback callback) throws HyracksDataException;

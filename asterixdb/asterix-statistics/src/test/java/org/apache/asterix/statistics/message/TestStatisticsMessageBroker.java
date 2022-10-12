@@ -36,12 +36,24 @@ public class TestStatisticsMessageBroker implements INCMessageBroker {
 
     @Override
     public void sendMessageToPrimaryCC(ICcAddressedMessage message) throws Exception {
-        ReportFlushComponentStatisticsMessage statsMsg = (ReportFlushComponentStatisticsMessage) message;
-        statsMsg.handleMessage(mdProvider);
+        //ReportFlushComponentStatisticsMessage statsMsg = (ReportFlushComponentStatisticsMessage) message;
+        UpdateStatisticsResponseMessage updateMsg = (UpdateStatisticsResponseMessage) message;
+        updateMsg.handleMessage(mdProvider);
+        //statsMsg.handleMessage(mdProvider);
     }
 
     @Override
     public void sendMessageToCC(CcId ccId, ICcAddressedMessage message) throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void sendRealTimeMessageToPrimaryCC(ICcAddressedMessage message) throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void sendRealTimeMessageToCC(CcId ccId, ICcAddressedMessage message) throws Exception {
         throw new UnsupportedOperationException();
     }
 

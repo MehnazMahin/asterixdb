@@ -23,6 +23,8 @@ import org.apache.hyracks.storage.am.bloomfilter.impls.BloomFilterFactory;
 import org.apache.hyracks.storage.am.lsm.btree.column.impls.btree.ColumnBTree;
 import org.apache.hyracks.storage.am.lsm.btree.impls.LSMBTreeWithBloomFilterDiskComponent;
 import org.apache.hyracks.storage.am.lsm.common.api.ILSMDiskComponentFactory;
+import org.apache.hyracks.storage.am.lsm.common.api.IStatisticsFactory;
+import org.apache.hyracks.storage.am.lsm.common.api.IStatisticsManager;
 import org.apache.hyracks.storage.am.lsm.common.impls.AbstractLSMIndex;
 import org.apache.hyracks.storage.am.lsm.common.impls.LSMComponentFileReferences;
 import org.apache.hyracks.storage.am.lsm.common.impls.TreeIndexFactory;
@@ -33,11 +35,16 @@ import org.apache.hyracks.storage.am.lsm.common.impls.TreeIndexFactory;
 public class LSMColumnBTreeWithBloomFilterDiskComponentFactory implements ILSMDiskComponentFactory {
     private final TreeIndexFactory<ColumnBTree> btreeFactory;
     private final BloomFilterFactory bloomFilterFactory;
+    private final IStatisticsFactory statisticsFactory;
+    private final IStatisticsManager statisticsManager;
 
     public LSMColumnBTreeWithBloomFilterDiskComponentFactory(TreeIndexFactory<ColumnBTree> btreeFactory,
-            BloomFilterFactory bloomFilterFactory) {
+            BloomFilterFactory bloomFilterFactory, IStatisticsFactory statisticsFactory,
+            IStatisticsManager statisticsManager) {
         this.btreeFactory = btreeFactory;
         this.bloomFilterFactory = bloomFilterFactory;
+        this.statisticsFactory = statisticsFactory;
+        this.statisticsManager = statisticsManager;
     }
 
     @Override
@@ -45,7 +52,8 @@ public class LSMColumnBTreeWithBloomFilterDiskComponentFactory implements ILSMDi
             LSMComponentFileReferences cfr) throws HyracksDataException {
         return new LSMColumnBTreeWithBloomFilterDiskComponent(lsmIndex,
                 btreeFactory.createIndexInstance(cfr.getInsertIndexFileReference()),
-                bloomFilterFactory.createBloomFiltertInstance(cfr.getBloomFilterFileReference()), null);
+                bloomFilterFactory.createBloomFiltertInstance(cfr.getBloomFilterFileReference()), null,
+                statisticsFactory, statisticsManager);
     }
 
     public int[] getBloomFilterKeyFields() {

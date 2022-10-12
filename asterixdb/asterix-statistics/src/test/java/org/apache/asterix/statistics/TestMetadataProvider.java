@@ -41,9 +41,11 @@ import org.apache.hyracks.algebricks.core.algebra.metadata.IDataSink;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IDataSource;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IDataSourceIndex;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
+import org.apache.hyracks.algebricks.core.algebra.metadata.IProjectionInfo;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.IOperatorSchema;
 import org.apache.hyracks.algebricks.core.jobgen.impl.JobGenContext;
 import org.apache.hyracks.algebricks.data.IPrinterFactory;
+import org.apache.hyracks.algebricks.runtime.base.AlgebricksPipeline;
 import org.apache.hyracks.algebricks.runtime.base.IPushRuntimeFactory;
 import org.apache.hyracks.api.dataflow.IOperatorDescriptor;
 import org.apache.hyracks.api.dataflow.value.RecordDescriptor;
@@ -143,11 +145,11 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
     }
 
     private static Comparator<ComponentStatisticsId> componentIdComparator = (o1, o2) -> {
-        int startTimestampCompare = o1.getMinTimestamp().compareTo(o2.getMinTimestamp());
+        int startTimestampCompare = o1.getMinTimestamp() == o2.getMinTimestamp() ? 1 : 0;
         if (startTimestampCompare != 0) {
             return startTimestampCompare;
         }
-        return o1.getMaxTimestamp().compareTo(o2.getMaxTimestamp());
+        return o1.getMaxTimestamp() == o2.getMaxTimestamp() ? 1 : 0;
     };
 
     private Map<TestStatisticsID, Collection<TestStatisticsEntry>> stats = new HashMap<>();
@@ -161,8 +163,8 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
     }
 
     @Override
-    public void addStatistics(String dataverseName, String datasetName, String indexName, String fieldName, String node,
-            String partition, ComponentStatisticsId componentId, boolean isAntimatter, ISynopsis synopsis)
+    public void addStatistics(String dataverseName, String datasetName, String indexName, String node, String partition,
+            ComponentStatisticsId componentId, boolean isAntimatter, String fieldName, ISynopsis synopsis)
             throws AlgebricksException {
         TestStatisticsID statsId =
                 new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, node, partition, isAntimatter);
@@ -173,9 +175,20 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
     }
 
     @Override
-    public void dropStatistics(String dataverseName, String datasetName, String indexName, String fieldName,
-            String node, String partition, ComponentStatisticsId componentId, boolean isAntimatter)
-            throws AlgebricksException {
+    public void updateStatistics(String dataverseName, String datasetName, String indexName, String node,
+            String partition, ComponentStatisticsId componentId, boolean isAntimatter, String fieldName,
+            ISynopsis synopsis) throws AlgebricksException {
+        TestStatisticsID statsId =
+                new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, node, partition, isAntimatter);
+        PriorityQueue<TestStatisticsEntry> entries =
+                (PriorityQueue<TestStatisticsEntry>) stats.computeIfAbsent(statsId, (k) -> new PriorityQueue<>());
+        entries.add(new TestStatisticsEntry(componentId, synopsis));
+
+    }
+
+    @Override
+    public void dropStatistics(String dataverseName, String datasetName, String indexName, String node,
+            String partition, boolean isAntimatter, String fieldName) throws AlgebricksException {
         TestStatisticsID statsId =
                 new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, node, partition, isAntimatter);
         PriorityQueue<TestStatisticsEntry> entries =
@@ -183,14 +196,38 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
         Iterator<TestStatisticsEntry> eIt = entries.iterator();
         TestStatisticsEntry currEntry = null;
 
-        while ((currEntry == null || componentIdComparator.compare(currEntry.componentId, componentId) < 0)
-                && eIt.hasNext()) {
+        while (currEntry == null && eIt.hasNext()) {
             currEntry = eIt.next();
         }
-        if (currEntry != null && currEntry.componentId.equals(componentId)) {
+        if (currEntry != null) {
             eIt.remove();
         }
     }
+
+    //    @Override
+    //    public void updateStatistics(String dataverseName, String datasetName, String indexName, String node,
+    //            String partition, ComponentStatisticsId componentId, String fieldName, boolean isAntimatter, ISynopsis synopsis)
+    //            throws AlgebricksException {
+    //        TestStatisticsID statsId =
+    //                new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, node, partition, isAntimatter);
+    //        PriorityQueue<TestStatisticsEntry> entries =
+    //                (PriorityQueue<TestStatisticsEntry>) stats.computeIfAbsent(statsId, (k) -> new PriorityQueue<>());
+    //        Iterator<TestStatisticsEntry> eIt = entries.iterator();
+    //        TestStatisticsEntry currEntry = null;
+    //
+    //        List<TestStatisticsEntry> statisticsEntries = new ArrayList<>();
+    //        while (currEntry == null || eIt.hasNext()) {
+    //            currEntry = eIt.next();
+    //            if (componentId.getMinTimestamp() <= currEntry.componentId.getMinTimestamp()
+    //                    && currEntry.componentId.getMaxTimestamp() <= componentId.getMaxTimestamp()) {
+    //                statisticsEntries.add(currEntry);
+    //            }
+    //        }
+    //        for (TestStatisticsEntry entry : statisticsEntries) {
+    //            entries.remove(entry);
+    //        }
+    //        entries.add(new TestStatisticsEntry(componentId, synopsis));
+    //    }
 
     @Override
     public IDataSource<DataSourceId> findDataSource(DataSourceId id) throws AlgebricksException {
@@ -203,8 +240,8 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
             List<LogicalVariable> projectVariables, boolean projectPushed, List<LogicalVariable> minFilterVars,
             List<LogicalVariable> maxFilterVars, ITupleFilterFactory tupleFilterFactory, long outputLimit,
             IOperatorSchema opSchema, IVariableTypeEnvironment typeEnv, JobGenContext context, JobSpecification jobSpec,
-            Object implConfig) throws AlgebricksException {
-        throw new UnsupportedOperationException();
+            Object implConfig, IProjectionInfo<?> projectionInfo) throws AlgebricksException {
+        return null;
     }
 
     @Override
@@ -242,9 +279,9 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
     public Pair<IOperatorDescriptor, AlgebricksPartitionConstraint> getDeleteRuntime(
             IDataSource<DataSourceId> dataSource, IOperatorSchema propagatedSchema, IVariableTypeEnvironment typeEnv,
             List<LogicalVariable> keys, LogicalVariable payLoadVar, List<LogicalVariable> additionalNonKeyFields,
-            RecordDescriptor inputRecordDesc, JobGenContext context, JobSpecification jobSpec)
-            throws AlgebricksException {
-        throw new UnsupportedOperationException();
+            List<LogicalVariable> additionalNonFilteringFields, RecordDescriptor inputRecordDesc, JobGenContext context,
+            JobSpecification jobSpec) throws AlgebricksException {
+        return null;
     }
 
     @Override
@@ -253,7 +290,8 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
             IOperatorSchema[] inputSchemas, IVariableTypeEnvironment typeEnv, List<LogicalVariable> primaryKeys,
             List<LogicalVariable> secondaryKeys, List<LogicalVariable> additionalNonKeyFields,
             ILogicalExpression filterExpr, RecordDescriptor recordDesc, JobGenContext context, JobSpecification spec,
-            boolean bulkload) throws AlgebricksException {
+            boolean bulkload, List<List<AlgebricksPipeline>> secondaryKeysPipelines, IOperatorSchema pipelineTopSchema)
+            throws AlgebricksException {
         throw new UnsupportedOperationException();
     }
 
@@ -262,7 +300,8 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
             IDataSourceIndex<String, DataSourceId> dataSource, IOperatorSchema propagatedSchema,
             IOperatorSchema[] inputSchemas, IVariableTypeEnvironment typeEnv, List<LogicalVariable> primaryKeys,
             List<LogicalVariable> secondaryKeys, List<LogicalVariable> additionalNonKeyFields,
-            ILogicalExpression filterExpr, RecordDescriptor recordDesc, JobGenContext context, JobSpecification spec)
+            ILogicalExpression filterExpr, RecordDescriptor recordDesc, JobGenContext context, JobSpecification spec,
+            List<List<AlgebricksPipeline>> secondaryKeysPipelines, IOperatorSchema pipelineTopSchema)
             throws AlgebricksException {
         throw new UnsupportedOperationException();
     }
@@ -301,15 +340,21 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
             IDataSourceIndex<String, DataSourceId> dataSourceIndex, IOperatorSchema propagatedSchema,
             IOperatorSchema[] inputSchemas, IVariableTypeEnvironment typeEnv, List<LogicalVariable> primaryKeys,
             List<LogicalVariable> secondaryKeys, List<LogicalVariable> additionalFilteringKeys,
-            ILogicalExpression filterExpr, LogicalVariable upsertIndicatorVar, List<LogicalVariable> prevSecondaryKeys,
-            LogicalVariable prevAdditionalFilteringKeys, RecordDescriptor inputDesc, JobGenContext context,
-            JobSpecification spec) throws AlgebricksException {
+            ILogicalExpression filterExpr, ILogicalExpression prevFilterExpr, LogicalVariable upsertIndicatorVar,
+            List<LogicalVariable> prevSecondaryKeys, LogicalVariable prevAdditionalFilteringKeys,
+            RecordDescriptor inputDesc, JobGenContext context, JobSpecification spec,
+            List<List<AlgebricksPipeline>> secondaryKeysPipelines) throws AlgebricksException {
         throw new UnsupportedOperationException();
     }
 
     @Override
     public Map<String, Object> getConfig() {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isBlockingOperatorDisabled() {
+        return false;
     }
 
     @Override

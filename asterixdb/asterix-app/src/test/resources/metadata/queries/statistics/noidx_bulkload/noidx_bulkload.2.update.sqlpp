@@ -18,7 +18,7 @@
  */
 use test;
 
-set `statistics.synopsis.type` `QuantileSketch`;
+set `statistics.synopsis.type` `ContinuousHistogram`;
 set `statistics.synopsis.size` `256`;
 
 load dataset TestDataset using localfs(("path"="asterix_nc1://data/statistics.adm"),("format"="adm")) pre-sorted;

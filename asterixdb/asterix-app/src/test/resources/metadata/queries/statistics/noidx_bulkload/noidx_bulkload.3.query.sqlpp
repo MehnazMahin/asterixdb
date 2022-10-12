@@ -16,5 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+use test;
+
+update statistics for TestDataset(TestIdx1, TestIdx2);
+
 select DataverseName, DatasetName, IndexName, FieldName, IsAntimatter, Synopsis
  from Metadata.Statistics;

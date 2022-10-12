@@ -22,7 +22,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
@@ -33,15 +32,13 @@ public abstract class AbstractSynopsis<T extends ISynopsisElement> implements IS
 
     protected final long domainEnd;
     protected final long domainStart;
-    protected final int maxLevel;
     protected final int size;
 
     protected Collection<T> synopsisElements;
 
-    public AbstractSynopsis(long domainStart, long domainEnd, int maxLevel, int size, Collection<T> synopsisElements) {
+    public AbstractSynopsis(long domainStart, long domainEnd, int size, Collection<T> synopsisElements) {
         this.domainStart = domainStart;
         this.domainEnd = domainEnd;
-        this.maxLevel = maxLevel;
         this.size = size;
         this.synopsisElements = synopsisElements;
     }
@@ -52,10 +49,6 @@ public abstract class AbstractSynopsis<T extends ISynopsisElement> implements IS
 
     public long getDomainStart() {
         return domainStart;
-    }
-
-    public int getMaxLevel() {
-        return maxLevel;
     }
 
     @Override
@@ -84,7 +77,12 @@ public abstract class AbstractSynopsis<T extends ISynopsisElement> implements IS
         if (o == null || getClass() != o.getClass())
             return false;
         AbstractSynopsis<?> that = (AbstractSynopsis<?>) o;
-        return CollectionUtils.isEqualCollection(synopsisElements, that.synopsisElements);
+        if (that.getDomainStart() == getDomainStart() && that.getDomainEnd() == getDomainEnd()) {
+            if (that.getElements() != null && synopsisElements != null) {
+                return that.getElements().size() == synopsisElements.size();
+            }
+        }
+        return false;
     }
 
     @Override

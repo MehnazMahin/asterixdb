@@ -29,13 +29,13 @@ import org.apache.asterix.app.bootstrap.TestNodeController.PrimaryIndexInfo;
 import org.apache.asterix.app.bootstrap.TestNodeController.SecondaryIndexInfo;
 import org.apache.asterix.app.data.gen.RecordTupleGenerator;
 import org.apache.asterix.app.data.gen.RecordTupleGenerator.GenerationFunction;
-// import org.apache.asterix.app.data.gen.TupleGenerator;
-// import org.apache.asterix.app.data.gen.TupleGenerator.GenerationFunction;
 import org.apache.asterix.app.nc.NCAppRuntimeContext;
 import org.apache.asterix.common.api.IDatasetLifecycleManager;
 import org.apache.asterix.common.config.DatasetConfig.DatasetType;
 import org.apache.asterix.common.config.DatasetConfig.IndexType;
 import org.apache.asterix.common.dataflow.LSMInsertDeleteOperatorNodePushable;
+import org.apache.asterix.common.exceptions.AsterixException;
+import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.common.transactions.ITransactionContext;
 import org.apache.asterix.common.transactions.ITransactionManager;
 import org.apache.asterix.common.transactions.TransactionOptions;
@@ -75,6 +75,7 @@ import org.apache.hyracks.storage.common.ILocalResourceRepository;
 import org.apache.hyracks.storage.common.IResourceLifecycleManager;
 import org.apache.hyracks.storage.common.IStorageManager;
 import org.apache.hyracks.test.support.TestStorageManager;
+import org.apache.hyracks.util.OptionalBoolean;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -115,24 +116,32 @@ public class StatisticsTest {
     private static final List<IAType> INDEX_FIELD_TYPES = Arrays.asList(INDEXED_FIELD_TYPE);
     private static final List<Integer> INDEX_FIELD_INDICATORS = Arrays.asList(Index.RECORD_INDICATOR);
 
-    private static final TestDataset STATS_DATASET = new TestDataset(StorageTestUtils.DATAVERSE_NAME,
-            StorageTestUtils.DATASET_NAME, StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATA_TYPE_NAME,
-            StorageTestUtils.NODE_GROUP_NAME, NoMergePolicyFactory.NAME, null,
-            new InternalDatasetDetails(null, PartitioningStrategy.HASH, StorageTestUtils.PARTITIONING_KEYS, null, null,
-                    null, false, null),
-            new HashMap<>(), DatasetType.INTERNAL, StorageTestUtils.DATASET_ID, 0, true, true);
+    private static final TestDataset STATS_DATASET;
+    static {
+        try {
+            DataverseName dvName = DataverseName.createSinglePartName(StorageTestUtils.DATAVERSE_NAME);
+            STATS_DATASET = new TestDataset(dvName, StorageTestUtils.DATASET_NAME, dvName,
+                    StorageTestUtils.DATA_TYPE_NAME, StorageTestUtils.NODE_GROUP_NAME, NoMergePolicyFactory.NAME, null,
+                    new InternalDatasetDetails(null, PartitioningStrategy.HASH, StorageTestUtils.PARTITIONING_KEYS,
+                            null, null, null, false, null, null),
+                    new HashMap<>(), DatasetType.INTERNAL, StorageTestUtils.DATASET_ID, 0, true, true);
+        } catch (AsterixException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
     private static final TestStatisticsID keyFieldStatisticsID =
-            new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME.getCanonicalForm(), StorageTestUtils.DATASET_NAME,
+            new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATASET_NAME,
                     StorageTestUtils.DATASET_NAME, KEY_FIELD_NAME, "asterix_nc1", "partition_0", false);
     private static final TestStatisticsID keyFieldAntimatterStatisticsID =
-            new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME.getCanonicalForm(), StorageTestUtils.DATASET_NAME,
+            new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATASET_NAME,
                     StorageTestUtils.DATASET_NAME, KEY_FIELD_NAME, "asterix_nc1", "partition_0", true);
     private static final TestStatisticsID indexedFieldStatisticsID =
-            new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME.getCanonicalForm(), StorageTestUtils.DATASET_NAME,
-                    INDEX_NAME, INDEXED_FIELD_NAME, "asterix_nc1", "partition_0", false);
+            new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATASET_NAME, INDEX_NAME,
+                    INDEXED_FIELD_NAME, "asterix_nc1", "partition_0", false);
     private static final TestStatisticsID indexedFieldAntimatterStatisticsID =
-            new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME.getCanonicalForm(), StorageTestUtils.DATASET_NAME,
-                    INDEX_NAME, INDEXED_FIELD_NAME, "asterix_nc1", "partition_0", true);
+            new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATASET_NAME, INDEX_NAME,
+                    INDEXED_FIELD_NAME, "asterix_nc1", "partition_0", true);
 
     @BeforeClass
     public static void startTestCluster() throws Exception {
@@ -183,6 +192,7 @@ public class StatisticsTest {
     }
 
     private void createIndex() throws Exception {
+        DataverseName dvName = DataverseName.createSinglePartName(StorageTestUtils.DATAVERSE_NAME);
         StorageComponentProvider storageProvider = new StorageComponentProvider() {
             @Override
             public IStorageManager getStorageManager() {
@@ -192,8 +202,10 @@ public class StatisticsTest {
         PrimaryIndexInfo primaryIndexInfo = nc.createPrimaryIndex(STATS_DATASET, StorageTestUtils.KEY_TYPES,
                 RECORD_TYPE, StorageTestUtils.META_TYPE, null, storageProvider, StorageTestUtils.KEY_INDEXES,
                 StorageTestUtils.KEY_INDICATORS_LIST, PARTITION);
-        Index secondaryIndex = new Index(StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATASET_NAME, INDEX_NAME,
-                IndexType.BTREE, INDEX_FIELD_NAMES, INDEX_FIELD_INDICATORS, INDEX_FIELD_TYPES, false, false, false, 0);
+        Index secondaryIndex = new Index(dvName, StorageTestUtils.DATASET_NAME, INDEX_NAME,
+                IndexType.BTREE, new Index.ValueIndexDetails(INDEX_FIELD_NAMES, INDEX_FIELD_INDICATORS,
+                        INDEX_FIELD_TYPES, false, OptionalBoolean.empty(), OptionalBoolean.empty(), null, null, null),
+                false, false, 0);
         SecondaryIndexInfo secondaryIndexInfo =
                 nc.createSecondaryIndex(primaryIndexInfo, secondaryIndex, storageProvider, 0);
         IndexDataflowHelperFactory[] idxHelperFactories = new IndexDataflowHelperFactory[] {
@@ -309,8 +321,10 @@ public class StatisticsTest {
     @Test
     public void testFlushStatistics() throws Exception {
         insertRecords(NUM_INSERT_RECORDS);
+        //        nc.getTransactionManager().commitTransaction(txnCtx.getTxnId());
+        //        StorageTestUtils.flush(dsLifecycleMgr, primaryLsmBtree, STATS_DATASET, false);
         nc.getTransactionManager().commitTransaction(txnCtx.getTxnId());
-        StorageTestUtils.flush(dsLifecycleMgr, primaryLsmBtree, STATS_DATASET, false);
+        //        StorageTestUtils.updateStats(primaryLsmBtree);
 
         Collection<TestStatisticsEntry> keyFieldStatsEntries = testMdProvider.getStats(keyFieldStatisticsID);
         Collection<TestStatisticsEntry> valueFieldStatsEntries = testMdProvider.getStats(indexedFieldStatisticsID);

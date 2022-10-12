@@ -16,15 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-drop  dataverse test if exists;
-create  dataverse test;
 use test;
 
-set `statistics.synopsis.type` `EquiWidthHistogram`;
-set `statistics.synopsis.size` `256`;
-set `statistics.primary.keys.enabled` `true`;
+update statistics for TestDataset(TestIndex);
 
-create type TestType as open {
-  `id`: int8
-};
-create dataset TestDataset(TestType) primary key id;
+select DataverseName, DatasetName, IndexName, FieldName, IsAntimatter, Synopsis
+ from Metadata.Statistics;

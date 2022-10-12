@@ -34,6 +34,8 @@ import org.apache.hyracks.storage.am.lsm.common.api.ILSMComponent;
 import org.apache.hyracks.storage.am.lsm.common.api.ILSMComponentFilter;
 import org.apache.hyracks.storage.am.lsm.common.api.ILSMIOOperation;
 import org.apache.hyracks.storage.am.lsm.common.api.ILSMIOOperation.LSMIOOperationType;
+import org.apache.hyracks.storage.am.lsm.common.api.IStatisticsFactory;
+import org.apache.hyracks.storage.am.lsm.common.api.IStatisticsManager;
 import org.apache.hyracks.storage.am.lsm.common.impls.AbstractLSMIndex;
 import org.apache.hyracks.storage.am.lsm.common.impls.ChainedLSMDiskComponentBulkLoader;
 import org.apache.hyracks.storage.am.lsm.common.impls.IChainedComponentBulkLoader;
@@ -43,14 +45,15 @@ import org.apache.hyracks.storage.common.buffercache.IPageWriteCallback;
 public class LSMColumnBTreeWithBloomFilterDiskComponent extends LSMBTreeWithBloomFilterDiskComponent {
 
     public LSMColumnBTreeWithBloomFilterDiskComponent(AbstractLSMIndex lsmIndex, BTree btree, BloomFilter bloomFilter,
-            ILSMComponentFilter filter) {
-        super(lsmIndex, btree, bloomFilter, filter);
+            ILSMComponentFilter filter, IStatisticsFactory statisticsFactory, IStatisticsManager statisticsManager) {
+        super(lsmIndex, btree, bloomFilter, filter, statisticsFactory, statisticsManager);
     }
 
     @Override
     public ChainedLSMDiskComponentBulkLoader createBulkLoader(ILSMIOOperation operation, float fillFactor,
-            boolean verifyInput, long numElementsHint, boolean checkIfEmptyIndex, boolean withFilter,
-            boolean cleanupEmptyComponent, IPageWriteCallback callback) throws HyracksDataException {
+            boolean verifyInput, long numElementsHint, long numAntimatterElementsHint, boolean checkIfEmptyIndex,
+            boolean withFilter, boolean cleanupEmptyComponent, IPageWriteCallback callback)
+            throws HyracksDataException {
         ChainedLSMDiskComponentBulkLoader chainedBulkLoader =
                 new ChainedLSMDiskComponentBulkLoader(operation, this, cleanupEmptyComponent);
         if (withFilter && getLsmIndex().getFilterFields() != null) {
@@ -60,8 +63,9 @@ public class LSMColumnBTreeWithBloomFilterDiskComponent extends LSMBTreeWithBloo
         //Add index bulkloader
         chainedBulkLoader.addBulkLoader(createColumnIndexBulkLoader(operation, fillFactor, verifyInput, callback));
 
-        if (numElementsHint > 0) {
-            chainedBulkLoader.addBulkLoader(createBloomFilterBulkLoader(numElementsHint, callback));
+        if (numElementsHint + numAntimatterElementsHint > 0) {
+            chainedBulkLoader
+                    .addBulkLoader(createBloomFilterBulkLoader(numElementsHint + numAntimatterElementsHint, callback));
         }
 
         callback.initialize(chainedBulkLoader);

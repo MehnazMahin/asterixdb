@@ -50,15 +50,14 @@ public class TestLsmBtreeLocalResourceFactory extends LSMBTreeLocalResourceFacto
             ILSMIOOperationSchedulerProvider ioSchedulerProvider, ILSMMergePolicyFactory mergePolicyFactory,
             Map<String, String> mergePolicyProperties, boolean durable, int[] bloomFilterKeyFields,
             double bloomFilterFalsePositiveRate, boolean isPrimary, int[] btreeFields, boolean hasBloomFilter,
-            boolean isSecondaryNoIncrementalMaintenance, IStatisticsFactory statisticsFactory,
-            IStatisticsManagerProvider statisticsManagerProvider, boolean updateAware) {
+            IStatisticsFactory statisticsFactory, IStatisticsManagerProvider statisticsManagerProvider,
+            boolean updateAware, boolean isSecondaryNoIncrementalMaintenance) {
         super(storageManager, typeTraits, cmpFactories, filterTypeTraits, filterCmpFactories, filterFields,
                 opTrackerFactory, ioOpCallbackFactory, pageWriteCallbackFactory, metadataPageManagerFactory,
                 vbcProvider, ioSchedulerProvider, mergePolicyFactory, mergePolicyProperties, durable,
                 bloomFilterKeyFields, bloomFilterFalsePositiveRate, isPrimary, btreeFields,
-                NoOpCompressorDecompressorFactory.INSTANCE, hasBloomFilter, null, null,
-                isSecondaryNoIncrementalMaintenance, statisticsFactory,
-                statisticsManagerProvider);
+                NoOpCompressorDecompressorFactory.INSTANCE, hasBloomFilter, null, null, statisticsFactory,
+                statisticsManagerProvider, isSecondaryNoIncrementalMaintenance);
         this.updateAware = updateAware;
     }
 
@@ -68,7 +67,7 @@ public class TestLsmBtreeLocalResourceFactory extends LSMBTreeLocalResourceFacto
                 bloomFilterFalsePositiveRate, isPrimary, fileRef.getRelativePath(), storageManager, mergePolicyFactory,
                 mergePolicyProperties, filterTypeTraits, filterCmpFactories, btreeFields, filterFields,
                 opTrackerProvider, ioOpCallbackFactory, pageWriteCallbackFactory, metadataPageManagerFactory,
-                vbcProvider, ioSchedulerProvider, durable, hasBloomFilter, isSecondaryNoIncrementalMaintenance,
-                statisticsFactory, statisticsManagerProvider, updateAware);
+                vbcProvider, ioSchedulerProvider, durable, hasBloomFilter, statisticsFactory, statisticsManagerProvider,
+                updateAware, isSecondaryNoIncrementalMaintenance);
     }
 }

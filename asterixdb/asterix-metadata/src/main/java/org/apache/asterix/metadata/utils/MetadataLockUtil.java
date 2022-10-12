@@ -112,6 +112,16 @@ public class MetadataLockUtil implements IMetadataLockUtil {
     }
 
     @Override
+    public void updateStatisticsBegin(IMetadataLockManager lockMgr, LockList locks, DataverseName dataverseName,
+            String datasetName, List<String> indexNames) throws AlgebricksException {
+        lockMgr.acquireDataverseReadLock(locks, dataverseName);
+        lockMgr.acquireDatasetReadLock(locks, dataverseName, datasetName);
+        for (String indexName : indexNames) {
+            lockMgr.acquireStatisticsReadLock(locks, dataverseName, indexName);
+        }
+    }
+
+    @Override
     public void createTypeBegin(IMetadataLockManager lockMgr, LockList locks, DataverseName dataverseName,
             String typeName) throws AlgebricksException {
         lockMgr.acquireDataverseReadLock(locks, dataverseName);
@@ -338,13 +348,10 @@ public class MetadataLockUtil implements IMetadataLockUtil {
         lockMgr.acquireDatasetExclusiveModificationLock(locks, dataverseName, datasetName);
     }
 
-    public static void insertStatisticsBegin(IMetadataLockManager lockMgr, LockList locks, String statisticsDataset,
-            DataverseName dataverseName, String datasetName, String indexName, String fieldName, String nodeName,
-            String partitionId, boolean isAntimatter) throws AlgebricksException {
+    public static void insertStatisticsBegin(IMetadataLockManager lockMgr, LockList locks, DataverseName dataverseName,
+            String datasetName, String indexPartition) throws AlgebricksException {
         lockMgr.acquireDataverseReadLock(locks, dataverseName);
         lockMgr.acquireDatasetModifyLock(locks, dataverseName, datasetName);
-        lockMgr.acquireStatisticsWriteLock(locks, dataverseName, datasetName, indexName, fieldName, nodeName,
-                partitionId, isAntimatter);
+        lockMgr.acquireStatisticsWriteLock(locks, dataverseName, indexPartition);
     }
-
 }
