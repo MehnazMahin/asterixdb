@@ -162,11 +162,8 @@ public class NCAppRuntimeContext implements INcApplicationContext {
     private IReceptionist receptionist;
     private ICacheManager cacheManager;
     private IConfigValidator configValidator;
-<<<<<<< HEAD
     private IDiskWriteRateLimiterProvider diskWriteRateLimiterProvider;
-=======
     private IStatisticsManager statisticsManager;
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
     public NCAppRuntimeContext(INCServiceContext ncServiceContext, NCExtensionManager extensionManager,
             IPropertiesFactory propertiesFactory) {

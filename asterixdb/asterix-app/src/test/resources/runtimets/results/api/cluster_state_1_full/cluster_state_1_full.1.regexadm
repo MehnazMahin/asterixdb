@@ -50,11 +50,9 @@
     "replication\.strategy" : "none",
     "replication\.timeout" : 120,
     "ssl\.enabled" : false,
-<<<<<<< HEAD
     "storage.compression.block" : "snappy",
     "storage.global.cleanup.timeout" : 600,
     "storage.lsm.bloomfilter.falsepositiverate" : 0.01,
-=======
     "statistics\.merge\.strategy" : "TimeBased",
     "statistics\.merge\.strategy\.timeout" : -1,
     "statistics.primary.keys.enabled" : false,
@@ -64,7 +62,6 @@
     "statistics\.sketch\.fanout" : 2,
     "statistics\.synopsis\.size" : 100,
     "statistics\.synopsis\.type" : "None",
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     "txn\.commitprofiler\.enabled" : false,
     "txn\.commitprofiler\.reportinterval" : 5,
     "txn\.dataset\.checkpoint\.interval" : 3600,

@@ -136,11 +136,7 @@ public interface IStatementExecutor {
         private Profile profile;
         private ProfileType profileType;
         private long totalWarningsCount;
-<<<<<<< HEAD
         private long compileTime;
-=======
-        private long optimizeTime;
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
         public long getCount() {
             return count;
@@ -192,7 +188,6 @@ public interface IStatementExecutor {
             this.profileType = profileType;
         }
 
-<<<<<<< HEAD
         public void setCompileTime(long compileTime) {
             this.compileTime = compileTime;
         }
@@ -200,16 +195,6 @@ public interface IStatementExecutor {
         public long getCompileTime() {
             return compileTime;
         }
-=======
-        public long getOptimizationTime() {
-            return optimizeTime;
-        }
-
-        public void setOptimizeTime(long optimizeTime) {
-            this.optimizeTime = optimizeTime;
-        }
-
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     }
 
     class Profile implements Serializable {
@@ -237,7 +222,6 @@ public interface IStatementExecutor {
         public ObjectNode getProfile() {
             return profile;
         }
-
     }
 
     class StatementProperties implements Serializable {
@@ -304,12 +288,7 @@ public interface IStatementExecutor {
      */
     JobSpecification rewriteCompileQuery(IClusterInfoCollector clusterInfoCollector, MetadataProvider metadataProvider,
             Query query, ICompiledDmlStatement dmlStatement, Map<String, IAObject> statementParameters,
-<<<<<<< HEAD
             IRequestParameters requestParameters) throws RemoteException, AlgebricksException, ACIDException;
-=======
-            IStatementRewriter statementRewriter, Stats stats)
-            throws RemoteException, AlgebricksException, ACIDException;
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
     /**
      * returns the active dataverse for an entity or a statement

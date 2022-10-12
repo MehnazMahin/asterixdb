@@ -23,11 +23,8 @@ import java.util.Map;
 
 import org.apache.asterix.common.config.DatasetConfig;
 import org.apache.asterix.common.config.DatasetConfig.DatasetType;
-<<<<<<< HEAD
-=======
 import org.apache.asterix.common.config.DatasetConfig.IndexType;
 import org.apache.asterix.common.config.StatisticsProperties;
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 import org.apache.asterix.common.context.AsterixVirtualBufferCacheProvider;
 import org.apache.asterix.common.context.IStorageComponentProvider;
 import org.apache.asterix.common.exceptions.CompilationException;
@@ -131,10 +128,8 @@ public class BTreeResourceFactoryProvider implements IResourceFactoryProvider {
                     compDecompFactory = NoOpCompressorDecompressorFactory.INSTANCE;
                 }
 
-<<<<<<< HEAD
                 boolean isSecondaryNoIncrementalMaintenance = index.getIndexType() == DatasetConfig.IndexType.SAMPLE;
 
-=======
                 IStatisticsFactory statisticsFactory = null;
                 if (statisticsType != SynopsisType.None) {
                     int statsSize = getStatsSize(mdProvider.getConfig(),
@@ -155,19 +150,14 @@ public class BTreeResourceFactoryProvider implements IResourceFactoryProvider {
                                     mdProvider.getApplicationContext().getStatisticsProperties()
                                             .getSketchEnergyAccuracy());
                 }
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
                 return new LSMBTreeLocalResourceFactory(storageManager, typeTraits, cmpFactories, filterTypeTraits,
                         filterCmpFactories, filterFields, opTrackerFactory, ioOpCallbackFactory,
                         pageWriteCallbackFactory, metadataPageManagerFactory, vbcProvider, ioSchedulerProvider,
                         mergePolicyFactory, mergePolicyProperties, true, bloomFilterFields,
                         bloomFilterFalsePositiveRate, index.isPrimaryIndex(), btreeFields, compDecompFactory,
-<<<<<<< HEAD
                         hasBloomFilter, typeTraitProvider.getTypeTrait(BuiltinType.ANULL), NullIntrospector.INSTANCE,
-                        isSecondaryNoIncrementalMaintenance);
-=======
-                        hasBloomFilter, statisticsFactory,
+                        isSecondaryNoIncrementalMaintenance, statisticsFactory,
                         mdProvider.getStorageComponentProvider().getStatisticsManagerProvider());
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
             default:
                 throw new CompilationException(ErrorCode.COMPILATION_UNKNOWN_DATASET_TYPE,
                         dataset.getDatasetType().toString());

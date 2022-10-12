@@ -31,11 +31,7 @@ import org.apache.hyracks.algebricks.core.algebra.expressions.IMergeAggregationE
 import org.apache.hyracks.algebricks.core.algebra.expressions.IMissableTypeComputer;
 import org.apache.hyracks.algebricks.core.algebra.prettyprint.IPlanPrettyPrinter;
 import org.apache.hyracks.algebricks.core.rewriter.base.AlgebricksOptimizationContext;
-<<<<<<< HEAD
 import org.apache.hyracks.algebricks.core.rewriter.base.IOptimizationContextFactory;
-=======
-import org.apache.hyracks.algebricks.core.rewriter.base.ICardinalityEstimator;
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 import org.apache.hyracks.algebricks.core.rewriter.base.PhysicalOptimizationConfig;
 import org.apache.hyracks.api.exceptions.IWarningCollector;
 
@@ -50,7 +46,6 @@ public final class AsterixOptimizationContext extends AlgebricksOptimizationCont
             IExpressionEvalSizeComputer expressionEvalSizeComputer,
             IMergeAggregationExpressionFactory mergeAggregationExpressionFactory,
             IExpressionTypeComputer expressionTypeComputer, IMissableTypeComputer nullableTypeComputer,
-<<<<<<< HEAD
             IConflictingTypeResolver conflictingTypeResovler, PhysicalOptimizationConfig physicalOptimizationConfig,
             AlgebricksPartitionConstraint clusterLocations, IPlanPrettyPrinter prettyPrinter,
             IWarningCollector warningCollector) {
@@ -63,14 +58,6 @@ public final class AsterixOptimizationContext extends AlgebricksOptimizationCont
     public AsterixOptimizationContext(AsterixOptimizationContext from) {
         super(from);
         dataSourceMap = from.dataSourceMap.clone();
-=======
-            IConflictingTypeResolver conflictingTypeResovler, ICardinalityEstimator cardinalityEstimator,
-            PhysicalOptimizationConfig physicalOptimizationConfig, AlgebricksPartitionConstraint clusterLocations,
-            IPlanPrettyPrinter prettyPrinter, IWarningCollector warningCollector) {
-        super(varCounter, expressionEvalSizeComputer, mergeAggregationExpressionFactory, expressionTypeComputer,
-                nullableTypeComputer, conflictingTypeResovler, cardinalityEstimator, physicalOptimizationConfig,
-                clusterLocations, prettyPrinter, warningCollector);
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     }
 
     public void addDataSource(DataSource dataSource) {

@@ -28,17 +28,12 @@ import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.algebricks.core.algebra.plan.PlanStabilityVerifier;
 import org.apache.hyracks.algebricks.core.algebra.plan.PlanStructureVerifier;
 import org.apache.hyracks.algebricks.core.algebra.prettyprint.IPlanPrettyPrinter;
-import org.apache.hyracks.algebricks.core.algebra.prettyprint.LogicalOperatorPrettyPrintVisitor;
 import org.apache.hyracks.algebricks.core.algebra.properties.FunctionalDependency;
 import org.apache.hyracks.algebricks.core.algebra.properties.ILogicalPropertiesVector;
 import org.apache.hyracks.algebricks.core.algebra.properties.INodeDomain;
 import org.apache.hyracks.algebricks.core.algebra.typing.ITypingContext;
 import org.apache.hyracks.algebricks.core.rewriter.base.IAlgebraicRewriteRule;
-<<<<<<< HEAD
 import org.apache.hyracks.algebricks.core.rewriter.base.IOptimizationContextFactory;
-=======
-import org.apache.hyracks.algebricks.core.rewriter.base.ICardinalityEstimator;
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 import org.apache.hyracks.algebricks.core.rewriter.base.PhysicalOptimizationConfig;
 import org.apache.hyracks.api.exceptions.IWarningCollector;
 
@@ -91,10 +86,6 @@ public interface IOptimizationContext extends ITypingContext, IVariableContext {
     public void updatePrimaryKeys(Map<LogicalVariable, LogicalVariable> mappedVars);
 
     public IPlanPrettyPrinter getPrettyPrinter();
-
-    public ICardinalityEstimator getCardinalityEstimator();
-
-    public LogicalOperatorPrettyPrintVisitor getPrettyPrintVisitor();
 
     public INodeDomain getComputationNodeDomain();
 

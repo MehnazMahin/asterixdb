@@ -467,7 +467,6 @@ public class MetadataProvider implements IMetadataProvider<DataSourceId, String>
         return MetadataManagerUtil.findSynonym(mdTxnCtx, dataverseName, synonymName);
     }
 
-<<<<<<< HEAD
     public FullTextConfigMetadataEntity findFullTextConfig(DataverseName dataverseName, String ftConfigName)
             throws AlgebricksException {
         return MetadataManagerUtil.findFullTextConfigDescriptor(mdTxnCtx, dataverseName, ftConfigName);
@@ -476,27 +475,6 @@ public class MetadataProvider implements IMetadataProvider<DataSourceId, String>
     public FullTextFilterMetadataEntity findFullTextFilter(DataverseName dataverseName, String ftFilterName)
             throws AlgebricksException {
         return MetadataManagerUtil.findFullTextFilterDescriptor(mdTxnCtx, dataverseName, ftFilterName);
-=======
-    public List<Statistics> getMergedStatistics(DataverseName dataverseName, String datasetName, String indexName,
-            String fieldName) throws AlgebricksException {
-        return MetadataManager.INSTANCE.getMergedStatistics(mdTxnCtx, dataverseName, datasetName, indexName, fieldName);
-    }
-
-    @Override
-    public void addStatistics(String dataverseName, String datasetName, String indexName, String fieldName, String node,
-            String partition, ComponentStatisticsId componentId, boolean isAntimatter, ISynopsis synopsis)
-            throws AlgebricksException {
-        MetadataManager.INSTANCE.addStatistics(mdTxnCtx, new Statistics(dataverseName, datasetName, indexName,
-                fieldName, node, partition, componentId, false, isAntimatter, synopsis));
-    }
-
-    @Override
-    public void dropStatistics(String dataverseName, String datasetName, String indexName, String fieldName,
-            String node, String partition, ComponentStatisticsId componentId, boolean isAntimatter)
-            throws AlgebricksException {
-        MetadataManager.INSTANCE.dropStatistics(mdTxnCtx, dataverseName, datasetName, indexName, fieldName, node,
-                partition, componentId, isAntimatter);
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     }
 
     @Override

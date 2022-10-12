@@ -77,17 +77,10 @@ public class TestDataset extends Dataset {
             throws AlgebricksException {
         ITypeTraits[] filterTypeTraits = DatasetUtil.computeFilterTypeTraits(this, recordType, metaType);
         IBinaryComparatorFactory[] filterCmpFactories = DatasetUtil.computeFilterBinaryComparatorFactories(this,
-<<<<<<< HEAD
-                recordType, metaType, mdProvider.getStorageComponentProvider().getComparatorFactoryProvider());
-        IResourceFactory resourceFactory =
-                TestLsmBTreeResourceFactoryProvider.INSTANCE.getResourceFactory(mdProvider, this, index, recordType,
-                        metaType, mergePolicyFactory, mergePolicyProperties, filterTypeTraits, filterCmpFactories);
-=======
                 recordType, mdProvider.getStorageComponentProvider().getComparatorFactoryProvider());
         IResourceFactory resourceFactory = new TestLsmBTreeResourceFactoryProvider(hasStatistics, updateAware)
                 .getResourceFactory(mdProvider, this, index, recordType, metaType, mergePolicyFactory,
                         mergePolicyProperties, filterTypeTraits, filterCmpFactories);
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
         return new DatasetLocalResourceFactory(getDatasetId(), resourceFactory);
     }
 

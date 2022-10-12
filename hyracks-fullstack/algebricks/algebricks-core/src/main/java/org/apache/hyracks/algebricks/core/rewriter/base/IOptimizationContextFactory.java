@@ -32,14 +32,8 @@ public interface IOptimizationContextFactory {
             IExpressionEvalSizeComputer expressionEvalSizeComputer,
             IMergeAggregationExpressionFactory mergeAggregationExpressionFactory,
             IExpressionTypeComputer expressionTypeComputer, IMissableTypeComputer missableTypeComputer,
-<<<<<<< HEAD
             IConflictingTypeResolver conflictintTypeResolver, PhysicalOptimizationConfig physicalOptimizationConfig,
             AlgebricksPartitionConstraint clusterLocations, IWarningCollector warningCollector);
 
     IOptimizationContext cloneOptimizationContext(IOptimizationContext oc);
-=======
-            IConflictingTypeResolver conflictintTypeResolver, ICardinalityEstimator cardinalityEstimator,
-            PhysicalOptimizationConfig physicalOptimizationConfig, AlgebricksPartitionConstraint clusterLocations,
-            IWarningCollector warningCollector);
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 }

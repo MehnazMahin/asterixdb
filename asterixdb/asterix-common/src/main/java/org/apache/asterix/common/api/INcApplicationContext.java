@@ -139,7 +139,6 @@ public interface INcApplicationContext extends IApplicationContext {
      */
     ICacheManager getCacheManager();
 
-<<<<<<< HEAD
     /**
      * @return the library manager
      */
@@ -149,7 +148,6 @@ public interface INcApplicationContext extends IApplicationContext {
      * @return the disk write rate limiter provider
      */
     IDiskWriteRateLimiterProvider getDiskWriteRateLimiterProvider();
-=======
+
     IStatisticsManager getStatisticsManager();
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 }

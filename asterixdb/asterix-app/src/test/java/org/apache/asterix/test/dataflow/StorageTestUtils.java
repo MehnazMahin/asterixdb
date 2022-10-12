@@ -96,27 +96,11 @@ public class StorageTestUtils {
     public static final StorageComponentProvider STORAGE_MANAGER = new StorageComponentProvider();
     public static final List<List<String>> PARTITIONING_KEYS =
             new ArrayList<>(Collections.singletonList(Collections.singletonList(RECORD_TYPE.getFieldNames()[0])));
-<<<<<<< HEAD
-    public static final TestDataset DATASET;
-
-    static {
-        try {
-            DataverseName dvName = DataverseName.createSinglePartName(DATAVERSE_NAME);
-            DATASET = new TestDataset(dvName, DATASET_NAME, dvName, DATA_TYPE_NAME, NODE_GROUP_NAME,
-                    NoMergePolicyFactory.NAME, null, new InternalDatasetDetails(null, PartitioningStrategy.HASH,
-                            PARTITIONING_KEYS, null, null, null, false, null, null),
-                    null, DatasetType.INTERNAL, DATASET_ID, 0);
-        } catch (AsterixException e) {
-            throw new IllegalArgumentException(e);
-        }
-    }
-=======
     public static final TestDataset DATASET = new TestDataset(DATAVERSE_NAME, DATASET_NAME, DATAVERSE_NAME,
             DATA_TYPE_NAME, NODE_GROUP_NAME,
             NoMergePolicyFactory.NAME, null, new InternalDatasetDetails(null, PartitioningStrategy.HASH,
                     PARTITIONING_KEYS, null, null, null, false, null),
             Collections.EMPTY_MAP, DatasetType.INTERNAL, DATASET_ID, 0, false, false);
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
     private StorageTestUtils() {
     }

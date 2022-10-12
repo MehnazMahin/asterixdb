@@ -42,14 +42,11 @@ import org.apache.asterix.metadata.entities.Library;
 import org.apache.asterix.metadata.entities.NodeGroup;
 import org.apache.asterix.metadata.entities.Statistics;
 import org.apache.asterix.metadata.utils.MetadataUtil;
-<<<<<<< HEAD
 import org.apache.asterix.runtime.fulltext.AbstractFullTextFilterDescriptor;
 import org.apache.asterix.runtime.fulltext.FullTextConfigDescriptor;
 import org.apache.hyracks.storage.am.lsm.invertedindex.fulltext.FullTextFilterType;
 import org.apache.hyracks.storage.am.lsm.invertedindex.fulltext.IFullTextFilterEvaluatorFactory;
-=======
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
 /**
  * Used to implement serializable transactions against the MetadataCache.

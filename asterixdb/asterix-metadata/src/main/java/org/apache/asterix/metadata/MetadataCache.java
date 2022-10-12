@@ -46,11 +46,8 @@ import org.apache.asterix.metadata.entities.NodeGroup;
 import org.apache.asterix.metadata.entities.Statistics;
 import org.apache.asterix.metadata.entities.Synonym;
 import org.apache.asterix.metadata.utils.IndexUtil;
-<<<<<<< HEAD
 import org.apache.asterix.runtime.fulltext.FullTextConfigDescriptor;
-=======
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
 /**
  * Caches metadata entities such that the MetadataManager does not have to
@@ -87,16 +84,13 @@ public class MetadataCache {
     protected final Map<DataverseName, Map<String, FeedConnection>> feedConnections = new HashMap<>();
     // Key is synonym dataverse. Key of value map is the synonym name
     protected final Map<DataverseName, Map<String, Synonym>> synonyms = new HashMap<>();
-<<<<<<< HEAD
     // Key is DataverseName. Key of value map is the full-text filter name
     protected final Map<DataverseName, Map<String, FullTextFilterMetadataEntity>> fullTextFilters = new HashMap<>();
     // Key is DataverseName. Key of value map is the full-text config name
     protected final Map<DataverseName, Map<String, FullTextConfigMetadataEntity>> fullTextConfigs = new HashMap<>();
-=======
     // Key is dataverse name. Key of value map is dataset name. Key of value map of value map is index name.
     protected final Map<String, Map<String, Map<String, Map<String, Map<String, Map<String, Map<ComponentStatisticsId, Statistics>>>[]>>>> statistics =
             new HashMap<>();
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
     // Atomically executes all metadata operations in ctx's log.
     public void commit(MetadataTransactionContext ctx) {
@@ -131,27 +125,6 @@ public class MetadataCache {
                     synchronized (indexes) {
                         synchronized (datatypes) {
                             synchronized (functions) {
-<<<<<<< HEAD
-                                synchronized (fullTextConfigs) {
-                                    synchronized (fullTextFilters) {
-                                        synchronized (adapters) {
-                                            synchronized (libraries) {
-                                                synchronized (compactionPolicies) {
-                                                    synchronized (synonyms) {
-                                                        dataverses.clear();
-                                                        nodeGroups.clear();
-                                                        datasets.clear();
-                                                        indexes.clear();
-                                                        datatypes.clear();
-                                                        functions.clear();
-                                                        fullTextConfigs.clear();
-                                                        fullTextFilters.clear();
-                                                        adapters.clear();
-                                                        libraries.clear();
-                                                        compactionPolicies.clear();
-                                                        synonyms.clear();
-                                                    }
-=======
                                 synchronized (adapters) {
                                     synchronized (libraries) {
                                         synchronized (compactionPolicies) {
@@ -168,7 +141,6 @@ public class MetadataCache {
                                                     compactionPolicies.clear();
                                                     synonyms.clear();
                                                     statistics.clear();
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
                                                 }
                                             }
                                         }
@@ -333,37 +305,6 @@ public class MetadataCache {
                 synchronized (indexes) {
                     synchronized (datatypes) {
                         synchronized (functions) {
-<<<<<<< HEAD
-                            synchronized (fullTextConfigs) {
-                                synchronized (fullTextFilters) {
-                                    synchronized (adapters) {
-                                        synchronized (libraries) {
-                                            synchronized (feeds) {
-                                                synchronized (compactionPolicies) {
-                                                    synchronized (synonyms) {
-                                                        datasets.remove(dataverse.getDataverseName());
-                                                        indexes.remove(dataverse.getDataverseName());
-                                                        datatypes.remove(dataverse.getDataverseName());
-                                                        adapters.remove(dataverse.getDataverseName());
-                                                        compactionPolicies.remove(dataverse.getDataverseName());
-                                                        List<FunctionSignature> markedFunctionsForRemoval =
-                                                                new ArrayList<>();
-                                                        for (FunctionSignature signature : functions.keySet()) {
-                                                            if (signature.getDataverseName()
-                                                                    .equals(dataverse.getDataverseName())) {
-                                                                markedFunctionsForRemoval.add(signature);
-                                                            }
-                                                        }
-                                                        for (FunctionSignature signature : markedFunctionsForRemoval) {
-                                                            functions.remove(signature);
-                                                        }
-                                                        fullTextConfigs.remove(dataverse.getDataverseName());
-                                                        fullTextFilters.remove(dataverse.getDataverseName());
-                                                        libraries.remove(dataverse.getDataverseName());
-                                                        feeds.remove(dataverse.getDataverseName());
-                                                        synonyms.remove(dataverse.getDataverseName());
-                                                        return dataverses.remove(dataverse.getDataverseName());
-=======
                             synchronized (adapters) {
                                 synchronized (libraries) {
                                     synchronized (feeds) {
@@ -382,7 +323,6 @@ public class MetadataCache {
                                                                 .equals(dataverse.getDataverseName())) {
                                                             markedFunctionsForRemoval.add(signature);
                                                         }
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
                                                     }
                                                     for (FunctionSignature signature : markedFunctionsForRemoval) {
                                                         functions.remove(signature);

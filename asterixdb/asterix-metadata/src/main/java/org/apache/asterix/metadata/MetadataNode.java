@@ -765,7 +765,6 @@ public class MetadataNode implements IMetadataNode {
     }
 
     @Override
-<<<<<<< HEAD
     public boolean isDataverseNotEmpty(TxnId txnId, DataverseName dataverseName) throws AlgebricksException {
         return !getDataverseDatatypes(txnId, dataverseName).isEmpty()
                 || !getDataverseDatasets(txnId, dataverseName).isEmpty()
@@ -777,24 +776,15 @@ public class MetadataNode implements IMetadataNode {
                 || !getDataverseSynonyms(txnId, dataverseName).isEmpty()
                 || !getDataverseFullTextConfigs(txnId, dataverseName).isEmpty()
                 || !getDataverseFullTextFilters(txnId, dataverseName).isEmpty();
-=======
-    public void dropDataset(TxnId txnId, DataverseName dataverseName, String datasetName)
-            throws AlgebricksException, RemoteException {
-        dropDataset(txnId, dataverseName, datasetName, false);
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     }
 
     @Override
     public void dropDataset(TxnId txnId, DataverseName dataverseName, String datasetName, boolean force)
-<<<<<<< HEAD
-            throws AlgebricksException {
-=======
             throws AlgebricksException, RemoteException {
         if (!force) {
             confirmDatasetCanBeDeleted(txnId, dataverseName, datasetName);
         }
 
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
         Dataset dataset = getDataset(txnId, dataverseName, datasetName);
         if (dataset == null) {
             throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE,
@@ -814,7 +804,6 @@ public class MetadataNode implements IMetadataNode {
             try {
                 datasetTuple = getTupleToBeDeleted(txnId, MetadataPrimaryIndexes.DATASET_DATASET, searchKey);
 
-<<<<<<< HEAD
                 switch (dataset.getDatasetType()) {
                     case INTERNAL:
                         // Delete entry(s) from the 'indexes' dataset.
@@ -823,7 +812,6 @@ public class MetadataNode implements IMetadataNode {
                             for (Index index : datasetIndexes) {
                                 dropIndex(txnId, dataverseName, datasetName, index.getIndexName());
                             }
-=======
                 // Delete entry(s) from the 'indexes' dataset.
                 List<Index> datasetIndexes = getDatasetIndexes(txnId, dataverseName, datasetName);
                 if (datasetIndexes != null) {
@@ -851,7 +839,6 @@ public class MetadataNode implements IMetadataNode {
                         // Drop all external files in this dataset.
                         for (ExternalFile file : datasetFiles) {
                             dropExternalFile(txnId, dataverseName, file.getDatasetName(), file.getFileNumber());
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
                         }
                         break;
                     case EXTERNAL:
@@ -2536,7 +2523,6 @@ public class MetadataNode implements IMetadataNode {
     }
 
     @Override
-<<<<<<< HEAD
     public void updateLibrary(TxnId txnId, Library library) throws AlgebricksException {
         dropLibrary(txnId, library.getDataverseName(), library.getName(), true);
         addLibrary(txnId, library);
@@ -2552,7 +2538,7 @@ public class MetadataNode implements IMetadataNode {
     public void updateDatatype(TxnId txnId, Datatype datatype) throws AlgebricksException {
         dropDatatype(txnId, datatype.getDataverseName(), datatype.getDatatypeName(), true);
         addDatatype(txnId, datatype);
-=======
+
     public void addStatistics(TxnId txnId, Statistics statistics) throws MetadataException, RemoteException {
         try {
             // Insert into the 'Statistics' dataset.
@@ -2765,7 +2751,6 @@ public class MetadataNode implements IMetadataNode {
             throw new MetadataException(e);
         }
 
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
     }
 
     public ITxnIdFactory getTxnIdFactory() {

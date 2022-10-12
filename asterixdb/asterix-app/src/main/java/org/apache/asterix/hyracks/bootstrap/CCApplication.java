@@ -89,11 +89,7 @@ import org.apache.asterix.metadata.bootstrap.AsterixStateProxy;
 import org.apache.asterix.metadata.lock.MetadataLockManager;
 import org.apache.asterix.metadata.utils.MetadataLockUtil;
 import org.apache.asterix.runtime.job.resource.JobCapacityController;
-<<<<<<< HEAD
-=======
-import org.apache.asterix.runtime.utils.CcApplicationContext;
 import org.apache.asterix.statistics.common.StatisticsMerger;
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 import org.apache.asterix.translator.IStatementExecutorFactory;
 import org.apache.asterix.translator.Receptionist;
 import org.apache.asterix.util.MetadataBuiltinFunctions;
@@ -134,12 +130,8 @@ public class CCApplication extends BaseCCApplication {
     protected WebManager webManager;
     protected ICcApplicationContext appCtx;
     private IJobCapacityController jobCapacityController;
-<<<<<<< HEAD
     private HyracksConnection hcc;
-=======
-    private IHyracksClientConnection hcc;
     private StatisticsMerger merger;
->>>>>>> 582921f37a36499b5b06f1b753e3e076c83d3910
 
     @Override
     public void init(IServiceContext serviceCtx) throws Exception {
