@@ -20,8 +20,8 @@ package org.apache.asterix.statistics.message;
 
 import java.util.List;
 
+import org.apache.asterix.metadata.declared.StatisticsEntry;
 import org.apache.asterix.statistics.StatisticsMetadataUtil;
-import org.apache.asterix.statistics.common.StatisticsManager.StatisticsEntry;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;

@@ -18,8 +18,6 @@
  */
 package org.apache.asterix.statistics.message;
 
-import static org.apache.asterix.metadata.bootstrap.MetadataPrimaryIndexes.PROPERTIES_STATISTICS;
-
 import java.rmi.RemoteException;
 import java.util.logging.Logger;
 
@@ -30,9 +28,9 @@ import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.metadata.MetadataManager;
 import org.apache.asterix.metadata.MetadataTransactionContext;
 import org.apache.asterix.metadata.declared.MetadataProvider;
+import org.apache.asterix.metadata.declared.StatisticsEntry;
 import org.apache.asterix.metadata.utils.MetadataLockUtil;
 import org.apache.asterix.statistics.StatisticsMetadataUtil;
-import org.apache.asterix.statistics.common.StatisticsManager.StatisticsEntry;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
@@ -94,9 +92,11 @@ public class ReportFlushComponentStatisticsMessage implements ICcAddressedMessag
             mdTxnCtx = MetadataManager.INSTANCE.beginTransaction();
             mdProvider.setMetadataTxnContext(mdTxnCtx);
             bActiveTxn = true;
+            //            MetadataLockUtil.insertStatisticsBegin(cs.getMetadataLockManager(), mdProvider.getLocks(),
+            //                    PROPERTIES_STATISTICS.getDatasetName(), DataverseName.createFromCanonicalForm(entry.getDataverse()),
+            //                    entry.getDataset(), entry.getIndex(), entry.getField(), node, partition, isAntimatter);
             MetadataLockUtil.insertStatisticsBegin(cs.getMetadataLockManager(), mdProvider.getLocks(),
-                    PROPERTIES_STATISTICS.getDatasetName(), DataverseName.createFromCanonicalForm(entry.getDataverse()),
-                    entry.getDataset(), entry.getIndex(), entry.getField(), node, partition, isAntimatter);
+                    DataverseName.createFromCanonicalForm(entry.getDataverse()), entry.getDataset(), entry.getIndex());
 
             handleMessage(mdProvider);
             MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);

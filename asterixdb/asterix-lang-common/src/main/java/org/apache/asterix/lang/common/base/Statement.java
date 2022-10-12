@@ -113,5 +113,6 @@ public interface Statement extends ILangExpression {
         EXTERNAL_DATASET_REFRESH,
         SUBSCRIBE_FEED,
         EXTENSION,
+        STATISTICS_UPDATE,
     }
 }

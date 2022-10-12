@@ -84,6 +84,7 @@ import org.apache.asterix.lang.common.statement.SynonymDropStatement;
 import org.apache.asterix.lang.common.statement.TypeDecl;
 import org.apache.asterix.lang.common.statement.TypeDropStatement;
 import org.apache.asterix.lang.common.statement.UpdateStatement;
+import org.apache.asterix.lang.common.statement.UpdateStatisticsStatement;
 import org.apache.asterix.lang.common.statement.ViewDecl;
 import org.apache.asterix.lang.common.statement.ViewDropStatement;
 import org.apache.asterix.lang.common.statement.WriteStatement;
@@ -111,6 +112,8 @@ public interface ILangVisitor<R, T> {
     R visit(UpdateStatement update, T arg) throws CompilationException;
 
     R visit(UpdateClause del, T arg) throws CompilationException;
+
+    R visit(UpdateStatisticsStatement cis, T arg) throws CompilationException;
 
     R visit(TypeReferenceExpression tre, T arg) throws CompilationException;
 
