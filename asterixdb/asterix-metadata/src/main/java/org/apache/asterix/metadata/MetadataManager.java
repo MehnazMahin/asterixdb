@@ -67,6 +67,7 @@ import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.api.dataflow.value.ITypeTraits;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
+import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisElementType;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisType;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
@@ -536,7 +537,7 @@ public abstract class MetadataManager implements IMetadataManager {
                 try {
                     List<ISynopsisElement> synopsisElements = new ArrayList<>(maxSynopsisElements);
                     AbstractSynopsis mergedSynopsis = SynopsisFactory.createSynopsis(type, keyTypeTraits,
-                            synopsisElements, maxSynopsisElements, synopsisSize);
+                            synopsisElements, maxSynopsisElements, synopsisSize, SynopsisElementType.Long);
                     //trigger stats merge routine manually
                     mergedSynopsis.merge(synopsisList);
                     mergedStats = new Statistics(dataverseName, datasetName, indexName, Statistics.MERGED_STATS_ID,
@@ -603,22 +604,20 @@ public abstract class MetadataManager implements IMetadataManager {
             boolean isAntimatter, String fieldName) throws AlgebricksException {
         // First look in the context to see if this transaction created the
         // requested statistics itself (but it is still uncommitted).
-        Statistics stats =
-                ctx.getFieldStatistics(dataverseName, datasetName, indexName, node, partition, isAntimatter, fieldName);
+        Statistics stats = ctx.getFieldStatistics(dataverseName, datasetName, indexName, isAntimatter, fieldName);
         if (stats != null) {
             // Don't add the statistics to the cache, since it is still uncommitted.
             return stats;
         }
 
-        stats = cache.getFieldStatistics(dataverseName, datasetName, indexName, node, partition, isAntimatter,
-                fieldName);
+        stats = cache.getFieldStatistics(dataverseName, datasetName, indexName, isAntimatter, fieldName);
         if (stats != null) {
             // Statistics is already in the cache, don't add it again.
             return stats;
         }
         try {
-            stats = metadataNode.getFieldStatistics(ctx.getTxnId(), dataverseName, datasetName, indexName, node,
-                    partition, isAntimatter, fieldName);
+            stats = metadataNode.getFieldStatistics(ctx.getTxnId(), dataverseName, datasetName, indexName, isAntimatter,
+                    fieldName);
         } catch (RemoteException e) {
             throw new MetadataException(e);
         }
@@ -1254,8 +1253,10 @@ public abstract class MetadataManager implements IMetadataManager {
         if (!statistics.isTemp()) {
             try {
                 Statistics stat = cache.addStatisticsToCache(statistics);
-                if (stat != null) {
-                    metadataNode.addStatistics(ctx.getTxnId(), stat);
+                if (stat == null) {
+                    metadataNode.addStatistics(ctx.getTxnId(), statistics);
+                } else if (!stat.equals(statistics)) {
+                    metadataNode.updateStatistics(ctx.getTxnId(), statistics);
                 }
             } catch (RemoteException e) {
                 throw new MetadataException(e);
@@ -1270,7 +1271,9 @@ public abstract class MetadataManager implements IMetadataManager {
             try {
                 Statistics stat = cache.addStatisticsToCache(statistics);
                 if (stat != null) {
-                    metadataNode.updateStatistics(ctx.getTxnId(), statistics);
+                    if (!stat.equals(statistics)) {
+                        metadataNode.updateStatistics(ctx.getTxnId(), statistics);
+                    }
                 } else {
                     metadataNode.addStatistics(ctx.getTxnId(), statistics);
                 }
@@ -1285,16 +1288,15 @@ public abstract class MetadataManager implements IMetadataManager {
     public void dropStatistics(MetadataTransactionContext ctx, DataverseName dataverseName, String datasetName,
             String indexName, String node, String partition, boolean isAntimatter, String fieldName)
             throws AlgebricksException {
-        Statistics stat =
-                ctx.getFieldStatistics(dataverseName, datasetName, indexName, node, partition, isAntimatter, fieldName);
+        Statistics stat = ctx.getFieldStatistics(dataverseName, datasetName, indexName, isAntimatter, fieldName);
         if (stat == null) {
-            stat = cache.getFieldStatistics(dataverseName, datasetName, indexName, node, partition, isAntimatter,
-                    fieldName);
+            stat = cache.getFieldStatistics(dataverseName, datasetName, indexName, isAntimatter, fieldName);
         }
-        if (stat == null || !stat.isTemp()) {
+        //if (stat == null || !stat.isTemp()) {
+        if (stat != null) { //TODO: check for merge operation before merging with master
             try {
-                metadataNode.dropStatistics(ctx.getTxnId(), dataverseName, datasetName, indexName, node, partition,
-                        isAntimatter, fieldName);
+                metadataNode.dropStatistics(ctx.getTxnId(), dataverseName, datasetName, indexName, isAntimatter,
+                        fieldName);
             } catch (RemoteException e) {
                 throw new MetadataException(e);
             }

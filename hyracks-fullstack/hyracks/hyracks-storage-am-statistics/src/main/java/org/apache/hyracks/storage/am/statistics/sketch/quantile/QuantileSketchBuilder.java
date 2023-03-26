@@ -37,7 +37,7 @@ public class QuantileSketchBuilder
             String field, boolean isAntimatter, IFieldExtractor fieldExtractor, ComponentStatistics componentStatistics,
             double accuracy) {
         super(synopsis, dataverse, dataset, index, field, isAntimatter, fieldExtractor, componentStatistics);
-        sketch = new QuantileSketch<>(synopsis.getSize(), synopsis.getDomainStart(), accuracy);
+        sketch = new QuantileSketch<>(synopsis.getSize(), (Long) synopsis.getDomainStart(), accuracy);
     }
 
     @Override
@@ -50,14 +50,14 @@ public class QuantileSketchBuilder
         long bucketHeight = 0;
         for (Long r : ranks) {
             if (prev != null && r != prev) {
-                synopsis.getElements().add(new HistogramBucket(prev, bucketHeight));
+                synopsis.getElements().add(new HistogramBucket(prev, prev, bucketHeight));
                 bucketHeight = 0;
             }
             bucketHeight += height;
             prev = r;
         }
         if (prev != null) {
-            synopsis.getElements().add(new HistogramBucket(prev, bucketHeight));
+            synopsis.getElements().add(new HistogramBucket(prev, prev, bucketHeight));
         }
     }
 

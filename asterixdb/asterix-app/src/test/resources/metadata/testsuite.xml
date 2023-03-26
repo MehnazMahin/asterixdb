@@ -585,20 +585,35 @@
     </test-case>
   </test-group>
   <test-group name="statistics">
-    <!--    <test-case FilePath="statistics">-->
-    <!--      <compilation-unit name="noidx_bulkload">-->
-    <!--        <output-dir compare="Text">noidx_bulkload</output-dir>-->
-    <!--      </compilation-unit>-->
-    <!--    </test-case>-->
-    <!--    <test-case FilePath="statistics">-->
-    <!--      <compilation-unit name="noidx_insert">-->
-    <!--        <output-dir compare="Text">noidx_insert</output-dir>-->
-    <!--      </compilation-unit>-->
-    <!--    </test-case>-->
+    <test-case FilePath="statistics">
+      <compilation-unit name="noidx_bulkload">
+        <output-dir compare="Text">noidx_bulkload</output-dir>
+      </compilation-unit>
+    </test-case>
+    <test-case FilePath="statistics">
+      <compilation-unit name="noidx_insert">
+        <output-dir compare="Text">noidx_insert</output-dir>
+      </compilation-unit>
+    </test-case>
     <test-case FilePath="statistics">
       <compilation-unit name="sidx_merge">
         <output-dir compare="Text">sidx_merge</output-dir>
       </compilation-unit>
     </test-case>
+    <test-case FilePath="statistics">
+      <compilation-unit name="pidx_bulkload">
+        <output-dir compare="Text">pidx_bulkload</output-dir>
+      </compilation-unit>
+    </test-case>
+<!--    <test-case FilePath="statistics">-->
+<!--      <compilation-unit name="sidx_merge_double">-->
+<!--        <output-dir compare="Text">sidx_merge_double</output-dir>-->
+<!--      </compilation-unit>-->
+<!--    </test-case>-->
+<!--    <test-case FilePath="statistics">-->
+<!--      <compilation-unit name="sidx_bulkload_double">-->
+<!--        <output-dir compare="Text">sidx_bulkload_double</output-dir>-->
+<!--      </compilation-unit>-->
+<!--    </test-case>-->
   </test-group>
 </test-suite>

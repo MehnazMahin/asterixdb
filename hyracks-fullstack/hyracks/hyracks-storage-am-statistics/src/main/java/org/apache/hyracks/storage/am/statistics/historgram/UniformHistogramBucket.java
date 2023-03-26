@@ -18,20 +18,14 @@
  */
 package org.apache.hyracks.storage.am.statistics.historgram;
 
-import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
-import org.apache.hyracks.dataflow.common.data.marshalling.Integer64SerializerDeserializer;
-
-public class UniformHistogramBucket extends HistogramBucket {
+public class UniformHistogramBucket<T extends Number> extends HistogramBucket {
 
     private static final long serialVersionUID = 1L;
 
-    @SuppressWarnings("rawtypes")
-    public static final ISerializerDeserializer UNIQUE_VALUE_NUM_SERDE = Integer64SerializerDeserializer.INSTANCE;
-
     private long uniqueElementsNum;
 
-    public UniformHistogramBucket(long border, double value, long uniqueElementsNum) {
-        super(border, value);
+    public UniformHistogramBucket(T border, double value, long uniqueElementsNum) {
+        super(border, border, value);
         this.uniqueElementsNum = uniqueElementsNum;
     }
 

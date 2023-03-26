@@ -24,6 +24,7 @@ import java.util.Set;
 import org.apache.asterix.algebra.base.ILangExpressionToPlanTranslatorFactory;
 import org.apache.asterix.algebra.base.ILangExtension;
 import org.apache.asterix.common.config.CompilerProperties;
+import org.apache.asterix.common.config.StatisticsProperties;
 import org.apache.asterix.external.feed.watch.FeedActivityDetails;
 import org.apache.asterix.lang.common.base.IAstPrintVisitorFactory;
 import org.apache.asterix.lang.common.base.IParserFactory;
@@ -92,6 +93,8 @@ public class SqlppCompilationProvider implements ILangCompilationProvider {
                 SqlppExpressionToPlanTranslator.REWRITE_IN_AS_OR_OPTION, "hash_merge", "output-record-type",
                 DisjunctivePredicateToJoinRule.REWRITE_OR_AS_JOIN_OPTION,
                 SetAsterixPhysicalOperatorsRule.REWRITE_ATTEMPT_BATCH_ASSIGN,
-                EquivalenceClassUtils.REWRITE_INTERNAL_QUERYUID_PK, SqlppQueryRewriter.SQL_COMPAT_OPTION));
+                EquivalenceClassUtils.REWRITE_INTERNAL_QUERYUID_PK, SqlppQueryRewriter.SQL_COMPAT_OPTION,
+                StatisticsProperties.STATISTICS_PRIMARY_KEYS_ENABLED, StatisticsProperties.STATISTICS_SYNOPSIS_SIZE_KEY,
+                StatisticsProperties.STATISTICS_SYNOPSIS_TYPE_KEY));
     }
 }

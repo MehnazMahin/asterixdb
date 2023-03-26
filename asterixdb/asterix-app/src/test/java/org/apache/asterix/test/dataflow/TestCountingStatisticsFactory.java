@@ -50,19 +50,29 @@ public class TestCountingStatisticsFactory extends AbstractStatisticsFactory {
         }
 
         @Override
+        public SynopsisElementType getElementType() {
+            if (domainStart instanceof Long) {
+                return SynopsisElementType.Long;
+            } else if (domainStart instanceof Double) {
+                return SynopsisElementType.Double;
+            }
+            return null;
+        }
+
+        @Override
         public void merge(ISynopsis mergeSynopsis) throws HyracksDataException {
 
         }
 
-        @Override
-        public double pointQuery(long position) {
-            return 0;
-        }
+        //        @Override
+        //        public double pointQuery(long position) {
+        //            return 0;
+        //        }
 
-        @Override
-        public double rangeQuery(long startPosition, long endPosition) {
-            return 0;
-        }
+        //        @Override
+        //        public double rangeQuery(long startPosition, long endPosition) {
+        //            return 0;
+        //        }
     }
 
     class CountingSynopsisBuilder extends AbstractSynopsisBuilder {

@@ -18,6 +18,7 @@
  */
 package org.apache.asterix.metadata.entities;
 
+import java.util.List;
 import java.util.Objects;
 
 import org.apache.asterix.common.metadata.DataverseName;
@@ -26,6 +27,8 @@ import org.apache.asterix.metadata.api.IMetadataEntity;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
+import org.apache.hyracks.storage.am.statistics.historgram.HistogramBucket;
+import org.apache.hyracks.storage.am.statistics.historgram.HistogramSynopsis;
 
 /**
  * Metadata describing a statistics entity.
@@ -52,13 +55,35 @@ public class Statistics implements IMetadataEntity {
         if (o == null || getClass() != o.getClass())
             return false;
         Statistics that = (Statistics) o;
-        return temp == that.temp && Objects.equals(dataverseName, that.dataverseName)
+        boolean flag = temp == that.temp && Objects.equals(dataverseName, that.dataverseName)
                 && Objects.equals(dataset, that.dataset) && Objects.equals(index, that.index)
                 && Objects.equals(node, that.node)
-                //                && Objects.equals(partition, that.partition)
-                //                && Objects.equals(componentId, that.componentId)
-                && isAntimatter == that.isAntimatter && Objects.equals(field, that.field)
-                && Objects.equals(synopsis, that.synopsis);
+                && isAntimatter == that.isAntimatter && Objects.equals(field, that.field);
+
+        if (flag) {
+            if (synopsis.getElements() != null && that.synopsis.getElements() != null
+                    && synopsis.getType().equals(that.synopsis.getType())) {
+                switch (synopsis.getType()) {
+                    case ContinuousHistogram:
+                        List<HistogramBucket> elements = ((HistogramSynopsis) synopsis).getElements();
+                        List<HistogramBucket> thatElements = ((HistogramSynopsis) that.synopsis).getElements();
+                        if (elements.size() == thatElements.size()) {
+                            for (int i = 0; i < elements.size(); i++) {
+                                if (!elements.get(i).getLeftKey().equals(thatElements.get(i).getLeftKey())
+                                        || !elements.get(i).getRightKey().equals(thatElements.get(i).getRightKey())
+                                        || elements.get(i).getValue() != thatElements.get(i).getValue()) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        }
+                        return false;
+                    case QuantileSketch:
+                        flag = Objects.equals(synopsis, that.synopsis);
+                }
+            }
+        }
+        return flag;
     }
 
     @Override
@@ -68,11 +93,11 @@ public class Statistics implements IMetadataEntity {
     }
 
     private final boolean temp;
-    private final ISynopsis<? extends ISynopsisElement<Long>> synopsis;
+    private final ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis;
 
     public Statistics(DataverseName dataverseName, String dataset, String index, String node, String partition,
             ComponentStatisticsId componentId, boolean temp, boolean isAntimatter, String field,
-            ISynopsis<? extends ISynopsisElement<Long>> synopsis) {
+            ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis) {
         this.dataverseName = dataverseName;
         this.dataset = dataset;
         this.index = index;
@@ -121,13 +146,12 @@ public class Statistics implements IMetadataEntity {
         return isAntimatter;
     }
 
-    public ISynopsis<? extends ISynopsisElement<Long>> getSynopsis() {
+    public ISynopsis<? extends ISynopsisElement<? extends Number>> getSynopsis() {
         return synopsis;
     }
 
     @Override
     public Object addToCache(MetadataCache cache) {
-        //        return cache.addStatisticsIfNotExists(this);
         return cache.addStatisticsToCache(this);
     }
 

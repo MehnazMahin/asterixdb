@@ -27,9 +27,9 @@ public abstract class EquiHeightHistogramSynopsis<T extends HistogramBucket> ext
     private static final long serialVersionUID = 1L;
     private final long elementsPerBucket;
 
-    public EquiHeightHistogramSynopsis(long domainStart, long domainEnd, long elementsNum, int bucketsNum,
-            List<T> buckets) {
-        super(domainStart, domainEnd, bucketsNum, buckets);
+    public EquiHeightHistogramSynopsis(Number domainStart, Number domainEnd, SynopsisElementType type, long elementsNum,
+            int bucketsNum, List<T> buckets) {
+        super(domainStart, domainEnd, type, bucketsNum, buckets);
         elementsPerBucket = Math.max((long) Math.ceil((double) elementsNum / bucketsNum), 1);
     }
 
@@ -38,26 +38,30 @@ public abstract class EquiHeightHistogramSynopsis<T extends HistogramBucket> ext
     }
 
     @Override
-    public void merge(ISynopsis<T> mergeSynopsis) {
+    public void merge(ISynopsis mergeSynopsis) {
         throw new UnsupportedOperationException();
     }
 
-    public void setBucketBorder(int bucket, long border) {
+    public void setBucketBorder(int bucket, Number border) {
         getBuckets().get(bucket).setRightBorder(border);
     }
 
-    public boolean advanceBucket(int activeBucket, int activeBucketElementsNum, long currTuplePosition,
-            long lastAddedTuplePosition) {
-        if (activeBucket <= size - 1 && currTuplePosition != lastAddedTuplePosition
+    public boolean advanceBucket(int activeBucket, int activeBucketElementsNum, Number currTupleValue,
+            Number lastAddedTupleValue) {
+        if (activeBucket <= size - 1 && !currTupleValue.equals(lastAddedTupleValue)
                 && activeBucketElementsNum >= elementsPerBucket) {
-            setBucketBorder(activeBucket, currTuplePosition - 1);
+            setBucketBorder(activeBucket, lastAddedTupleValue);
             return true;
         }
         return false;
     }
 
     @Override
-    public void finishBucket(int activeBucket) {
-        setBucketBorder(activeBucket, getDomainEnd());
+    public void finishBucket(int activeBucket, Number lastValueAdded) {
+        if (lastValueAdded.equals(getDomainStart())) {
+            setBucketBorder(activeBucket, getDomainEnd());
+        } else {
+            setBucketBorder(activeBucket, lastValueAdded);
+        }
     }
 }

@@ -856,7 +856,7 @@ public class MetadataNode implements IMetadataNode {
             if (indexStatistics != null) {
                 for (Statistics stats : indexStatistics) {
                     dropStatistics(txnId, stats.getDataverseName(), stats.getDatasetName(), stats.getIndexName(),
-                            stats.getNode(), stats.getPartition(), stats.isAntimatter(), stats.getFieldName());
+                            stats.isAntimatter(), stats.getFieldName());
                 }
             }
 
@@ -2527,7 +2527,7 @@ public class MetadataNode implements IMetadataNode {
 
     @Override
     public void dropStatistics(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName,
-            String node, String partition, boolean isAntimatter, String fieldName) throws AlgebricksException {
+            boolean isAntimatter, String fieldName) throws AlgebricksException {
         try {
             ITupleReference searchKey =
                     createIndexStatsSearchTuple(dataverseName, datasetName, indexName, isAntimatter, fieldName);
@@ -2603,7 +2603,7 @@ public class MetadataNode implements IMetadataNode {
 
     @Override
     public Statistics getFieldStatistics(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName,
-            String node, String partition, boolean isAntimatter, String fieldName) throws AlgebricksException {
+            boolean isAntimatter, String fieldName) throws AlgebricksException {
         try {
             StatisticsTupleTranslator tupleReaderWriter =
                     tupleTranslatorProvider.getStatisticsTupleTranslator(txnId, this, false);
@@ -2622,9 +2622,8 @@ public class MetadataNode implements IMetadataNode {
     public List<Statistics> getFullFieldStatistics(TxnId txnId, DataverseName dataverseName, String datasetName,
             String indexName, String node, String partition, String fieldName) throws AlgebricksException {
         List<Statistics> results = new ArrayList<>();
-        results.add(
-                getFieldStatistics(txnId, dataverseName, datasetName, indexName, node, partition, false, fieldName));
-        results.add(getFieldStatistics(txnId, dataverseName, datasetName, indexName, node, partition, true, fieldName));
+        results.add(getFieldStatistics(txnId, dataverseName, datasetName, indexName, false, fieldName));
+        results.add(getFieldStatistics(txnId, dataverseName, datasetName, indexName, true, fieldName));
         return results;
     }
 

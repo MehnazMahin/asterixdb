@@ -53,20 +53,6 @@ public class StatisticsMessageIOOperationCallbackWrapper implements ILSMIOOperat
     @Override
     public void afterFinalize(ILSMIOOperation operation) throws HyracksDataException {
         wrapperIOOpCallback.afterFinalize(operation);
-        if (operation.getIOOpertionType() == LSMIOOperationType.FLUSH
-                || operation.getIOOpertionType() == LSMIOOperationType.LOAD) {
-            statisticsManager.sendFlushStatistics(operation.getNewComponent());
-        } else if (operation.getIOOpertionType() == LSMIOOperationType.MERGE) {
-            statisticsManager.sendMergeStatistics(operation.getNewComponent(),
-                    operation.getAccessor().getOpContext().getComponentsToBeMerged());
-        }
-        //        if (operation.getIOOpertionType() == LSMIOOperationType.FLUSH
-        //                || operation.getIOOpertionType() == LSMIOOperationType.LOAD) {
-        //            statisticsManager.sendFlushStatistics(operation.getNewComponent());
-        //        } else if (operation.getIOOpertionType() == LSMIOOperationType.MERGE) {
-        //            statisticsManager.sendMergeStatistics(operation.getNewComponent(),
-        //                    operation.getAccessor().getOpContext().getComponentsToBeMerged());
-        //        }
     }
 
     @Override

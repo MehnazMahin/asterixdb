@@ -64,11 +64,11 @@ public class CardinalityEstimator implements ICardinalityEstimator {
 
         for (Statistics s : stats) {
             double synopsisEstimate = 0.0;
-            if (rangeStart < rangeStop) {
+            /*if (rangeStart < rangeStop) {
                 synopsisEstimate = s.getSynopsis().rangeQuery(rangeStart, rangeStop);
             } else if (rangeStart == rangeStop) {
                 synopsisEstimate = s.getSynopsis().pointQuery(rangeStart);
-            }
+            }*/
             estimate += synopsisEstimate * (s.isAntimatter() ? -1 : 1);
         }
         long endTime = System.nanoTime();

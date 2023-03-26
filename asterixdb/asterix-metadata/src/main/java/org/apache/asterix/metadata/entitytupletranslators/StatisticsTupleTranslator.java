@@ -49,6 +49,7 @@ import org.apache.asterix.om.base.AString;
 import org.apache.asterix.om.base.IACursor;
 import org.apache.asterix.om.types.AOrderedListType;
 import org.apache.asterix.om.types.ARecordType;
+import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
@@ -57,6 +58,7 @@ import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 import org.apache.hyracks.dataflow.common.data.accessors.ITupleReference;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
+import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisElementType;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisType;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
@@ -69,20 +71,20 @@ import org.apache.hyracks.storage.am.statistics.historgram.UniformHistogramBucke
  * Translates a Statistics metadata entity to an ITupleReference and vice versa.
  */
 public class StatisticsTupleTranslator extends AbstractTupleTranslator<Statistics> {
-    private static final int STATISTICS_PAYLOAD_TUPLE_FIELD_INDEX = 5;
+    private static final int STATISTICS_PAYLOAD_TUPLE_FIELD_INDEX = 6;
     @SuppressWarnings("unchecked")
-    private ISerializerDeserializer<ARecord> recordSerDes = SerializerDeserializerProvider.INSTANCE
+    private final ISerializerDeserializer<ARecord> recordSerDes = SerializerDeserializerProvider.INSTANCE
             .getSerializerDeserializer(MetadataRecordTypes.STATISTICS_RECORDTYPE);
     @SuppressWarnings("unchecked")
-    private ISerializerDeserializer<AInt64> int64Serde =
+    private final ISerializerDeserializer<AInt64> int64Serde =
             SerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(BuiltinType.AINT64);
     @SuppressWarnings("unchecked")
-    private ISerializerDeserializer<ADouble> doubleSerde =
+    private final ISerializerDeserializer<ADouble> doubleSerde =
             SerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(BuiltinType.ADOUBLE);
 
-    private transient AMutableInt64 aInt64 = new AMutableInt64(0);
-    private transient AMutableInt32 aInt32 = new AMutableInt32(0);
-    private transient AMutableDouble aDouble = new AMutableDouble(0.0);
+    private AMutableInt64 aInt64;
+    private AMutableInt32 aInt32;
+    private AMutableDouble aDouble;
 
     private final MetadataNode metadataNode;
     private final TxnId txnId;
@@ -91,6 +93,11 @@ public class StatisticsTupleTranslator extends AbstractTupleTranslator<Statistic
         super(getTuple, MetadataPrimaryIndexes.STATISTICS_DATASET, STATISTICS_PAYLOAD_TUPLE_FIELD_INDEX);
         this.txnId = txnId;
         this.metadataNode = metadataNode;
+        if (getTuple) {
+            aInt32 = new AMutableInt32(0);
+            aInt64 = new AMutableInt64(0);
+            aDouble = new AMutableDouble(0.0);
+        }
     }
 
     @Override
@@ -99,16 +106,31 @@ public class StatisticsTupleTranslator extends AbstractTupleTranslator<Statistic
         String dataverseCanonicalName = ((AString) statisticsRecord
                 .getValueByPos(MetadataRecordTypes.STATISTICS_ARECORD_DATAVERSE_NAME_FIELD_INDEX)).getStringValue();
         DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverseCanonicalName);
+
         String datasetName = ((AString) statisticsRecord
                 .getValueByPos(MetadataRecordTypes.STATISTICS_ARECORD_DATASET_NAME_FIELD_INDEX)).getStringValue();
+
         String indexName = ((AString) statisticsRecord
                 .getValueByPos(MetadataRecordTypes.STATISTICS_ARECORD_INDEX_NAME_FIELD_INDEX)).getStringValue();
+
         boolean isAntimatter = ((ABoolean) statisticsRecord
                 .getValueByPos(MetadataRecordTypes.STATISTICS_ARECORD_ISANTIMATTER_FIELD_INDEX)).getBoolean();
+
         String fieldName = ((AString) statisticsRecord
                 .getValueByPos(MetadataRecordTypes.STATISTICS_ARECORD_FIELD_NAME_FIELD_INDEX)).getStringValue();
-        ARecord synopsisRecord =
-                (ARecord) statisticsRecord.getValueByPos(MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_FIELD_INDEX);
+
+        int synopsisElementType = ((AInt32) statisticsRecord
+                .getValueByPos(MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_ELEMENTS_TYPE_INDEX)).getIntegerValue();
+
+        ARecord synopsisRecord;
+        synopsisRecord = (ARecord) statisticsRecord.getValueByPos(MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_FIELD_INDEX);
+        /*if (synopsisElementType == SynopsisElementType.Long.getValue()) {
+            synopsisRecord = (ARecord) statisticsRecord.getValueByPos(
+                    MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_FIELD_INDEX);
+        } else {
+            synopsisRecord = (ARecord) statisticsRecord.getValueByPos(
+                    MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_DOUBLE_FIELD_INDEX);
+        }*/
         SynopsisType synopsisType = SynopsisType.valueOf(((AString) synopsisRecord
                 .getValueByPos(MetadataRecordTypes.STATISTICS_SYNOPSIS_ARECORD_TYPE_FIELD_INDEX)).getStringValue());
         int synopsisSize = ((AInt32) synopsisRecord
@@ -121,28 +143,61 @@ public class StatisticsTupleTranslator extends AbstractTupleTranslator<Statistic
         Datatype type = null;
         try {
             ds = metadataNode.getDataset(txnId, dataverseName, datasetName);
-
             type = metadataNode.getDatatype(txnId, ds.getItemTypeDataverseName(), ds.getItemTypeName());
         } catch (AlgebricksException e1) {
             e1.printStackTrace();
         }
+
         ITypeTraits keyTypeTraits =
                 TypeTraitProvider.INSTANCE.getTypeTrait(((ARecordType) type.getDatatype()).getFieldType(fieldName));
         while (cursor.next()) {
             ARecord coeff = (ARecord) cursor.get();
             if (synopsisType == SynopsisType.ContinuousHistogram) {
-                elems.add(new HistogramBucket(
-                        ((AInt64) coeff
-                                .getValueByPos(MetadataRecordTypes.STATISTICS_SYNOPSIS_ELEMENT_ARECORD_KEY_FIELD_INDEX))
-                                        .getLongValue(),
-                        ((ADouble) coeff.getValueByPos(
-                                MetadataRecordTypes.STATISTICS_SYNOPSIS_ELEMENT_ARECORD_VALUE_FIELD_INDEX))
-                                        .getDoubleValue()));
+                switch (synopsisElementType) {
+                    case 0:
+                        elems.add(new HistogramBucket<Long>(
+                                ((AInt64) coeff.getValueByPos(
+                                        MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_LBORDER_FIELD_INDEX))
+                                                .getLongValue(),
+                                ((AInt64) coeff.getValueByPos(
+                                        MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_RBORDER_FIELD_INDEX))
+                                                .getLongValue(),
+                                ((ADouble) coeff.getValueByPos(
+                                        MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_VALUE_FIELD_INDEX))
+                                                .getDoubleValue()));
+                        break;
+                    case 1:
+                        /*Long left = ((AInt64) coeff.getValueByPos(
+                                MetadataRecordTypes.STATISTICS_SYNOPSIS_ELEMENT_ARECORD_LBORDER_FIELD_INDEX)).getLongValue();
+                        Long right = ((AInt64) coeff.getValueByPos(
+                                MetadataRecordTypes.STATISTICS_SYNOPSIS_ELEMENT_ARECORD_RBORDER_FIELD_INDEX)).getLongValue();
+                        elems.add(new HistogramBucket<Double>(Double.longBitsToDouble(left), Double.longBitsToDouble(right),
+                                ((ADouble) coeff.getValueByPos(
+                                        MetadataRecordTypes.STATISTICS_SYNOPSIS_ELEMENT_ARECORD_VALUE_FIELD_INDEX))
+                                        .getDoubleValue()));*/
+                        elems.add(new HistogramBucket<Double>(
+                                ((ADouble) coeff.getValueByPos(
+                                        MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_LBORDER_FIELD_INDEX))
+                                                .getDoubleValue(),
+                                ((ADouble) coeff.getValueByPos(
+                                        MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_RBORDER_FIELD_INDEX))
+                                                .getDoubleValue(),
+                                ((ADouble) coeff.getValueByPos(
+                                        MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_VALUE_FIELD_INDEX))
+                                                .getDoubleValue()));
+                        break;
+                }
             }
         }
         AbstractSynopsis synopsis = null;
         try {
-            synopsis = SynopsisFactory.createSynopsis(synopsisType, keyTypeTraits, elems, elems.size(), synopsisSize);
+            if (synopsisElementType == SynopsisElementType.Long.getValue()) {
+                synopsis = SynopsisFactory.createSynopsis(synopsisType, keyTypeTraits, elems, elems.size(),
+                        synopsisSize, SynopsisElementType.Long);
+            } else if (synopsisElementType == SynopsisElementType.Double.getValue()) {
+                synopsis = SynopsisFactory.createSynopsis(synopsisType, keyTypeTraits, elems, elems.size(),
+                        synopsisSize, SynopsisElementType.Double);
+            }
         } catch (HyracksDataException e) {
             e.printStackTrace();
         }
@@ -157,8 +212,13 @@ public class StatisticsTupleTranslator extends AbstractTupleTranslator<Statistic
             throws HyracksDataException, MetadataException {
         IARecordBuilder synopsisRecordBuilder = new RecordBuilder();
         synopsisRecordBuilder.reset(MetadataRecordTypes.STATISTICS_SYNOPSIS_RECORDTYPE);
+        /*if (metadataEntity.getSynopsis().getElementType().equals(SynopsisElementType.Long)) {
+            synopsisRecordBuilder.reset(MetadataRecordTypes.STATISTICS_SYNOPSIS_RECORDTYPE);
+        } else if (metadataEntity.getSynopsis().getElementType().equals(SynopsisElementType.Double)) {
+            synopsisRecordBuilder.reset(MetadataRecordTypes.STATISTICS_SYNOPSIS_DOUBLE_RECORDTYPE);
+        }*/
 
-        // write the key in the first 5 fields of the tuple
+        // write the key in the first 6 fields of the tuple
         tupleBuilder.reset();
         aString.setValue(metadataEntity.getDataverseName().getCanonicalForm());
         stringSerde.serialize(aString, tupleBuilder.getDataOutput());
@@ -175,8 +235,11 @@ public class StatisticsTupleTranslator extends AbstractTupleTranslator<Statistic
         aString.setValue(metadataEntity.getFieldName());
         stringSerde.serialize(aString, tupleBuilder.getDataOutput());
         tupleBuilder.addFieldEndOffset();
+        aInt32.setValue(metadataEntity.getSynopsis().getElementType().getValue());
+        int32Serde.serialize(aInt32, tupleBuilder.getDataOutput());
+        tupleBuilder.addFieldEndOffset();
 
-        // write the payload in the 8th field of the tuple
+        // write the payload in the 7th field of the tuple
         recordBuilder.reset(MetadataRecordTypes.STATISTICS_RECORDTYPE);
         // write field 0
         fieldValue.reset();
@@ -210,8 +273,19 @@ public class StatisticsTupleTranslator extends AbstractTupleTranslator<Statistic
 
         // write field 5
         fieldValue.reset();
+        aInt32.setValue(metadataEntity.getSynopsis().getElementType().getValue());
+        int32Serde.serialize(aInt32, fieldValue.getDataOutput());
+        recordBuilder.addField(MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_ELEMENTS_TYPE_INDEX, fieldValue);
+
+        // write field 6/7
+        fieldValue.reset();
         writeSynopsisRecordType(synopsisRecordBuilder, metadataEntity.getSynopsis(), fieldValue.getDataOutput());
         recordBuilder.addField(MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_FIELD_INDEX, fieldValue);
+        /*if (metadataEntity.getSynopsis().getElementType().equals(SynopsisElementType.Long)) {
+            recordBuilder.addField(MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_FIELD_INDEX, fieldValue);
+        } else if (metadataEntity.getSynopsis().getElementType().equals(SynopsisElementType.Double)) {
+            recordBuilder.addField(MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_DOUBLE_FIELD_INDEX, fieldValue);
+        }*/
 
         // write record
         try {
@@ -226,7 +300,8 @@ public class StatisticsTupleTranslator extends AbstractTupleTranslator<Statistic
     }
 
     private void writeSynopsisRecordType(IARecordBuilder synopsisRecordBuilder,
-            ISynopsis<? extends ISynopsisElement<Long>> synopsis, DataOutput dataOutput) throws HyracksDataException {
+            ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis, DataOutput dataOutput)
+            throws HyracksDataException {
         OrderedListBuilder listBuilder = new OrderedListBuilder();
         ArrayBackedValueStorage itemValue = new ArrayBackedValueStorage();
         IARecordBuilder synopsisElementRecordBuilder = new RecordBuilder();
@@ -244,36 +319,69 @@ public class StatisticsTupleTranslator extends AbstractTupleTranslator<Statistic
         int32Serde.serialize(aInt32, fieldValue.getDataOutput());
         synopsisRecordBuilder.addField(MetadataRecordTypes.STATISTICS_SYNOPSIS_ARECORD_SIZE_FIELD_INDEX, fieldValue);
 
+        SynopsisElementType type = synopsis.getElementType();
         listBuilder.reset((AOrderedListType) MetadataRecordTypes.STATISTICS_SYNOPSIS_RECORDTYPE
                 .getFieldTypes()[MetadataRecordTypes.STATISTICS_SYNOPSIS_ARECORD_ELEMENTS_FIELD_INDEX]);
-        for (ISynopsisElement<Long> synopsisElement : synopsis.getElements()) {
+        /*if (type.equals(SynopsisElementType.Long)) {
+            listBuilder.reset((AOrderedListType) MetadataRecordTypes.STATISTICS_SYNOPSIS_LONG_RECORDTYPE
+                    .getFieldTypes()[MetadataRecordTypes.STATISTICS_SYNOPSIS_ARECORD_ELEMENTS_FIELD_INDEX]);
+        } else if (type.equals(SynopsisElementType.Double)) {
+            listBuilder.reset((AOrderedListType) MetadataRecordTypes.STATISTICS_SYNOPSIS_DOUBLE_RECORDTYPE
+                    .getFieldTypes()[MetadataRecordTypes.STATISTICS_SYNOPSIS_ARECORD_ELEMENTS_FIELD_INDEX]);
+        }*/
+        for (ISynopsisElement<? extends Number> synopsisElement : synopsis.getElements()) {
             // Skip synopsis elements with 0 value
             if (synopsisElement.getValue() != 0.0) {
-                synopsisElementRecordBuilder.reset(MetadataRecordTypes.STATISTICS_SYNOPSIS_ELEMENT_RECORDTYPE);
+                synopsisElementRecordBuilder.reset(MetadataRecordTypes.SYNOPSIS_ELEMENT_RECORDTYPE);
                 itemValue.reset();
 
-                // write subrecord field 0
-                fieldValue.reset();
-                aInt64.setValue(synopsisElement.getKey());
-                int64Serde.serialize(aInt64, fieldValue.getDataOutput());
-                synopsisElementRecordBuilder
-                        .addField(MetadataRecordTypes.STATISTICS_SYNOPSIS_ELEMENT_ARECORD_KEY_FIELD_INDEX, fieldValue);
+                // write sub-record field 0 and 1 of field 2
+                switch (type) {
+                    case Long:
+//                        synopsisElementRecordBuilder.reset(MetadataRecordTypes.SYNOPSIS_ELEMENT_LONG_RECORDTYPE);
+//                        itemValue.reset();
+                        fieldValue.reset();
+                        aInt64.setValue(synopsisElement.getLeftKey().longValue());
+                        int64Serde.serialize(aInt64, fieldValue.getDataOutput());
+                        synopsisElementRecordBuilder.addField(
+                                MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_LBORDER_FIELD_INDEX, fieldValue);
+                        fieldValue.reset();
+                        aInt64.setValue(synopsisElement.getRightKey().longValue());
+                        int64Serde.serialize(aInt64, fieldValue.getDataOutput());
+                        synopsisElementRecordBuilder.addField(
+                                MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_RBORDER_FIELD_INDEX, fieldValue);
+                        break;
+                    case Double:
+//                        synopsisElementRecordBuilder.reset(MetadataRecordTypes.SYNOPSIS_ELEMENT_DOUBLE_RECORDTYPE);
+//                        itemValue.reset();
+                        fieldValue.reset();
+                        aDouble.setValue(synopsisElement.getLeftKey().doubleValue());
+                        doubleSerde.serialize(aDouble, fieldValue.getDataOutput());
+                        synopsisElementRecordBuilder.addField(
+                                MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_LBORDER_FIELD_INDEX, fieldValue);
+                        fieldValue.reset();
+                        aDouble.setValue(synopsisElement.getRightKey().doubleValue());
+                        doubleSerde.serialize(aDouble, fieldValue.getDataOutput());
+                        synopsisElementRecordBuilder.addField(
+                                MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_RBORDER_FIELD_INDEX, fieldValue);
+                        break;
+                }
 
-                // write subrecord field 1
+                // write sub-record field 2 of field 2
                 fieldValue.reset();
                 aDouble.setValue(synopsisElement.getValue());
                 doubleSerde.serialize(aDouble, fieldValue.getDataOutput());
                 synopsisElementRecordBuilder.addField(
-                        MetadataRecordTypes.STATISTICS_SYNOPSIS_ELEMENT_ARECORD_VALUE_FIELD_INDEX, fieldValue);
+                        MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_VALUE_FIELD_INDEX, fieldValue);
 
-                // write optional field 2
+                // write optional field 3
                 if (synopsisElement instanceof UniformHistogramBucket) {
                     ArrayBackedValueStorage nameValue = new ArrayBackedValueStorage();
 
                     fieldValue.reset();
                     nameValue.reset();
                     aString.setValue(
-                            MetadataRecordTypes.STATISTICS_SYNOPSIS_ELEMENT_ARECORD_UNIQUE_VALUES_NUM_FIELD_NAME);
+                            MetadataRecordTypes.SYNOPSIS_ELEMENT_ARECORD_UNIQUE_VALUES_NUM_FIELD_NAME);
                     stringSerde.serialize(aString, nameValue.getDataOutput());
                     aInt64.setValue(((UniformHistogramBucket) synopsisElement).getUniqueElementsNum());
                     int64Serde.serialize(aInt64, fieldValue.getDataOutput());
@@ -287,8 +395,7 @@ public class StatisticsTupleTranslator extends AbstractTupleTranslator<Statistic
         // write field 2
         fieldValue.reset();
         listBuilder.write(fieldValue.getDataOutput(), true);
-        synopsisRecordBuilder.addField(MetadataRecordTypes.STATISTICS_SYNOPSIS_ARECORD_ELEMENTS_FIELD_INDEX,
-                fieldValue);
+        synopsisRecordBuilder.addField(MetadataRecordTypes.STATISTICS_SYNOPSIS_ARECORD_ELEMENTS_FIELD_INDEX, fieldValue);
 
         synopsisRecordBuilder.write(dataOutput, true);
     }

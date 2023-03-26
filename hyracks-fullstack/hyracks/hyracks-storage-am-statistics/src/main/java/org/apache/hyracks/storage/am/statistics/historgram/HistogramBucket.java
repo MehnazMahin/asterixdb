@@ -20,20 +20,30 @@ package org.apache.hyracks.storage.am.statistics.historgram;
 
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 
-public class HistogramBucket implements ISynopsisElement<Long> {
+public class HistogramBucket<T extends Number> implements ISynopsisElement<T> {
 
     private static final long serialVersionUID = 1L;
 
-    private long rightBorder;
+    private T leftBorder;
+    private T rightBorder;
     private double value;
 
-    public HistogramBucket(long border, double value) {
-        this.rightBorder = border;
+    public HistogramBucket(T left, T right, double value) {
+        this.leftBorder = left;
+        this.rightBorder = right;
         this.value = value;
     }
 
-    public void setRightBorder(long rightBorder) {
+    public void setLeftBorder(T leftBorder) {
+        this.leftBorder = leftBorder;
+    }
+
+    public void setRightBorder(T rightBorder) {
         this.rightBorder = rightBorder;
+    }
+
+    public void setValue(double value) {
+        this.value = value;
     }
 
     public void appendToValue(double appendedValue) {
@@ -41,7 +51,12 @@ public class HistogramBucket implements ISynopsisElement<Long> {
     }
 
     @Override
-    public Long getKey() {
+    public T getLeftKey() {
+        return leftBorder;
+    }
+
+    @Override
+    public T getRightKey() {
         return rightBorder;
     }
 

@@ -21,15 +21,15 @@ package org.apache.hyracks.storage.am.statistics.historgram;
 
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatistics;
-import org.apache.hyracks.storage.am.statistics.common.AbstractIntegerSynopsisBuilder;
+import org.apache.hyracks.storage.am.statistics.common.AbstractNumericSynopsisBuilder;
 import org.apache.hyracks.storage.am.statistics.common.IFieldExtractor;
 import org.apache.hyracks.storage.common.buffercache.ICachedPage;
 
-public class HistogramBuilder extends AbstractIntegerSynopsisBuilder<HistogramSynopsis<? extends HistogramBucket>> {
+public class HistogramBuilder extends AbstractNumericSynopsisBuilder<HistogramSynopsis<? extends HistogramBucket>> {
 
     private int activeBucket;
     private int activeBucketElementsNum;
-    private long lastAddedTuplePosition;
+    private Number lastAddedTupleValue;
 
     public HistogramBuilder(HistogramSynopsis<? extends HistogramBucket> histogram, String dataverse, String dataset,
             String index, String field, boolean isAntimatter, IFieldExtractor fieldExtractor,
@@ -37,27 +37,26 @@ public class HistogramBuilder extends AbstractIntegerSynopsisBuilder<HistogramSy
         super(histogram, dataverse, dataset, index, field, isAntimatter, fieldExtractor, componentStatistics);
         activeBucket = 0;
         activeBucketElementsNum = 0;
-        lastAddedTuplePosition = synopsis.getDomainStart();
+        lastAddedTupleValue = synopsis.getDomainStart();
     }
 
     @Override
-    public void addValue(long currTuplePosition) {
-        while (synopsis.advanceBucket(activeBucket, activeBucketElementsNum, currTuplePosition,
-                lastAddedTuplePosition)) {
+    public void addValue(Number currTupleValue) {
+        while (synopsis.advanceBucket(activeBucket, activeBucketElementsNum, currTupleValue, lastAddedTupleValue)) {
             activeBucket++;
             activeBucketElementsNum = 0;
         }
-        synopsis.appendToBucket(activeBucket, 1.0);
+        synopsis.appendToBucket(activeBucket, currTupleValue, 1.0);
         activeBucketElementsNum++;
-        lastAddedTuplePosition = currTuplePosition;
+        lastAddedTupleValue = currTupleValue;
     }
 
     @Override
     public void finishSynopsisBuild() throws HyracksDataException {
         if (activeBucketElementsNum == 0) {
-            synopsis.appendToBucket(0, 0.0);
+            synopsis.appendToBucket(0, synopsis.getDomainStart(), 0.0);
         }
-        synopsis.finishBucket(activeBucket);
+        synopsis.finishBucket(activeBucket, lastAddedTupleValue);
     }
 
     @Override

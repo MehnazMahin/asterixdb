@@ -134,20 +134,22 @@ public class MetadataPrimaryIndexes {
                     Arrays.asList(MetadataRecordTypes.FIELD_NAME_DATASET_NAME),
                     Arrays.asList(MetadataRecordTypes.FIELD_NAME_FILE_NUMBER)),
             0, MetadataRecordTypes.EXTERNAL_FILE_RECORDTYPE, true, new int[] { 0, 1, 2 });
-    public static final IMetadataIndex STATISTICS_DATASET = new MetadataIndex(PROPERTIES_STATISTICS, 6,
+    public static final IMetadataIndex STATISTICS_DATASET = new MetadataIndex(PROPERTIES_STATISTICS, 7,
             new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ABOOLEAN,
-                    BuiltinType.ASTRING },
+                    BuiltinType.ASTRING, BuiltinType.AINT32 },
             Arrays.asList(Arrays.asList(MetadataRecordTypes.FIELD_NAME_DATAVERSE_NAME),
                     Arrays.asList(MetadataRecordTypes.FIELD_NAME_DATASET_NAME),
                     Arrays.asList(MetadataRecordTypes.FIELD_NAME_INDEX_NAME),
                     Arrays.asList(MetadataRecordTypes.FIELD_NAME_IS_ANTIMATTER),
-                    Arrays.asList(MetadataRecordTypes.FIELD_NAME_FIELD_NAME)),
+                    Arrays.asList(MetadataRecordTypes.FIELD_NAME_FIELD_NAME),
+                    Arrays.asList(MetadataRecordTypes.FIELD_NAME_ELEMENTS_TYPE)),
             0, MetadataRecordTypes.STATISTICS_RECORDTYPE, true,
             new int[] { MetadataRecordTypes.STATISTICS_ARECORD_DATAVERSE_NAME_FIELD_INDEX,
                     MetadataRecordTypes.STATISTICS_ARECORD_DATASET_NAME_FIELD_INDEX,
                     MetadataRecordTypes.STATISTICS_ARECORD_INDEX_NAME_FIELD_INDEX,
                     MetadataRecordTypes.STATISTICS_ARECORD_ISANTIMATTER_FIELD_INDEX,
-                    MetadataRecordTypes.STATISTICS_ARECORD_FIELD_NAME_FIELD_INDEX });
+                    MetadataRecordTypes.STATISTICS_ARECORD_FIELD_NAME_FIELD_INDEX,
+                    MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_ELEMENTS_TYPE_INDEX});
 
     public static final IMetadataIndex FEED_CONNECTION_DATASET = new MetadataIndex(PROPERTIES_FEED_CONNECTION, 4,
             new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING },

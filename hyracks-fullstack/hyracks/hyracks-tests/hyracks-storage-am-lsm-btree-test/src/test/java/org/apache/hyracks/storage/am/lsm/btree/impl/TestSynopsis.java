@@ -18,7 +18,9 @@
  */
 package org.apache.hyracks.storage.am.lsm.btree.impl;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.TreeSet;
 
 import org.apache.hyracks.api.exceptions.HyracksDataException;
@@ -26,10 +28,10 @@ import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 
 public class TestSynopsis implements ISynopsis<TestSynopsisElement> {
 
-    protected Collection<TestSynopsisElement> elements;
+    protected List<TestSynopsisElement> elements;
 
     public TestSynopsis() {
-        elements = new TreeSet<>();
+        elements = new ArrayList<>();
     }
 
     @Override
@@ -38,7 +40,7 @@ public class TestSynopsis implements ISynopsis<TestSynopsisElement> {
     }
 
     @Override
-    public Collection<TestSynopsisElement> getElements() {
+    public List<TestSynopsisElement> getElements() {
         return elements;
     }
 
@@ -48,14 +50,19 @@ public class TestSynopsis implements ISynopsis<TestSynopsisElement> {
     }
 
     @Override
-    public double pointQuery(long position) {
+    public SynopsisElementType getElementType() {
         throw new UnsupportedOperationException();
     }
 
+    /*@Override
+    public double pointQuery(long position) {
+        throw new UnsupportedOperationException();
+    }
+    
     @Override
     public double rangeQuery(long startPosition, long endPosition) {
         throw new UnsupportedOperationException();
-    }
+    }*/
 
     @Override
     public void merge(ISynopsis<TestSynopsisElement> mergeSynopsis) throws HyracksDataException {

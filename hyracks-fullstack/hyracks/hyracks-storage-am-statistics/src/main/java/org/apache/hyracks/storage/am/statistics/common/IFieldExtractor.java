@@ -23,9 +23,12 @@ import java.io.Serializable;
 import org.apache.hyracks.api.dataflow.value.ITypeTraits;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.dataflow.common.data.accessors.ITupleReference;
+import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisElementType;
 
 public interface IFieldExtractor<T> extends Serializable {
     String getFieldName();
+
+    SynopsisElementType getSynopsisElementType();
 
     ITypeTraits getFieldTypeTraits();
 

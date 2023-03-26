@@ -750,7 +750,8 @@
     <dependency>
       <groupId>org.apache.hyracks</groupId>
       <artifactId>hyracks-storage-am-statistics</artifactId>
-      <scope>test</scope>
+<!--      <scope>test</scope>-->
+      <version>${hyracks.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hyracks</groupId>

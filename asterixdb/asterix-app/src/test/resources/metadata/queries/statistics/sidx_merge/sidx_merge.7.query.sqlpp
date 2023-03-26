@@ -17,8 +17,9 @@
  * under the License.
  */
 use test;
+set `statistics.synopsis.size` `4`;
 
 update statistics for TestDataset(TestIndex);
 
 select DataverseName, DatasetName, IndexName, FieldName, IsAntimatter, Synopsis
- from Metadata.Statistics;
+from Metadata.Statistics;

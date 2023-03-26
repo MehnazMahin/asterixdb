@@ -18,15 +18,15 @@
  */
 package org.apache.hyracks.storage.am.statistics.historgram;
 
-import java.util.Collection;
+import java.util.List;
 
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 
 public class NonEquiHeightHistogramSynopsis<T extends HistogramBucket> extends HistogramSynopsis<T> {
 
-    public NonEquiHeightHistogramSynopsis(long domainStart, long domainEnd, int bucketsNum,
-            Collection<T> synopsisElements) {
-        super(domainStart, domainEnd, bucketsNum, synopsisElements);
+    public NonEquiHeightHistogramSynopsis(Number domainStart, Number domainEnd, SynopsisElementType type,
+            int bucketsNum, List<T> synopsisElements) {
+        super(domainStart, domainEnd, type, bucketsNum, synopsisElements);
     }
 
     @Override
@@ -35,18 +35,18 @@ public class NonEquiHeightHistogramSynopsis<T extends HistogramBucket> extends H
     }
 
     @Override
-    public void merge(ISynopsis<T> mergedSynopsis) {
+    public void merge(ISynopsis mergedSynopsis) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void appendToBucket(int bucketId, double frequency) {
+    public void appendToBucket(int bucketId, Number currTupleValue, double frequency) {
         //TODO: Stub method
     }
 
     @Override
-    public boolean advanceBucket(int activeBucket, int activeBucketElementsNum, long currTuplePosition,
-            long lastAddedTuplePosition) {
+    public boolean advanceBucket(int activeBucket, int activeBucketElementsNum, Number currTupleValue,
+            Number lastAddedTupleValue) {
         //TODO: Stub method
         return false;
     }

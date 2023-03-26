@@ -31,7 +31,12 @@ public class TestSynopsisElement implements ISynopsisElement<Comparable>, Compar
     private double value;
 
     @Override
-    public Comparable getKey() {
+    public Comparable getLeftKey() {
+        return key;
+    }
+
+    @Override
+    public Comparable getRightKey() {
         return key;
     }
 
@@ -51,7 +56,7 @@ public class TestSynopsisElement implements ISynopsisElement<Comparable>, Compar
 
     @Override
     public int compareTo(TestSynopsisElement o) {
-        return key.compareTo(o.getKey());
+        return key.compareTo(o.getRightKey());
     }
 
     @Override

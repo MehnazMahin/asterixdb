@@ -21,17 +21,19 @@ package org.apache.hyracks.storage.am.statistics.historgram;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ContinuousHistogramSynopsis extends EquiHeightHistogramSynopsis<HistogramBucket> {
+public class ContinuousHistogramSynopsis<T extends Number>
+        extends EquiHeightHistogramSynopsis<HistogramBucket<? extends Number>> {
 
     private static final long serialVersionUID = 1L;
 
-    public ContinuousHistogramSynopsis(long domainStart, long domainEnd, long elementsNum, int bucketsNum) {
-        this(domainStart, domainEnd, elementsNum, bucketsNum, new ArrayList<>(bucketsNum));
+    public ContinuousHistogramSynopsis(T domainStart, T domainEnd, SynopsisElementType type, long elementsNum,
+            int bucketsNum) {
+        this(domainStart, domainEnd, type, elementsNum, bucketsNum, new ArrayList<>(bucketsNum));
     }
 
-    public ContinuousHistogramSynopsis(long domainStart, long domainEnd, long elementsNum, int bucketsNum,
-            List<HistogramBucket> buckets) {
-        super(domainStart, domainEnd, elementsNum, bucketsNum, buckets);
+    public ContinuousHistogramSynopsis(T domainStart, T domainEnd, SynopsisElementType type, long elementsNum,
+            int bucketsNum, List<HistogramBucket<? extends Number>> buckets) {
+        super(domainStart, domainEnd, type, elementsNum, bucketsNum, buckets);
     }
 
     @Override
@@ -39,12 +41,12 @@ public class ContinuousHistogramSynopsis extends EquiHeightHistogramSynopsis<His
         return SynopsisType.ContinuousHistogram;
     }
 
-    public void appendToBucket(int bucketId, double frequency) {
+    public void appendToBucket(int bucketId, Number currTupleValue, double frequency) {
         if (bucketId >= getBuckets().size()) {
-            getBuckets().add(new HistogramBucket(0L, frequency));
+            // create and append a new bucket with a single tuple value
+            getBuckets().add(new HistogramBucket(currTupleValue, currTupleValue, frequency));
         } else {
             getBuckets().get(bucketId).appendToValue(frequency);
         }
     }
-
 }

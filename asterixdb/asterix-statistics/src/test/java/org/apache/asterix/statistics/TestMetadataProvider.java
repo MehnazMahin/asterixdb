@@ -44,7 +44,9 @@ import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IProjectionInfo;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.IOperatorSchema;
 import org.apache.hyracks.algebricks.core.jobgen.impl.JobGenContext;
+import org.apache.hyracks.algebricks.data.IAWriterFactory;
 import org.apache.hyracks.algebricks.data.IPrinterFactory;
+import org.apache.hyracks.algebricks.data.IResultSerializerFactoryProvider;
 import org.apache.hyracks.algebricks.runtime.base.AlgebricksPipeline;
 import org.apache.hyracks.algebricks.runtime.base.IPushRuntimeFactory;
 import org.apache.hyracks.api.dataflow.IOperatorDescriptor;
@@ -53,7 +55,6 @@ import org.apache.hyracks.api.job.JobSpecification;
 import org.apache.hyracks.api.result.IResultMetadata;
 import org.apache.hyracks.storage.am.common.api.ITupleFilterFactory;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
-import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 
 public class TestMetadataProvider implements IMetadataProvider<DataSourceId, String> {
@@ -107,10 +108,9 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
 
         private ComponentStatisticsId componentId;
 
-        private ISynopsis<? extends ISynopsisElement<Long>> synopsis;
+        private ISynopsis synopsis;
 
-        public TestStatisticsEntry(ComponentStatisticsId componentId,
-                ISynopsis<? extends ISynopsisElement<Long>> synopsis) {
+        public TestStatisticsEntry(ComponentStatisticsId componentId, ISynopsis synopsis) {
             this.componentId = componentId;
             this.synopsis = synopsis;
         }
@@ -119,7 +119,7 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
             return componentId;
         }
 
-        public ISynopsis<? extends ISynopsisElement<Long>> getSynopsis() {
+        public ISynopsis getSynopsis() {
             return synopsis;
         }
 
@@ -158,7 +158,7 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
         stats.clear();
     }
 
-    public Collection<TestStatisticsEntry> getStats(TestStatisticsID id) {
+    public Collection getStats(TestStatisticsID id) {
         return stats.getOrDefault(id, Collections.EMPTY_LIST);
     }
 
@@ -246,14 +246,15 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
 
     @Override
     public Pair<IPushRuntimeFactory, AlgebricksPartitionConstraint> getWriteFileRuntime(IDataSink sink,
-            int[] printColumns, IPrinterFactory[] printerFactories, RecordDescriptor inputDesc)
-            throws AlgebricksException {
+            int[] printColumns, IPrinterFactory[] printerFactories, IAWriterFactory writerFactory,
+            RecordDescriptor inputDesc) throws AlgebricksException {
         throw new UnsupportedOperationException();
     }
 
     @Override
     public Pair<IOperatorDescriptor, AlgebricksPartitionConstraint> getResultHandleRuntime(IDataSink sink,
-            int[] printColumns, IPrinterFactory[] printerFactories, RecordDescriptor inputDesc,
+            int[] printColumns, IPrinterFactory[] printerFactories, IAWriterFactory writerFactory,
+            IResultSerializerFactoryProvider resultSerializerFactoryProvider, RecordDescriptor inputDesc,
             IResultMetadata metadata, JobSpecification spec) throws AlgebricksException {
         throw new UnsupportedOperationException();
     }

@@ -19,7 +19,7 @@
 package org.apache.hyracks.storage.am.lsm.common.api;
 
 import java.io.Serializable;
-import java.util.Collection;
+import java.util.List;
 
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 
@@ -53,25 +53,31 @@ public interface ISynopsis<T extends ISynopsisElement> extends Serializable {
         }
     }
 
+    enum SynopsisElementType {
+        Long(0),
+        Double(1);
+
+        private final int value;
+
+        SynopsisElementType(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+    }
+
     SynopsisType getType();
+
+    SynopsisElementType getElementType();
 
     int getSize();
 
-    Collection<T> getElements();
+    List<T> getElements();
 
     /**
      * Updates the current synopses by merging it with 'mergedSynopsis'
      */
     void merge(ISynopsis<T> mergedSynopsis) throws HyracksDataException;
-
-    /**
-     * Estimates cardinality at 'position'
-     */
-    double pointQuery(long position);
-
-    /**
-     * Estimates range cardinality between 'startPosition' and 'endPosition'
-     */
-    double rangeQuery(long startPosition, long endPosition);
-
 }

@@ -1024,17 +1024,13 @@ public interface IMetadataNode extends Remote, Serializable {
      *            Name of the index holding the field.
      * @param fieldName
      *            the name of the field for which component statistics is calculated.
-     * @param node
-     *            the name of the node holding the component statistics.
-     * @param partition
-     *            the name of the partition holding the component statistics.
      * @param isAntimatter
      *            true if statistics represent data about anti-matter records
      * @throws AlgebricksException
      * @throws RemoteException
      */
-    void dropStatistics(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName, String node,
-            String partition, boolean isAntimatter, String fieldName) throws AlgebricksException, RemoteException;
+    void dropStatistics(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName,
+            boolean isAntimatter, String fieldName) throws AlgebricksException, RemoteException;
 
     /**
      * Retrieves the statistics for an index in a given dataset,
@@ -1063,8 +1059,7 @@ public interface IMetadataNode extends Remote, Serializable {
      *            Is antimatter statistics required?
      */
     Statistics getFieldStatistics(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName,
-            String node, String partition, boolean isAntimatter, String fieldName)
-            throws AlgebricksException, RemoteException;
+            boolean isAntimatter, String fieldName) throws AlgebricksException, RemoteException;
 
     /**
      * Retrieves full statistics (both matter and antimatter) of a given field

@@ -18,16 +18,17 @@
  */
 package org.apache.hyracks.storage.am.statistics.historgram;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 import org.apache.hyracks.storage.am.statistics.common.AbstractSynopsis;
 
-public abstract class HistogramSynopsis<T extends HistogramBucket> extends AbstractSynopsis<T> {
-    public HistogramSynopsis(long domainStart, long domainEnd, int bucketsNum, Collection<T> synopsisElements) {
+public abstract class HistogramSynopsis<T extends HistogramBucket> extends AbstractSynopsis {
+    protected final SynopsisElementType synopsisElementType;
+
+    public HistogramSynopsis(Number domainStart, Number domainEnd, SynopsisElementType type, int bucketsNum,
+            List<T> synopsisElements) {
         super(domainStart, domainEnd, bucketsNum, synopsisElements);
+        this.synopsisElementType = type;
     }
 
     //implicit cast to operate with buckets as a list
@@ -35,60 +36,16 @@ public abstract class HistogramSynopsis<T extends HistogramBucket> extends Abstr
         return (List<T>) synopsisElements;
     }
 
-    protected long getBucketSpan(int bucketId) {
-        long start = getBucketStartPosition(bucketId);
-        return getBuckets().get(bucketId).getKey() - start + 1;
-    }
-
-    protected long getBucketStartPosition(int idx) {
-        return idx == 0 ? domainStart : getBuckets().get(idx - 1).getKey() + 1;
-    }
-
-    protected int getPointBucket(long position) {
-        int idx = Collections.binarySearch(getBuckets(), new HistogramBucket(position, 0.0),
-                Comparator.comparingLong(HistogramBucket::getKey));
-        if (idx < 0) {
-            idx = -idx - 1;
-        }
-        return idx;
-    }
-
     @Override
-    public double pointQuery(long position) {
-        int idx = getPointBucket(position);
-        return approximateValueWithinBucket(idx, position, position + 1);
+    public SynopsisElementType getElementType() {
+        return synopsisElementType;
     }
 
-    @Override
-    public double rangeQuery(long startPosition, long endPosition) {
-        int startBucket = getPointBucket(startPosition);
-        int endBucket = getPointBucket(endPosition);
-        long endBucketLeftBorder = getBucketStartPosition(endBucket);
-        double value = 0.0;
-        if (startBucket == endBucket) {
-            value = approximateValueWithinBucket(startBucket, startPosition, endPosition);
-        } else {
-            //account for part of the initial bucket between startPosition and it's right border
-            value += approximateValueWithinBucket(startBucket, startPosition, getBuckets().get(startBucket).getKey());
-            //...and for the part between left border of the last bucket and endPosition
-            value += approximateValueWithinBucket(endBucket, endBucketLeftBorder, endPosition);
-            //sum up all the buckets in between
-            for (int i = startBucket + 1; i < endBucket; i++) {
-                value += getBuckets().get(i).getValue();
-            }
-        }
-        return value;
-    }
+    public abstract void appendToBucket(int bucketId, Number currTupleValue, double frequency);
 
-    public double approximateValueWithinBucket(int bucketIdx, long startPosition, long endPosition) {
-        return getBuckets().get(bucketIdx).getValue() * (endPosition - startPosition + 1) / getBucketSpan(bucketIdx);
-    }
+    public abstract boolean advanceBucket(int activeBucket, int activeBucketElementsNum, Number currTupleValue,
+            Number lastAddedTupleValue);
 
-    public abstract void appendToBucket(int bucketId, double frequency);
-
-    public abstract boolean advanceBucket(int activeBucket, int activeBucketElementsNum, long currTuplePosition,
-            long lastAddedTuplePosition);
-
-    public void finishBucket(int activeBucket) {
+    public void finishBucket(int activeBucket, Number lastValueAdded) {
     }
 }

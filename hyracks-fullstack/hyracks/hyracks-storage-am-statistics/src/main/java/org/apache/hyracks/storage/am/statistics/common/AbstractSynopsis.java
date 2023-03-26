@@ -18,7 +18,6 @@
  */
 package org.apache.hyracks.storage.am.statistics.common;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
@@ -26,28 +25,28 @@ import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 
-public abstract class AbstractSynopsis<T extends ISynopsisElement> implements ISynopsis<T> {
+public abstract class AbstractSynopsis<T extends ISynopsisElement<Number>> implements ISynopsis<T> {
 
     protected static final long serialVersionUID = 1L;
 
-    protected final long domainEnd;
-    protected final long domainStart;
+    protected final Number domainEnd;
+    protected final Number domainStart;
     protected final int size;
 
-    protected Collection<T> synopsisElements;
+    protected List<T> synopsisElements;
 
-    public AbstractSynopsis(long domainStart, long domainEnd, int size, Collection<T> synopsisElements) {
+    public AbstractSynopsis(Number domainStart, Number domainEnd, int size, List<T> synopsisElements) {
         this.domainStart = domainStart;
         this.domainEnd = domainEnd;
         this.size = size;
         this.synopsisElements = synopsisElements;
     }
 
-    public long getDomainEnd() {
+    public Number getDomainEnd() {
         return domainEnd;
     }
 
-    public long getDomainStart() {
+    public Number getDomainStart() {
         return domainStart;
     }
 
@@ -56,7 +55,7 @@ public abstract class AbstractSynopsis<T extends ISynopsisElement> implements IS
         return size;
     }
 
-    public Collection<T> getElements() {
+    public List<T> getElements() {
         return synopsisElements;
     }
 
@@ -66,10 +65,6 @@ public abstract class AbstractSynopsis<T extends ISynopsisElement> implements IS
         }
     }
 
-    public abstract double pointQuery(long position);
-
-    public abstract double rangeQuery(long startPosition, long endPosition);
-
     @Override
     public boolean equals(Object o) {
         if (this == o)
@@ -77,7 +72,7 @@ public abstract class AbstractSynopsis<T extends ISynopsisElement> implements IS
         if (o == null || getClass() != o.getClass())
             return false;
         AbstractSynopsis<?> that = (AbstractSynopsis<?>) o;
-        if (that.getDomainStart() == getDomainStart() && that.getDomainEnd() == getDomainEnd()) {
+        if (that.getDomainStart().equals(getDomainStart()) && that.getDomainEnd().equals(getDomainEnd())) {
             if (that.getElements() != null && synopsisElements != null) {
                 return that.getElements().size() == synopsisElements.size();
             }

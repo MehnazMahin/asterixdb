@@ -142,9 +142,7 @@ public class ARecordSerializerDeserializer implements ISerializerDeserializer<AR
         if (numberOfSchemaFields <= 0) {
             return NO_FIELDS;
         }
-        if (in.readInt() <= 0) {
-            return NO_FIELDS; // read number of schema fields.
-        }
+        in.readInt(); // read number of schema fields.
 
         boolean hasOptionalFields = NonTaggedFormatUtil.hasOptionalField(this.recordType);
         byte[] nullBitMap = null;

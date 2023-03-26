@@ -30,6 +30,7 @@ import org.apache.hyracks.data.std.primitive.DoublePointable;
 import org.apache.hyracks.data.std.primitive.IntegerPointable;
 import org.apache.hyracks.data.std.primitive.LongPointable;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
+import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisElementType;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisType;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 import org.apache.hyracks.storage.am.statistics.common.SynopsisFactory;
@@ -38,7 +39,7 @@ import org.apache.hyracks.storage.am.statistics.historgram.HistogramBucket;
 public class StatisticsEntry extends AbstractPointable implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private ISynopsis<? extends ISynopsisElement<Long>> synopsis;
+    private ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis;
     private String dataverse;
     private String dataset;
     private String index;
@@ -47,8 +48,8 @@ public class StatisticsEntry extends AbstractPointable implements Serializable {
     public StatisticsEntry() {
     }
 
-    public StatisticsEntry(ISynopsis<? extends ISynopsisElement<Long>> synopsis, String dataverse, String dataset,
-            String index, String field) {
+    public StatisticsEntry(ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis, String dataverse,
+            String dataset, String index, String field) {
         this.synopsis = synopsis;
         this.dataverse = dataverse;
         this.dataset = dataset;
@@ -56,7 +57,7 @@ public class StatisticsEntry extends AbstractPointable implements Serializable {
         this.field = field;
     }
 
-    public ISynopsis<? extends ISynopsisElement<Long>> getSynopsis() {
+    public ISynopsis<? extends ISynopsisElement<? extends Number>> getSynopsis() {
         return synopsis;
     }
 
@@ -78,13 +79,16 @@ public class StatisticsEntry extends AbstractPointable implements Serializable {
 
     private byte[] getSynopsisByteArray() {
         if (synopsis != null) {
+            // PS: Long.BYTES == Double.BYTES (for integer and double datatype)
             // byte format of a synopsis,
             // [size: int] [synopsisTypeLength: int] [synopsisType: string]
-            // [numOfElements: int] [[key: long] [value: double]...]
+            // [numOfElements: int] [synopsisElemType: int]
+            // [[leftBorder: long/double] [rightBorder: long/double] [value: double]...]
             int binarySize = 0;
             String synopsisTypeName = synopsis.getType().name();
             binarySize += Integer.BYTES + Integer.BYTES + synopsisTypeName.getBytes(StandardCharsets.UTF_8).length;
-            binarySize += Integer.BYTES + (Long.BYTES + Double.BYTES) * (synopsis.getElements().size());
+            binarySize += Integer.BYTES + Integer.BYTES;
+            binarySize += (Long.BYTES + Long.BYTES + Double.BYTES) * (synopsis.getElements().size());
             byte[] byteArray = new byte[binarySize];
 
             int offset = 0;
@@ -99,10 +103,21 @@ public class StatisticsEntry extends AbstractPointable implements Serializable {
             int numOfElements = synopsis.getElements().size();
             IntegerPointable.setInteger(byteArray, offset, numOfElements);
             offset += Integer.BYTES;
+            int synopsisElemType = synopsis.getElementType().getValue();
+            IntegerPointable.setInteger(byteArray, offset, synopsisElemType);
+            offset += Integer.BYTES;
 
             for (Object obj : synopsis.getElements()) {
-                ISynopsisElement<Long> element = (ISynopsisElement) obj;
-                LongPointable.setLong(byteArray, offset, element.getKey());
+                ISynopsisElement<Number> element = (ISynopsisElement) obj;
+                if (synopsisElemType == SynopsisElementType.Long.getValue()) {
+                    LongPointable.setLong(byteArray, offset, element.getLeftKey().longValue());
+                    offset += Long.BYTES;
+                    LongPointable.setLong(byteArray, offset, element.getRightKey().longValue());
+                } else if (synopsisElemType == SynopsisElementType.Double.getValue()) {
+                    DoublePointable.setDouble(byteArray, offset, element.getLeftKey().doubleValue());
+                    offset += Long.BYTES;
+                    DoublePointable.setDouble(byteArray, offset, element.getRightKey().doubleValue());
+                }
                 offset += Long.BYTES;
                 DoublePointable.setDouble(byteArray, offset, element.getValue());
                 offset += Double.BYTES;
@@ -194,31 +209,51 @@ public class StatisticsEntry extends AbstractPointable implements Serializable {
         offset += byteLength;
 
         int numOfElements = IntegerPointable.getInteger(bytes, offset);
-        SynopsisType type;
-        List<ISynopsisElement<Long>> elements;
+        SynopsisType type = SynopsisType.None;
+        List<ISynopsisElement> elements = new ArrayList<>();
+        int synopsisElemType = -1;
         if (synopsisType.equals(SynopsisType.ContinuousHistogram.name())) {
-            elements = new ArrayList<>();
+            offset += Integer.BYTES;
+            synopsisElemType = IntegerPointable.getInteger(bytes, offset);
             offset += Integer.BYTES;
             for (int i = 0; i < numOfElements; i++) {
-                if (offset - start + Long.BYTES + Double.BYTES > length) {
+                if (offset - start + Long.BYTES + Long.BYTES + Double.BYTES > length) {
                     reset();
                     return;
                 }
-                long key = LongPointable.getLong(bytes, offset);
-                offset += Long.BYTES;
-                double value = DoublePointable.getDouble(bytes, offset);
-                offset += Double.BYTES;
-                elements.add(new HistogramBucket(key, value));
+                if (synopsisElemType == SynopsisElementType.Long.getValue()) {
+                    long leftBorder = LongPointable.getLong(bytes, offset);
+                    offset += Long.BYTES;
+                    long rightBorder = LongPointable.getLong(bytes, offset);
+                    offset += Long.BYTES;
+                    double value = DoublePointable.getDouble(bytes, offset);
+                    offset += Double.BYTES;
+                    elements.add(new HistogramBucket<Long>(leftBorder, rightBorder, value));
+                } else if (synopsisElemType == SynopsisElementType.Double.getValue()) {
+                    double leftBorder = DoublePointable.getDouble(bytes, offset);
+                    offset += Long.BYTES;
+                    double rightBorder = DoublePointable.getDouble(bytes, offset);
+                    offset += Long.BYTES;
+                    double value = DoublePointable.getDouble(bytes, offset);
+                    offset += Double.BYTES;
+                    elements.add(new HistogramBucket<Double>(leftBorder, rightBorder, value));
+                }
             }
             type = SynopsisType.ContinuousHistogram;
-        } else {
+        } else if (synopsisType.equals(SynopsisType.QuantileSketch.name())) {
             elements = new ArrayList<>(numOfElements);
             type = SynopsisType.QuantileSketch;
         }
+
         try {
-            // Only the type, size and elements of this synopsis are used, so type_trait is a dummy one.
-            synopsis = SynopsisFactory.createSynopsis(type, IntegerPointable.TYPE_TRAITS, elements, numOfElements,
-                    synopsisSize);
+            if (synopsisElemType >= 0 && synopsisElemType == SynopsisElementType.Long.getValue()) {
+                // Only the type, size and elements of this synopsis are used, so type_trait is a dummy one.
+                synopsis = SynopsisFactory.createSynopsis(type, IntegerPointable.TYPE_TRAITS, elements, numOfElements,
+                        synopsisSize, SynopsisElementType.Long);
+            } else if (synopsisElemType >= 0 && synopsisElemType == SynopsisElementType.Double.getValue()) {
+                synopsis = SynopsisFactory.createSynopsis(type, DoublePointable.TYPE_TRAITS, elements, numOfElements,
+                        synopsisSize, SynopsisElementType.Double);
+            }
         } catch (HyracksDataException e) {
             reset();
         }

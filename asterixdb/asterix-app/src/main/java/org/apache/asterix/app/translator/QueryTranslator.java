@@ -77,6 +77,7 @@ import org.apache.asterix.common.config.DatasetConfig.ExternalFilePendingOp;
 import org.apache.asterix.common.config.DatasetConfig.IndexType;
 import org.apache.asterix.common.config.DatasetConfig.TransactionState;
 import org.apache.asterix.common.config.GlobalConfig;
+import org.apache.asterix.common.config.StatisticsProperties;
 import org.apache.asterix.common.dataflow.ICcApplicationContext;
 import org.apache.asterix.common.exceptions.ACIDException;
 import org.apache.asterix.common.exceptions.AsterixException;
@@ -1506,20 +1507,32 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
                                 new UpdateStatisticsRequestMessage(indexHelperFactory, i);
                         requestMessages.add(message);
                     }
+
                     List<List<StatisticsEntry>> partitionStatEntries = (List<List<StatisticsEntry>>) messageBroker
                             .sendSyncRequestToNCs(reqId, locations, requestMessages, timeout, false);
                     // Statistics collection is now for only one field of the index
                     String fieldName =
                             ((Index.ValueIndexDetails) index.getIndexDetails()).getKeyFieldNames().get(0).get(0);
+                    String queryDefinedStatsSize = (String) metadataProvider.getConfig()
+                            .get(StatisticsProperties.STATISTICS_SYNOPSIS_SIZE_KEY);
+                    /* *
+                     * Query-defined properties take precedence over config-defined
+                     * Warning: Be consistent about the synopsis size in DDL and UpdateStatistics query
+                     */
+                    int requiredBucketNumber = (queryDefinedStatsSize != null) ? Integer.parseInt(queryDefinedStatsSize)
+                            : metadataProvider.getApplicationContext().getStatisticsProperties().getStatisticsSize();
+
+                    // Combine the collected synopses and store in the metatdata
                     List<StatisticsEntry>[] combinedSynopses = SynopsisUtils.getCombinedEquiHeightSynopses(
-                            partitionStatEntries, dataverseName.getCanonicalForm(), datasetName, indexName, fieldName);
+                            partitionStatEntries, dataverseName.getCanonicalForm(), datasetName, indexName,
+                            fieldName, requiredBucketNumber);
                     if (combinedSynopses.length > 0) {
-                        if (combinedSynopses[0].size() > 0) {
+                        if (combinedSynopses[0] != null && combinedSynopses[0].size() > 0) {
                             metadataProvider.updateStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,
                                     "", "", new ComponentStatisticsId(0L, 0L), false, fieldName,
                                     combinedSynopses[0].get(0).getSynopsis());
                         }
-                        if (combinedSynopses[1].size() > 0) {
+                        if (combinedSynopses[1] != null && combinedSynopses[1].size() > 0) {
                             metadataProvider.updateStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,
                                     "", "", new ComponentStatisticsId(0L, 0L), true, fieldName,
                                     combinedSynopses[1].get(0).getSynopsis());

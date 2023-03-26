@@ -21,7 +21,7 @@ create  dataverse test;
 use test;
 
 set `statistics.synopsis.type` `ContinuousHistogram`;
-set `statistics.synopsis.size` `256`;
+set `statistics.synopsis.size` `4`;
 
 create type TestType as open {
   `id`: int8,

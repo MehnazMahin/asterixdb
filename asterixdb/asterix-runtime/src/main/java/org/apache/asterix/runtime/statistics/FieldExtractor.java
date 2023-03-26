@@ -18,25 +18,28 @@
  */
 package org.apache.asterix.runtime.statistics;
 
+import org.apache.asterix.dataflow.data.nontagged.serde.ADoubleSerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.AIntegerSerializerDeserializer;
 import org.apache.asterix.om.types.ATypeTag;
 import org.apache.asterix.om.types.EnumDeserializer;
+import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.api.dataflow.value.ITypeTraits;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.dataflow.common.data.accessors.ITupleReference;
+import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisElementType;
 import org.apache.hyracks.storage.am.statistics.common.IFieldExtractor;
 
-public class FieldExtractor implements IFieldExtractor<Long> {
+public class FieldExtractor implements IFieldExtractor<Number> {
     private static final long serialVersionUID = 1L;
 
-    private AIntegerSerializerDeserializer serde;
+    private ISerializerDeserializer serde;
     private int fieldIdx;
     private final String fieldName;
     private final ITypeTraits fieldTypeTraits;
     private final ATypeTag typeTag;
 
-    public FieldExtractor(AIntegerSerializerDeserializer serde, int fieldIdx, String fieldName,
-            ITypeTraits fieldTypeTraits, ATypeTag typeTag) {
+    public FieldExtractor(ISerializerDeserializer serde, int fieldIdx, String fieldName, ITypeTraits fieldTypeTraits,
+            ATypeTag typeTag) {
         this.serde = serde;
         this.fieldIdx = fieldIdx;
         this.fieldName = fieldName;
@@ -50,6 +53,21 @@ public class FieldExtractor implements IFieldExtractor<Long> {
     }
 
     @Override
+    public SynopsisElementType getSynopsisElementType() {
+        switch (typeTag) {
+            case TINYINT:
+            case SMALLINT:
+            case INTEGER:
+            case BIGINT:
+                return SynopsisElementType.Long;
+            case FLOAT:
+            case DOUBLE:
+                return SynopsisElementType.Double;
+        }
+        return null;
+    }
+
+    @Override
     public ITypeTraits getFieldTypeTraits() {
         return fieldTypeTraits;
     }
@@ -60,13 +78,28 @@ public class FieldExtractor implements IFieldExtractor<Long> {
     }
 
     @Override
-    public Long extractFieldValue(ITupleReference tuple) throws HyracksDataException {
+    public Number extractFieldValue(ITupleReference tuple) throws HyracksDataException {
+        // TODO: check Long or Number?
         byte[] data = tuple.getFieldData(fieldIdx);
         int startOffset = tuple.getFieldStart(fieldIdx);
         ATypeTag tag = EnumDeserializer.ATYPETAGDESERIALIZER.deserialize(data[startOffset]);
         if (tag != typeTag) {
             throw new HyracksDataException("Expected to see " + typeTag + ", but got " + tag);
         }
-        return serde.getLongValue(data, startOffset + 1);
+        // Currently, only integer, double and string fields are supported/allowed
+        switch (tag) {
+            case TINYINT:
+            case SMALLINT:
+            case INTEGER:
+            case BIGINT:
+                return ((AIntegerSerializerDeserializer) serde).getLongValue(data, startOffset + 1);
+            case FLOAT:
+            case DOUBLE:
+                return ADoubleSerializerDeserializer.getDouble(data, startOffset + 1);
+            //case STRING:
+        }
+        //return serde.getLongValue(data, startOffset + 1);
+        // null will be returned if not integer, double, or string
+        return null;
     }
 }

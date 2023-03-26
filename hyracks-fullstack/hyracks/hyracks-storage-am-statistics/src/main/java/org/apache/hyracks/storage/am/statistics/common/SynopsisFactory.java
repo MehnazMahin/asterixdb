@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.hyracks.api.dataflow.value.ITypeTraits;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
+import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisElementType;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisType;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 import org.apache.hyracks.storage.am.statistics.historgram.ContinuousHistogramSynopsis;
@@ -30,16 +31,20 @@ import org.apache.hyracks.storage.am.statistics.historgram.HistogramBucket;
 
 public class SynopsisFactory {
     @SuppressWarnings("unchecked")
-    public static AbstractSynopsis<? extends ISynopsisElement<Long>> createSynopsis(SynopsisType type,
+    public static AbstractSynopsis<? extends ISynopsisElement<Number>> createSynopsis(SynopsisType type,
             ITypeTraits keyTypeTraits, Collection<? extends ISynopsisElement> synopsisElements,
-            long synopsisElementsNum, int synopsisSize) throws HyracksDataException {
+            long synopsisElementsNum, int synopsisSize, SynopsisElementType elementType) throws HyracksDataException {
         long domainStart = TypeTraitsDomainUtils.minDomainValue(keyTypeTraits);
         long domainEnd = TypeTraitsDomainUtils.maxDomainValue(keyTypeTraits);
         switch (type) {
             case ContinuousHistogram:
             case QuantileSketch:
-                return new ContinuousHistogramSynopsis(domainStart, domainEnd, synopsisElementsNum, synopsisSize,
-                        (List<HistogramBucket>) synopsisElements);
+                if (elementType == SynopsisElementType.Long) {
+                    return new ContinuousHistogramSynopsis(domainStart, domainEnd, elementType, synopsisElementsNum,
+                            synopsisSize, (List<HistogramBucket<Long>>) synopsisElements);
+                }
+                return new ContinuousHistogramSynopsis((double) domainStart, (double) domainEnd, elementType,
+                        synopsisElementsNum, synopsisSize, (List<HistogramBucket<Double>>) synopsisElements);
             default:
                 throw new HyracksDataException("Cannot instantiate new synopsis of type " + type);
         }

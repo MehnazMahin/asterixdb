@@ -17,5 +17,6 @@
  * under the License.
  */
 use test;
+set `statistics.synopsis.size` `256`;
 
 update statistics for TestDataset(TestIdx);

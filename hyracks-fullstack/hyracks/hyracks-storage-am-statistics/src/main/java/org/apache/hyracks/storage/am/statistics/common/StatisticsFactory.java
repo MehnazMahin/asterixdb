@@ -76,7 +76,7 @@ public class StatisticsFactory extends AbstractStatisticsFactory {
                 isAntimatter ? componentStatistics.getNumAntimatterTuples() : componentStatistics.getNumTuples();
         List<ISynopsisElement> synopsisElements = new ArrayList<>(size);
         ISynopsis synopsis = SynopsisFactory.createSynopsis(type, fieldExtractor.getFieldTypeTraits(), synopsisElements,
-                numElements, size);
+                numElements, size, fieldExtractor.getSynopsisElementType());
         switch (type) {
             case ContinuousHistogram:
                 return new HistogramBuilder((HistogramSynopsis<? extends HistogramBucket>) synopsis, dataverseName,

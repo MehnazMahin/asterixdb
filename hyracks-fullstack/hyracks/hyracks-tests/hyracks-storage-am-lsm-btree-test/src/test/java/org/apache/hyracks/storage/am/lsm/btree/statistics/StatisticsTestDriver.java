@@ -44,6 +44,7 @@ import org.apache.hyracks.storage.am.lsm.btree.impl.TestSynopsisElement;
 import org.apache.hyracks.storage.am.lsm.btree.util.LSMBTreeTestContext;
 import org.apache.hyracks.storage.am.lsm.btree.util.LSMBTreeTestHarness;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
+import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisElementType;
 import org.apache.hyracks.storage.am.statistics.common.IFieldExtractor;
 import org.junit.After;
 import org.junit.Assert;
@@ -84,6 +85,11 @@ public abstract class StatisticsTestDriver extends OrderedIndexTestDriver {
                 @Override
                 public String getFieldName() {
                     return Integer.toString(fieldIdx);
+                }
+
+                @Override
+                public SynopsisElementType getSynopsisElementType() {
+                    return null;
                 }
 
                 @Override
@@ -135,7 +141,7 @@ public abstract class StatisticsTestDriver extends OrderedIndexTestDriver {
             }
             Assert.assertTrue(synopsisIt.hasNext());
             TestSynopsisElement e = synopsisIt.next();
-            Assert.assertEquals(prevKey, e.getKey());
+            Assert.assertEquals(prevKey, e.getRightKey());
             Assert.assertEquals(keyTuples, e.getValue(), 0.0001);
             keyTuples = 1;
             prevKey = key;
@@ -143,7 +149,7 @@ public abstract class StatisticsTestDriver extends OrderedIndexTestDriver {
         //check last tuple
         if (prevKey != null) {
             TestSynopsisElement last = synopsisIt.next();
-            Assert.assertEquals(prevKey, last.getKey());
+            Assert.assertEquals(prevKey, last.getRightKey());
             Assert.assertEquals(keyTuples, last.getValue(), 0.0001);
         }
 

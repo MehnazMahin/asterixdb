@@ -23,18 +23,14 @@ import java.util.List;
 
 import org.apache.asterix.common.context.IStorageComponentProvider;
 import org.apache.asterix.common.exceptions.AsterixException;
-import org.apache.asterix.dataflow.data.nontagged.serde.AIntegerSerializerDeserializer;
 import org.apache.asterix.formats.nontagged.SerializerDeserializerProvider;
-import org.apache.asterix.om.pointables.nonvisitor.ARecordPointable;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.types.hierachy.ATypeHierarchy;
 import org.apache.asterix.om.types.hierachy.ATypeHierarchy.Domain;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.data.ITypeTraitProvider;
-import org.apache.hyracks.api.dataflow.value.ITypeTraits;
-import org.apache.hyracks.api.exceptions.HyracksDataException;
-import org.apache.hyracks.dataflow.common.data.accessors.ITupleReference;
+import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.storage.am.statistics.common.IFieldExtractor;
 
 public class StatisticsUtil {
@@ -59,15 +55,14 @@ public class StatisticsUtil {
         // add statistics on indexed fields
         if ((!isPrimaryIndex || keepStatisticsOnPrimaryKeys)
                 && ATypeHierarchy.getTypeDomain(keyType.getTypeTag()) == Domain.NUMERIC) {
-            AIntegerSerializerDeserializer serDe =
-                    (AIntegerSerializerDeserializer) SerializerDeserializerProvider.INSTANCE
-                            .getNonTaggedSerializerDeserializer(keyType);
+            ISerializerDeserializer serDe =
+                    SerializerDeserializerProvider.INSTANCE.getNonTaggedSerializerDeserializer(keyType);
             result.add(new FieldExtractor(serDe, 0, keyField, typeTraitProvider.getTypeTrait(keyType),
                     keyType.getTypeTag()));
         }
         // add statistics on non-indexed fields
-        if (isPrimaryIndex && unorderedStatisticsFields != null && unorderedStatisticsFields.length > 0)
-
+        /*if (isPrimaryIndex && unorderedStatisticsFields != null && unorderedStatisticsFields.length > 0)
+        
         {
             for (int i = 0; i < unorderedStatisticsFields.length; i++) {
                 IAType statisticsType = recordType.getFieldType(unorderedStatisticsFields[i]);
@@ -80,32 +75,32 @@ public class StatisticsUtil {
                             typeTraitProvider.getTypeTrait(statisticsType)));
                 }
             }
-        }
+        }*/
         return result;
     }
 
-    public static IFieldExtractor getFieldExtractor(AIntegerSerializerDeserializer serde, ARecordType recordType,
+    /*public static IFieldExtractor getFieldExtractor(AIntegerSerializerDeserializer serde, ARecordType recordType,
             int statisticsFieldIdx, String statisticsFieldName, ITypeTraits typeTraits) {
         //incoming tuple has format [PK][Record]... and we need to extract the record, i.e. 2nd field
         final int hyracksFieldIdx = 1;
         return new IFieldExtractor() {
             private static final long serialVersionUID = 1L;
-
+    
             @Override
             public String getFieldName() {
                 return statisticsFieldName;
             }
-
+    
             @Override
             public ITypeTraits getFieldTypeTraits() {
                 return typeTraits;
             }
-
+    
             @Override
             public boolean isUnordered() {
                 return true;
             }
-
+    
             @Override
             public Long extractFieldValue(ITupleReference tuple) throws HyracksDataException {
                 final ARecordPointable recPointable = ARecordPointable.FACTORY.createPointable();
@@ -117,8 +112,8 @@ public class StatisticsUtil {
                         tuple.getFieldLength(hyracksFieldIdx));
                 return serde.getLongValue(recPointable.getByteArray(),
                         recPointable.getClosedFieldOffset(recordType, statisticsFieldIdx));
-
+    
             }
         };
-    }
+    }*/
 }
