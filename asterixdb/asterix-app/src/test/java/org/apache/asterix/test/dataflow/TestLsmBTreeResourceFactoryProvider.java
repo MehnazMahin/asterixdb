@@ -95,7 +95,7 @@ public class TestLsmBTreeResourceFactoryProvider implements IResourceFactoryProv
                         dataset.getDatasetName(), index.getIndexName(),
                         StatisticsUtil.computeStatisticsFieldExtractors(storageComponentProvider, recordType,
                                 ((Index.ValueIndexDetails) index.getIndexDetails()).getKeyFieldNames(),
-                                index.isPrimaryIndex(), true, null)),
+                                index.isPrimaryIndex(), true)),
                 hasStatistics ? storageComponentProvider.getStatisticsManagerProvider() : null, updateAware, false);
     }
 

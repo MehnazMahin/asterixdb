@@ -141,7 +141,7 @@ public class LSMRTree extends AbstractLSMRTree {
                 component = createDiskComponent(componentFactory, flushOp.getTarget(), flushOp.getBTreeTarget(),
                         flushOp.getBloomFilterTarget(), true);
                 componentBulkLoader = component.createBulkLoader(operation, 1.0f, false, numBTreeTuples.longValue(), 0L,
-                        false, false, false, pageWriteCallbackFactory.createPageWriteCallback());
+                        0L, false, false, false, pageWriteCallbackFactory.createPageWriteCallback());
                 flushLoadRTree(isEmpty, rTreeTupleSorter, componentBulkLoader);
                 // scan the memory BTree and bulk load delete tuples
                 flushLoadBtree(memBTreeAccessor, componentBulkLoader, btreeNullPredicate);
@@ -337,13 +337,13 @@ public class LSMRTree extends AbstractLSMRTree {
                         numElements += ((LSMRTreeDiskComponent) mergeOp.getMergingComponents().get(i)).getBloomFilter()
                                 .getNumElements();
                     }
-                    componentBulkLoader = mergedComponent.createBulkLoader(mergeOp, 1.0f, false, numElements, 0L, false,
-                            false, false, pageWriteCallbackFactory.createPageWriteCallback());
+                    componentBulkLoader = mergedComponent.createBulkLoader(mergeOp, 1.0f, false, numElements, 0L, 0L,
+                            false, false, false, pageWriteCallbackFactory.createPageWriteCallback());
                     mergeLoadBTree(mergeOp, opCtx, rtreeSearchPred, componentBulkLoader);
                 } else {
                     //no buddy-btree needed
-                    componentBulkLoader = mergedComponent.createBulkLoader(mergeOp, 1.0f, false, 0L, 0L, false, false,
-                            false, pageWriteCallbackFactory.createPageWriteCallback());
+                    componentBulkLoader = mergedComponent.createBulkLoader(mergeOp, 1.0f, false, 0L, 0L, 0L, false,
+                            false, false, pageWriteCallbackFactory.createPageWriteCallback());
                 }
                 //search old rtree components
                 while (cursor.hasNext()) {

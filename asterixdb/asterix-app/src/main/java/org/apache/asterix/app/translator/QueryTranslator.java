@@ -276,7 +276,6 @@ import org.apache.hyracks.storage.am.common.dataflow.IIndexDataflowHelperFactory
 import org.apache.hyracks.storage.am.common.dataflow.IndexDataflowHelperFactory;
 import org.apache.hyracks.storage.am.common.dataflow.IndexDropOperatorDescriptor.DropOption;
 import org.apache.hyracks.storage.am.lsm.common.api.ILSMMergePolicyFactory;
-import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 import org.apache.hyracks.storage.am.lsm.invertedindex.fulltext.TokenizerCategory;
 import org.apache.hyracks.util.LogRedactionUtil;
 import org.apache.hyracks.util.OptionalBoolean;
@@ -1484,11 +1483,20 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
             }
 
             List<String> indexNames = stmtUpdateStatistics.getIndexNames();
+            /**
+             * Query-defined properties take precedence over Config-defined
+             * If primary-keys are enabled for UpdateStatistics query, collect LSM stats for primary keys
+             * Note: single-valued field LSM stats will be collected
+             */
+            if (Boolean.parseBoolean(
+                    (String) metadataProvider.getConfig().get(StatisticsProperties.STATISTICS_PRIMARY_KEYS_ENABLED))) {
+                indexNames.add(datasetName);
+            }
             for (String indexName : indexNames) {
                 Index index = MetadataManager.INSTANCE.getIndex(metadataProvider.getMetadataTxnContext(), dataverseName,
                         datasetName, indexName);
 
-                if (index != null && index.getIndexType() == IndexType.BTREE && !index.isPrimaryIndex()) {
+                if (index != null && index.getIndexType() == IndexType.BTREE) {
                     Pair<IFileSplitProvider, AlgebricksPartitionConstraint> splitAndConstraint =
                             metadataProvider.getSplitProviderAndConstraints(dataset, indexName);
                     List<String> locations = Arrays
@@ -1508,7 +1516,7 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
                         requestMessages.add(message);
                     }
 
-                    List<List<StatisticsEntry>> partitionStatEntries = (List<List<StatisticsEntry>>) messageBroker
+                    List<StatisticsEntry> partitionStatEntries = (List<StatisticsEntry>) messageBroker
                             .sendSyncRequestToNCs(reqId, locations, requestMessages, timeout, false);
                     // Statistics collection is now for only one field of the index
                     String fieldName =
@@ -1523,23 +1531,21 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
                             : metadataProvider.getApplicationContext().getStatisticsProperties().getStatisticsSize();
 
                     // Combine the collected synopses and store in the metatdata
-                    List<StatisticsEntry>[] combinedSynopses = SynopsisUtils.getCombinedEquiHeightSynopses(
-                            partitionStatEntries, dataverseName.getCanonicalForm(), datasetName, indexName,
-                            fieldName, requiredBucketNumber);
+                    StatisticsEntry[] combinedSynopses = SynopsisUtils.getCombinedEquiHeightSynopses(
+                            partitionStatEntries, dataverseName.getCanonicalForm(), datasetName, indexName, fieldName,
+                            requiredBucketNumber);
                     if (combinedSynopses.length > 0) {
-                        if (combinedSynopses[0] != null && combinedSynopses[0].size() > 0) {
+                        if (combinedSynopses[0] != null) {
                             metadataProvider.updateStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,
-                                    "", "", new ComponentStatisticsId(0L, 0L), false, fieldName,
-                                    combinedSynopses[0].get(0).getSynopsis());
+                                    false, fieldName, combinedSynopses[0].getSynopsis());
                         }
-                        if (combinedSynopses[1] != null && combinedSynopses[1].size() > 0) {
+                        if (combinedSynopses[1] != null) {
                             metadataProvider.updateStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,
-                                    "", "", new ComponentStatisticsId(0L, 0L), true, fieldName,
-                                    combinedSynopses[1].get(0).getSynopsis());
+                                    true, fieldName, combinedSynopses[1].getSynopsis());
                         } else {
                             // This can happen if all antimatter tuples are resolved during merge operations
                             metadataProvider.dropStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,
-                                    "", "", true, fieldName);
+                                    true, fieldName);
                         }
                     }
                 }

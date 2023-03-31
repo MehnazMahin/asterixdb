@@ -339,7 +339,7 @@ public class ExternalBTreeWithBuddy extends AbstractLSMIndex implements ITreeInd
                 numElements += ((AbstractLSMWithBloomFilterDiskComponent) mergeOp.getMergingComponents().get(i))
                         .getBloomFilter().getNumElements();
             }
-            componentBulkLoader = mergedComponent.createBulkLoader(operation, 1.0f, false, numElements, 0L, false,
+            componentBulkLoader = mergedComponent.createBulkLoader(operation, 1.0f, false, numElements, 0L, 0L, false,
                     false, false, pageWriteCallbackFactory.createPageWriteCallback());
             try {
                 while (buddyBtreeCursor.hasNext()) {
@@ -351,8 +351,8 @@ public class ExternalBTreeWithBuddy extends AbstractLSMIndex implements ITreeInd
                 buddyBtreeCursor.close();
             }
         } else {
-            componentBulkLoader = mergedComponent.createBulkLoader(operation, 1.0f, false, 0L, 0L, false, false, false,
-                    pageWriteCallbackFactory.createPageWriteCallback());
+            componentBulkLoader = mergedComponent.createBulkLoader(operation, 1.0f, false, 0L, 0L, 0L, false, false,
+                    false, pageWriteCallbackFactory.createPageWriteCallback());
         }
 
         try {
@@ -533,7 +533,7 @@ public class ExternalBTreeWithBuddy extends AbstractLSMIndex implements ITreeInd
             loadOp.setNewComponent(component);
             ioOpCallback.scheduled(loadOp);
             ioOpCallback.beforeOperation(loadOp);
-            componentBulkLoader = component.createBulkLoader(loadOp, fillFactor, verifyInput, numElementsHint, 0L,
+            componentBulkLoader = component.createBulkLoader(loadOp, fillFactor, verifyInput, numElementsHint, 0L, 0L,
                     false, true, false, pageWriteCallbackFactory.createPageWriteCallback());
         }
 

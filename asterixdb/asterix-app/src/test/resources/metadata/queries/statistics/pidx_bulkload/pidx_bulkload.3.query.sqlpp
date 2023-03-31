@@ -18,6 +18,7 @@
  */
 use test;
 set `statistics.synopsis.size` `4`;
+set `statistics.primary.keys.enabled` `true`;
 
 update statistics for TestDataset(TestIdx1, TestIdx2);
 

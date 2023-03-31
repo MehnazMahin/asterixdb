@@ -33,48 +33,48 @@ import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisElementType;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisType;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
+import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatistics;
 import org.apache.hyracks.storage.am.statistics.common.SynopsisFactory;
 import org.apache.hyracks.storage.am.statistics.historgram.HistogramBucket;
 
 public class StatisticsEntry extends AbstractPointable implements Serializable {
     private static final long serialVersionUID = 1L;
-
-    private ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis;
-    private String dataverse;
-    private String dataset;
-    private String index;
     private String field;
+    private ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis;
+    private long numTuples;
+    private long numAntimatterTuples;
+    private long totalTuplesSize;
 
     public StatisticsEntry() {
     }
 
-    public StatisticsEntry(ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis, String dataverse,
-            String dataset, String index, String field) {
+    public StatisticsEntry(ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis, String field) {
         this.synopsis = synopsis;
-        this.dataverse = dataverse;
-        this.dataset = dataset;
-        this.index = index;
         this.field = field;
+        numTuples = numAntimatterTuples = totalTuplesSize = -1L;
+    }
+
+    /**
+     * Only set a partition's stats before passing as the response to UpdateStatistics
+     * and collect the combined synopses for components in a partition
+     * default: -1L (not stored in the byte array)
+     */
+    public void setComponentStats(long numTuples, long numAntimatterTuples, long totalTuplesSize) {
+        this.numTuples = numTuples;
+        this.numAntimatterTuples = numAntimatterTuples;
+        this.totalTuplesSize = totalTuplesSize;
+    }
+
+    public String getField() {
+        return field;
     }
 
     public ISynopsis<? extends ISynopsisElement<? extends Number>> getSynopsis() {
         return synopsis;
     }
 
-    public String getDataverse() {
-        return dataverse;
-    }
-
-    public String getDataset() {
-        return dataset;
-    }
-
-    public String getIndex() {
-        return index;
-    }
-
-    public String getField() {
-        return field;
+    public ComponentStatistics getPartitionStats() {
+        return new ComponentStatistics(numTuples, numAntimatterTuples, totalTuplesSize);
     }
 
     private byte[] getSynopsisByteArray() {
@@ -130,56 +130,27 @@ public class StatisticsEntry extends AbstractPointable implements Serializable {
     @Override
     public byte[] getByteArray() {
         int binarySize = 0;
-        if (length == 0) {
-            if (dataverse != null && dataset != null && index != null && field != null && synopsis != null) {
-                binarySize += Integer.BYTES + dataverse.getBytes(StandardCharsets.UTF_8).length;
-                binarySize += Integer.BYTES + dataset.getBytes(StandardCharsets.UTF_8).length;
-                binarySize += Integer.BYTES + index.getBytes(StandardCharsets.UTF_8).length;
-                binarySize += Integer.BYTES + field.getBytes(StandardCharsets.UTF_8).length;
-                byte[] synopsisByteArray = getSynopsisByteArray();
-                binarySize += Integer.BYTES + synopsisByteArray.length;
+        if (length == 0 && field != null) {
+            binarySize += Integer.BYTES + field.getBytes(StandardCharsets.UTF_8).length;
+            byte[] synopsisByteArray = getSynopsisByteArray();
+            binarySize += synopsisByteArray.length;
 
-                byte[] buffer = new byte[binarySize];
-                int offset = 0;
+            byte[] buffer = new byte[binarySize];
+            int offset = 0;
 
-                // Store length of dataverse and the corresponding string
-                IntegerPointable.setInteger(buffer, offset, dataverse.getBytes(StandardCharsets.UTF_8).length);
-                offset += Integer.BYTES;
-                System.arraycopy(dataverse.getBytes(StandardCharsets.UTF_8), 0, buffer, offset,
-                        dataverse.getBytes(StandardCharsets.UTF_8).length);
-                offset += dataverse.getBytes(StandardCharsets.UTF_8).length;
+            // Store length of field and the corresponding string
+            IntegerPointable.setInteger(buffer, offset, field.getBytes(StandardCharsets.UTF_8).length);
+            offset += Integer.BYTES;
+            System.arraycopy(field.getBytes(StandardCharsets.UTF_8), 0, buffer, offset,
+                    field.getBytes(StandardCharsets.UTF_8).length);
+            offset += field.getBytes(StandardCharsets.UTF_8).length;
 
-                // Store length of dataset and the corresponding string
-                IntegerPointable.setInteger(buffer, offset, dataset.getBytes(StandardCharsets.UTF_8).length);
-                offset += Integer.BYTES;
-                System.arraycopy(dataset.getBytes(StandardCharsets.UTF_8), 0, buffer, offset,
-                        dataset.getBytes(StandardCharsets.UTF_8).length);
-                offset += dataset.getBytes(StandardCharsets.UTF_8).length;
+            // Store the byte-array of synopsis
+            System.arraycopy(synopsisByteArray, 0, buffer, offset, synopsisByteArray.length);
 
-                // Store length of index and the corresponding string
-                IntegerPointable.setInteger(buffer, offset, index.getBytes(StandardCharsets.UTF_8).length);
-                offset += Integer.BYTES;
-                System.arraycopy(index.getBytes(StandardCharsets.UTF_8), 0, buffer, offset,
-                        index.getBytes(StandardCharsets.UTF_8).length);
-                offset += index.getBytes(StandardCharsets.UTF_8).length;
-
-                // Store length of field and the corresponding string
-                IntegerPointable.setInteger(buffer, offset, field.getBytes(StandardCharsets.UTF_8).length);
-                offset += Integer.BYTES;
-                System.arraycopy(field.getBytes(StandardCharsets.UTF_8), 0, buffer, offset,
-                        field.getBytes(StandardCharsets.UTF_8).length);
-                offset += field.getBytes(StandardCharsets.UTF_8).length;
-
-                // Store length of synopsis and the corresponding byte-array
-                IntegerPointable.setInteger(buffer, offset, synopsisByteArray.length);
-                offset += Integer.BYTES;
-                System.arraycopy(synopsisByteArray, 0, buffer, offset, synopsisByteArray.length);
-
-                length = offset + synopsisByteArray.length;
-                bytes = new byte[length];
-                System.arraycopy(buffer, 0, bytes, 0, length);
-                return buffer;
-            }
+            length = offset + synopsisByteArray.length;
+            bytes = new byte[length];
+            System.arraycopy(buffer, 0, bytes, 0, length);
         }
         return bytes;
     }
@@ -200,6 +171,7 @@ public class StatisticsEntry extends AbstractPointable implements Serializable {
     private void setSynopsisFromByteArray(byte[] bytes, int start, int length) {
         int offset = start;
         int synopsisSize = IntegerPointable.getInteger(bytes, offset);
+
         offset += Integer.BYTES;
         int byteLength = IntegerPointable.getInteger(bytes, offset);
         offset += Integer.BYTES;
@@ -268,7 +240,7 @@ public class StatisticsEntry extends AbstractPointable implements Serializable {
     public void set(byte[] bytes, int start, int length) {
         int offset = start;
 
-        // dataverse name
+        // field name
         int byteLength = IntegerPointable.getInteger(bytes, offset);
         offset += Integer.BYTES;
         if (byteLength == 0 || (offset - start + byteLength) > length) {
@@ -277,68 +249,22 @@ public class StatisticsEntry extends AbstractPointable implements Serializable {
         }
         byte[] dummy = new byte[byteLength];
         System.arraycopy(bytes, offset, dummy, 0, byteLength);
-        dataverse = new String(dummy, StandardCharsets.UTF_8);
-        offset += byteLength;
-
-        // dataset name
-        byteLength = IntegerPointable.getInteger(bytes, offset);
-        offset += Integer.BYTES;
-        if (byteLength == 0 || (offset - start + byteLength) > length) {
-            reset();
-            return;
-        }
-        dummy = new byte[byteLength];
-        System.arraycopy(bytes, offset, dummy, 0, byteLength);
-        dataset = new String(dummy, StandardCharsets.UTF_8);
-        offset += byteLength;
-
-        // index name
-        byteLength = IntegerPointable.getInteger(bytes, offset);
-        offset += Integer.BYTES;
-        if (byteLength == 0 || (offset - start + byteLength) > length) {
-            reset();
-            return;
-        }
-        dummy = new byte[byteLength];
-        System.arraycopy(bytes, offset, dummy, 0, byteLength);
-        index = new String(dummy, StandardCharsets.UTF_8);
-        offset += byteLength;
-
-        // field name
-        byteLength = IntegerPointable.getInteger(bytes, offset);
-        offset += Integer.BYTES;
-        if (byteLength == 0 || (offset - start + byteLength) > length) {
-            reset();
-            return;
-        }
-        dummy = new byte[byteLength];
-        System.arraycopy(bytes, offset, dummy, 0, byteLength);
         field = new String(dummy, StandardCharsets.UTF_8);
         offset += byteLength;
 
-        // synopsis
-        byteLength = IntegerPointable.getInteger(bytes, offset);
-        offset += Integer.BYTES;
-        if (byteLength == 0 || (offset - start + byteLength) > length) {
-            reset();
-            return;
-        }
-        setSynopsisFromByteArray(bytes, offset, byteLength);
+        // corresponding synopsis
+        int synopsisLength = length - (Integer.BYTES + byteLength);
+        setSynopsisFromByteArray(bytes, offset, synopsisLength);
 
-        if (dataverse != null && dataset != null && index != null && field != null && synopsis != null) {
-            this.length = offset - start + byteLength;
-            this.bytes = new byte[this.length];
-            System.arraycopy(bytes, 0, this.bytes, 0, this.length);
-        }
+        this.length = length;
+        this.bytes = new byte[this.length];
+        System.arraycopy(bytes, 0, this.bytes, 0, this.length);
     }
 
     /**
      * This is only for handling errors, not for general usage
      */
     private void reset() {
-        dataverse = null;
-        dataset = null;
-        index = null;
         field = null;
         synopsis = null;
         length = 0;
@@ -346,7 +272,6 @@ public class StatisticsEntry extends AbstractPointable implements Serializable {
     }
 
     public String toString() {
-        return "TestStatisticsMessageID{" + "dataverse='" + dataverse + '\'' + ", dataset='" + dataset + '\''
-                + ", index='" + index + '\'' + ", field='" + field + '\'' + '}';
+        return "TestStatisticsMessageID{" + "field='" + field + '\'' + '}';
     }
 }

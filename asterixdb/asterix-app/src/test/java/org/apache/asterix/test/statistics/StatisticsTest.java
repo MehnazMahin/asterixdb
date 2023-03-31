@@ -130,18 +130,15 @@ public class StatisticsTest {
         }
     }
 
-    private static final TestStatisticsID keyFieldStatisticsID =
-            new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATASET_NAME,
-                    StorageTestUtils.DATASET_NAME, KEY_FIELD_NAME, "asterix_nc1", "partition_0", false);
+    private static final TestStatisticsID keyFieldStatisticsID = new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME,
+            StorageTestUtils.DATASET_NAME, StorageTestUtils.DATASET_NAME, KEY_FIELD_NAME, false);
     private static final TestStatisticsID keyFieldAntimatterStatisticsID =
             new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATASET_NAME,
-                    StorageTestUtils.DATASET_NAME, KEY_FIELD_NAME, "asterix_nc1", "partition_0", true);
-    private static final TestStatisticsID indexedFieldStatisticsID =
-            new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATASET_NAME, INDEX_NAME,
-                    INDEXED_FIELD_NAME, "asterix_nc1", "partition_0", false);
-    private static final TestStatisticsID indexedFieldAntimatterStatisticsID =
-            new TestStatisticsID(StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATASET_NAME, INDEX_NAME,
-                    INDEXED_FIELD_NAME, "asterix_nc1", "partition_0", true);
+                    StorageTestUtils.DATASET_NAME, KEY_FIELD_NAME, true);
+    private static final TestStatisticsID indexedFieldStatisticsID = new TestStatisticsID(
+            StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATASET_NAME, INDEX_NAME, INDEXED_FIELD_NAME, false);
+    private static final TestStatisticsID indexedFieldAntimatterStatisticsID = new TestStatisticsID(
+            StorageTestUtils.DATAVERSE_NAME, StorageTestUtils.DATASET_NAME, INDEX_NAME, INDEXED_FIELD_NAME, true);
 
     @BeforeClass
     public static void startTestCluster() throws Exception {

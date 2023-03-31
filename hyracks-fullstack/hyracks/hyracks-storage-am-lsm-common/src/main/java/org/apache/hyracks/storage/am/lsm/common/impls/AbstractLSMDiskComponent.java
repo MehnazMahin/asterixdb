@@ -60,7 +60,7 @@ public abstract class AbstractLSMDiskComponent extends AbstractLSMComponent impl
         this.statisticsFactory = statisticsFactory;
         this.statisticsManager = statisticsManager;
         if (statisticsFactory != null && statisticsManager != null) {
-            this.statistics = new ComponentStatistics(-1L, -1L);
+            this.statistics = new ComponentStatistics(-1L, -1L, -1L);
         }
     }
 
@@ -192,6 +192,7 @@ public abstract class AbstractLSMDiskComponent extends AbstractLSMComponent impl
         }
         if (statistics != null && !createNewComponent) {
             statistics.readTuplesNum(getMetadata());
+            statistics.readTotalTuplesSize(getMetadata());
         }
     }
 
@@ -248,8 +249,8 @@ public abstract class AbstractLSMDiskComponent extends AbstractLSMComponent impl
 
     @Override
     public ChainedLSMDiskComponentBulkLoader createBulkLoader(ILSMIOOperation operation, float fillFactor,
-            boolean verifyInput, long numElementsHint, long numAntimatterElementsHint, boolean checkIfEmptyIndex,
-            boolean withFilter, boolean cleanupEmptyComponent, IPageWriteCallback callback)
+            boolean verifyInput, long numElementsHint, long numAntimatterElementsHint, long totalTuplesSizeHint,
+            boolean checkIfEmptyIndex, boolean withFilter, boolean cleanupEmptyComponent, IPageWriteCallback callback)
             throws HyracksDataException {
         ChainedLSMDiskComponentBulkLoader chainedBulkLoader =
                 new ChainedLSMDiskComponentBulkLoader(operation, this, cleanupEmptyComponent);
@@ -257,7 +258,7 @@ public abstract class AbstractLSMDiskComponent extends AbstractLSMComponent impl
             chainedBulkLoader.addBulkLoader(createFilterBulkLoader());
         }
         if (statistics != null) {
-            statistics = new ComponentStatistics(numElementsHint, numAntimatterElementsHint);
+            statistics = new ComponentStatistics(numElementsHint, numAntimatterElementsHint, totalTuplesSizeHint);
             chainedBulkLoader.addBulkLoader(
                     new StatisticsBulkLoader(statisticsFactory.createStatistics(statistics, cleanupEmptyComponent),
                             statisticsManager, this, operation.getIOOpertionType()));

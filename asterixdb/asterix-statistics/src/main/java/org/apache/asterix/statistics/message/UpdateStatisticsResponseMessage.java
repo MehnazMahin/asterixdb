@@ -36,42 +36,22 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.core.algebra.metadata.IMetadataProvider;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
-import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 
 public class UpdateStatisticsResponseMessage implements ICcAddressedMessage, INcResponse {
     private static final long serialVersionUID = 1L;
     private static final Logger LOGGER = Logger.getLogger(UpdateStatisticsResponseMessage.class.getName());
 
-    // statEntries -> [0] for matter synopses, [1] for antimatter synopses
-    protected List<StatisticsEntry>[] statEntries;
-    protected String node;
-    protected String partition;
-    protected ComponentStatisticsId componentId;
+    // statEntries -> [0] for non-antimatter synopses, [1] for antimatter synopses
+    protected StatisticsEntry[] statEntries;
     protected String field;
 
-    public UpdateStatisticsResponseMessage(List<StatisticsEntry>[] statEntries, String node, String partition,
-            ComponentStatisticsId componentId, String field) {
+    public UpdateStatisticsResponseMessage(StatisticsEntry[] statEntries, String field) {
         this.statEntries = statEntries;
-        this.node = node;
-        this.partition = partition;
-        this.componentId = componentId;
         this.field = field;
     }
 
-    public List<StatisticsEntry>[] getStatEntries() {
+    public StatisticsEntry[] getStatEntries() {
         return statEntries;
-    }
-
-    public String getNode() {
-        return node;
-    }
-
-    public String getPartition() {
-        return partition;
-    }
-
-    public ComponentStatisticsId getComponentId() {
-        return componentId;
     }
 
     @Override
@@ -92,10 +72,10 @@ public class UpdateStatisticsResponseMessage implements ICcAddressedMessage, INc
         switch (responseState) {
             case UNINITIALIZED:
                 result.setLeft(ResponseState.SUCCESS);
-                result.setRight(new ArrayList<List<StatisticsEntry>>());
+                result.setRight(new ArrayList<StatisticsEntry>());
                 // Fall through
             case SUCCESS:
-                List<List<StatisticsEntry>> combinedStats = (List<List<StatisticsEntry>>) result.getRight();
+                List<StatisticsEntry> combinedStats = (List<StatisticsEntry>) result.getRight();
                 combinedStats.add(statEntries[0]);
                 combinedStats.add(statEntries[1]);
                 break;
@@ -115,48 +95,24 @@ public class UpdateStatisticsResponseMessage implements ICcAddressedMessage, INc
         MetadataTransactionContext mdTxnCtx = null;
         for (int i = 0; i < 2; i++) {
             boolean isAntimatter = (i != 0);
-            if (componentId.getMinTimestamp() != componentId.getMaxTimestamp()) {
-                // Merged LSM component, so check whether the statistics of this component
-                // is available in the Metadata cache
-                for (StatisticsEntry entry : statEntries[i]) {
-                    LOGGER.fine("Updating statistics of component with Id " + componentId);
-
-                    try {
-                        // drop the corresponding statistics if empty-synopsis, otherwise update
-                        if (entry.getSynopsis() != null) {
-                            //                            mdProvider.updateStatistics(entry.getDataverse(), entry.getDataset(), entry.getIndex(), node,
-                            //                                    partition, componentId, entry.getField(), isAntimatter, entry.getSynopsis());
-                        } else {
-                            mdProvider.dropStatistics(entry.getDataverse(), entry.getDataset(), entry.getIndex(), node,
-                                    partition, isAntimatter, entry.getField());
-                        }
-                    } catch (AlgebricksException | ACIDException me) {
-                        if (bActiveTxn) {
-                            try {
-                                MetadataManager.INSTANCE.abortTransaction(mdTxnCtx);
-                            } catch (ACIDException | RemoteException e) {
-                                throw HyracksDataException.create(e);
-                            }
-                        }
-                    }
-                }
-            } else {
-                // LSM flushed component, so statistics will be new, add all of them (if non-empty synopsis)
-                for (StatisticsEntry entry : statEntries[i]) {
+            // Merged LSM component, so check whether the statistics of this component
+            // is available in the Metadata cache
+            StatisticsEntry entry = statEntries[i];
+            if (entry != null) {
+                try {
+                    // drop the corresponding statistics if empty-synopsis, otherwise update
                     if (entry.getSynopsis() != null) {
-                        LOGGER.fine("Adding new statistics of component with Id " + componentId);
-
+                        //                            mdProvider.updateStatistics(entry.getDataverse(), entry.getDataset(), entry.getIndex(), node,
+                        //                                    partition, componentId, entry.getField(), isAntimatter, entry.getSynopsis());
+                    } else {
+                        mdProvider.dropStatistics("", "", "", isAntimatter, entry.getField());
+                    }
+                } catch (AlgebricksException | ACIDException me) {
+                    if (bActiveTxn) {
                         try {
-                            mdProvider.addStatistics(entry.getDataverse(), entry.getDataset(), entry.getIndex(), node,
-                                    partition, componentId, isAntimatter, entry.getField(), entry.getSynopsis());
-                        } catch (AlgebricksException | ACIDException me) {
-                            if (bActiveTxn) {
-                                try {
-                                    MetadataManager.INSTANCE.abortTransaction(mdTxnCtx);
-                                } catch (ACIDException | RemoteException e) {
-                                    throw HyracksDataException.create(e);
-                                }
-                            }
+                            MetadataManager.INSTANCE.abortTransaction(mdTxnCtx);
+                        } catch (ACIDException | RemoteException e) {
+                            throw HyracksDataException.create(e);
                         }
                     }
                 }

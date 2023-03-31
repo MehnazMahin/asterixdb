@@ -38,49 +38,46 @@ public class SynopsisLongCombinationsHelper implements ISynopsisCombinationsHelp
     }
 
     @Override
-    public List<StatisticsEntry>[] getCombinedEquiHeightSynopses(List<NonEquiHeightSynopsisElement> synopsisElements,
+    public StatisticsEntry[] getCombinedEquiHeightSynopses(List<NonEquiHeightSynopsisElement> synopsisElements,
             List<NonEquiHeightSynopsisElement> antimatterSynopsisElements, String dataverse, String dataset,
             String index, String field, Long domainStart, Long domainEnd, int requiredBucketNum) {
-        List<StatisticsEntry>[] combinedStatistics = new List[2];
-        combinedStatistics[0] = new ArrayList<>();
-        combinedStatistics[1] = new ArrayList<>();
-        //int requiredBucketNum = 4;
+
+        StatisticsEntry[] combinedStatistics = new StatisticsEntry[2];
+        Long[] totalTuplesNum = { -1L };
+
         if (synopsisElements.size() > 0) {
             List<HistogramBucket> buckets = combineSynopsis(synopsisElements, domainEnd);
             List<HistogramBucket> equiHeightBuckets =
-                    createPseudoEquiHeightSynopses(buckets, requiredBucketNum);
-            combinedStatistics[0].add(new StatisticsEntry(new ContinuousHistogramSynopsis(domainStart, domainEnd,
-                    SynopsisElementType.Long, 3, equiHeightBuckets.size(), equiHeightBuckets), dataverse,
-                    dataset, index, field));
+                    createPseudoEquiHeightSynopses(buckets, requiredBucketNum, totalTuplesNum);
+            combinedStatistics[0] = new StatisticsEntry(new ContinuousHistogramSynopsis(domainStart, domainEnd,
+                    SynopsisElementType.Long, totalTuplesNum[0], equiHeightBuckets.size(), equiHeightBuckets), field);
         }
         if (antimatterSynopsisElements.size() > 0) {
             List<HistogramBucket> buckets = combineSynopsis(antimatterSynopsisElements, domainEnd);
             List<HistogramBucket> equiHeightBuckets =
-                    createPseudoEquiHeightSynopses(buckets, requiredBucketNum);
-            combinedStatistics[1].add(new StatisticsEntry(new ContinuousHistogramSynopsis(domainStart, domainEnd,
-                    SynopsisElementType.Long, 3, equiHeightBuckets.size(), equiHeightBuckets), dataverse,
-                    dataset, index, field));
+                    createPseudoEquiHeightSynopses(buckets, requiredBucketNum, totalTuplesNum);
+            combinedStatistics[1] = new StatisticsEntry(new ContinuousHistogramSynopsis(domainStart, domainEnd,
+                    SynopsisElementType.Long, totalTuplesNum[0], equiHeightBuckets.size(), equiHeightBuckets), field);
         }
         return combinedStatistics;
     }
 
     @Override
-    public List<StatisticsEntry>[] getCombinedNonEquiHeightSynopses(List<NonEquiHeightSynopsisElement> synopsisElements,
+    public StatisticsEntry[] getCombinedNonEquiHeightSynopses(List<NonEquiHeightSynopsisElement> synopsisElements,
             List<NonEquiHeightSynopsisElement> antimatterSynopsisElements, String dataverse, String dataset,
             String index, String field, Long domainStart, Long domainEnd) {
-        List<StatisticsEntry>[] combinedStatistics = new List[2];
-        combinedStatistics[0] = new ArrayList<>();
-        combinedStatistics[1] = new ArrayList<>();
+
+        StatisticsEntry[] combinedStatistics = new StatisticsEntry[2];
 
         if (synopsisElements.size() > 0) {
             List<HistogramBucket> buckets = combineSynopsis(synopsisElements, domainEnd);
-            combinedStatistics[0].add(new StatisticsEntry(new NonEquiHeightHistogramSynopsis(domainStart, domainEnd,
-                    SynopsisElementType.Long, buckets.size(), buckets), dataverse, dataset, index, field));
+            combinedStatistics[0] = new StatisticsEntry(new NonEquiHeightHistogramSynopsis(domainStart, domainEnd,
+                    SynopsisElementType.Long, buckets.size(), buckets), field);
         }
         if (antimatterSynopsisElements.size() > 0) {
             List<HistogramBucket> buckets = combineSynopsis(antimatterSynopsisElements, domainEnd);
-            combinedStatistics[1].add(new StatisticsEntry(new NonEquiHeightHistogramSynopsis(domainStart, domainEnd,
-                    SynopsisElementType.Long, buckets.size(), buckets), dataverse, dataset, index, field));
+            combinedStatistics[1] = new StatisticsEntry(new NonEquiHeightHistogramSynopsis(domainStart, domainEnd,
+                    SynopsisElementType.Long, buckets.size(), buckets), field);
         }
 
         return combinedStatistics;
@@ -180,7 +177,8 @@ public class SynopsisLongCombinationsHelper implements ISynopsisCombinationsHelp
     }
 
     @Override
-    public List<HistogramBucket> createPseudoEquiHeightSynopses(List<HistogramBucket> buckets, int requiredBucketNum) {
+    public List<HistogramBucket> createPseudoEquiHeightSynopses(List<HistogramBucket> buckets, int requiredBucketNum,
+            Long[] totalTuplesNum) {
 
         List<HistogramBucket> equiHeightBuckets = new ArrayList<>();
         if (buckets.size() == 1) {
@@ -192,6 +190,8 @@ public class SynopsisLongCombinationsHelper implements ISynopsisCombinationsHelp
             for (HistogramBucket bucket : buckets) {
                 totalValues += bucket.getValue();
             }
+            totalTuplesNum[0] = (long) totalValues;
+
             double requiredHeight = totalValues / (double) requiredBucketNum;
             double desiredHeight = requiredHeight, remain = 0.0;
             double value = buckets.get(0).getValue();

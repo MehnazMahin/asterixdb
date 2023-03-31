@@ -149,7 +149,7 @@ public class MetadataPrimaryIndexes {
                     MetadataRecordTypes.STATISTICS_ARECORD_INDEX_NAME_FIELD_INDEX,
                     MetadataRecordTypes.STATISTICS_ARECORD_ISANTIMATTER_FIELD_INDEX,
                     MetadataRecordTypes.STATISTICS_ARECORD_FIELD_NAME_FIELD_INDEX,
-                    MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_ELEMENTS_TYPE_INDEX});
+                    MetadataRecordTypes.STATISTICS_ARECORD_SYNOPSIS_ELEMENTS_TYPE_INDEX });
 
     public static final IMetadataIndex FEED_CONNECTION_DATASET = new MetadataIndex(PROPERTIES_FEED_CONNECTION, 4,
             new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING },

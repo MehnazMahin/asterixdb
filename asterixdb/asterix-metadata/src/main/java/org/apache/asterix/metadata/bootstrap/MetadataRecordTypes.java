@@ -604,20 +604,18 @@ public final class MetadataRecordTypes {
     public static final int STATISTICS_ARECORD_FIELD_NAME_FIELD_INDEX = 4;
     public static final int STATISTICS_ARECORD_SYNOPSIS_ELEMENTS_TYPE_INDEX = 5;
     public static final int STATISTICS_ARECORD_SYNOPSIS_FIELD_INDEX = 6;
-//    public static final int STATISTICS_ARECORD_SYNOPSIS_DOUBLE_FIELD_INDEX = 7;
+    //    public static final int STATISTICS_ARECORD_SYNOPSIS_DOUBLE_FIELD_INDEX = 7;
     public static ARecordType STATISTICS_RECORDTYPE = createRecordType(
             // RecordTypeName
             RECORD_NAME_STATISTICS,
             // FieldNames
             new String[] { FIELD_NAME_DATAVERSE_NAME, FIELD_NAME_DATASET_NAME, FIELD_NAME_INDEX_NAME,
-                    FIELD_NAME_IS_ANTIMATTER, FIELD_NAME_FIELD_NAME, FIELD_NAME_ELEMENTS_TYPE,
-                    FIELD_NAME_SYNOPSIS},
-//                    , FIELD_NAME_SYNOPSIS_DOUBLE },
+                    FIELD_NAME_IS_ANTIMATTER, FIELD_NAME_FIELD_NAME, FIELD_NAME_ELEMENTS_TYPE, FIELD_NAME_SYNOPSIS },
+            //                    , FIELD_NAME_SYNOPSIS_DOUBLE },
             // FieldTypes
-            new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING,
-                    BuiltinType.ABOOLEAN, BuiltinType.ASTRING, BuiltinType.AINT32,
-                    STATISTICS_SYNOPSIS_RECORDTYPE},
-//                    , STATISTICS_SYNOPSIS_DOUBLE_RECORDTYPE},
+            new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ABOOLEAN,
+                    BuiltinType.ASTRING, BuiltinType.AINT32, STATISTICS_SYNOPSIS_RECORDTYPE },
+            //                    , STATISTICS_SYNOPSIS_DOUBLE_RECORDTYPE},
             //IsOpen?
             true);
 

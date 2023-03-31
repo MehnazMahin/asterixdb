@@ -45,7 +45,7 @@ public class ReportMergeComponentStatisticsMessage extends ReportFlushComponentS
 
     @Override
     protected void handleMessage(IMetadataProvider mdProvider) throws AlgebricksException {
-        StatisticsMetadataUtil.handleMerge(mdProvider, entry.getDataverse(), entry.getDataset(), entry.getIndex(),
-                entry.getField(), node, partition, componentId, isAntimatter, entry.getSynopsis(), mergeComponentIds);
+        StatisticsMetadataUtil.handleMerge(mdProvider, "", "", "", entry.getField(), node, partition, componentId,
+                isAntimatter, entry.getSynopsis(), mergeComponentIds);
     }
 }

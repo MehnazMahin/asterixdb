@@ -64,8 +64,6 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
         private String dataset;
         private String index;
         private String field;
-        private String node;
-        private String partition;
         private boolean isAntimatter;
 
         @Override
@@ -76,30 +74,25 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
                 return false;
             TestStatisticsID that = (TestStatisticsID) o;
             return dataverse.equals(that.dataverse) && dataset.equals(that.dataset) && index.equals(that.index)
-                    && field.equals(that.field) && node.equals(that.node) && partition.equals(that.partition)
-                    && isAntimatter == that.isAntimatter;
+                    && field.equals(that.field) && isAntimatter == that.isAntimatter;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(dataverse, dataset, index, field, node, partition, isAntimatter);
+            return Objects.hash(dataverse, dataset, index, field, isAntimatter);
         }
 
         @Override
         public String toString() {
             return "TestStatisticsMessageID{" + "dataverse='" + dataverse + '\'' + ", dataset='" + dataset + '\''
-                    + ", index='" + index + '\'' + ", field='" + field + '\'' + ", node='" + node + '\''
-                    + ", partition='" + partition + '\'' + ", isAntimatter=" + isAntimatter + '}';
+                    + ", index='" + index + '\'' + ", field='" + field + '\'' + ", isAntimatter=" + isAntimatter + '}';
         }
 
-        public TestStatisticsID(String dataverse, String dataset, String index, String field, String node,
-                String partition, boolean isAntimatter) {
+        public TestStatisticsID(String dataverse, String dataset, String index, String field, boolean isAntimatter) {
             this.dataverse = dataverse;
             this.dataset = dataset;
             this.index = index;
             this.field = field;
-            this.node = node;
-            this.partition = partition;
             this.isAntimatter = isAntimatter;
         }
     }
@@ -163,34 +156,29 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
     }
 
     @Override
-    public void addStatistics(String dataverseName, String datasetName, String indexName, String node, String partition,
-            ComponentStatisticsId componentId, boolean isAntimatter, String fieldName, ISynopsis synopsis)
-            throws AlgebricksException {
-        TestStatisticsID statsId =
-                new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, node, partition, isAntimatter);
+    public void addStatistics(String dataverseName, String datasetName, String indexName, boolean isAntimatter,
+            String fieldName, ISynopsis synopsis) throws AlgebricksException {
+        TestStatisticsID statsId = new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, isAntimatter);
         PriorityQueue<TestStatisticsEntry> entries =
                 (PriorityQueue<TestStatisticsEntry>) stats.computeIfAbsent(statsId, (k) -> new PriorityQueue<>());
-        entries.add(new TestStatisticsEntry(componentId, synopsis));
+        entries.add(new TestStatisticsEntry(new ComponentStatisticsId(0L, 0L), synopsis));
 
     }
 
     @Override
-    public void updateStatistics(String dataverseName, String datasetName, String indexName, String node,
-            String partition, ComponentStatisticsId componentId, boolean isAntimatter, String fieldName,
-            ISynopsis synopsis) throws AlgebricksException {
-        TestStatisticsID statsId =
-                new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, node, partition, isAntimatter);
+    public void updateStatistics(String dataverseName, String datasetName, String indexName, boolean isAntimatter,
+            String fieldName, ISynopsis synopsis) throws AlgebricksException {
+        TestStatisticsID statsId = new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, isAntimatter);
         PriorityQueue<TestStatisticsEntry> entries =
                 (PriorityQueue<TestStatisticsEntry>) stats.computeIfAbsent(statsId, (k) -> new PriorityQueue<>());
-        entries.add(new TestStatisticsEntry(componentId, synopsis));
+        entries.add(new TestStatisticsEntry(new ComponentStatisticsId(0L, 0L), synopsis));
 
     }
 
     @Override
-    public void dropStatistics(String dataverseName, String datasetName, String indexName, String node,
-            String partition, boolean isAntimatter, String fieldName) throws AlgebricksException {
-        TestStatisticsID statsId =
-                new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, node, partition, isAntimatter);
+    public void dropStatistics(String dataverseName, String datasetName, String indexName, boolean isAntimatter,
+            String fieldName) throws AlgebricksException {
+        TestStatisticsID statsId = new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, isAntimatter);
         PriorityQueue<TestStatisticsEntry> entries =
                 (PriorityQueue<TestStatisticsEntry>) stats.computeIfAbsent(statsId, (k) -> new PriorityQueue<>());
         Iterator<TestStatisticsEntry> eIt = entries.iterator();

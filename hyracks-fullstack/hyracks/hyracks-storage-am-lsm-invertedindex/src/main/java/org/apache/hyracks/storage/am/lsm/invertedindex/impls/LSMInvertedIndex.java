@@ -281,7 +281,7 @@ public class LSMInvertedIndex extends AbstractLSMIndex implements IInvertedIndex
         }
 
         ILSMDiskComponentBulkLoader componentBulkLoader = component.createBulkLoader(operation, 1.0f, false,
-                numBTreeTuples, 0L, false, false, false, pageWriteCallbackFactory.createPageWriteCallback());
+                numBTreeTuples, 0L, 0L, false, false, false, pageWriteCallbackFactory.createPageWriteCallback());
 
         // Create a scan cursor on the deleted keys BTree underlying the in-memory inverted index.
         IIndexCursor deletedKeysScanCursor = deletedKeysBTreeAccessor.createSearchCursor(false);
@@ -354,14 +354,14 @@ public class LSMInvertedIndex extends AbstractLSMIndex implements IInvertedIndex
                     numElements += ((LSMInvertedIndexDiskComponent) mergeOp.getMergingComponents().get(i))
                             .getBloomFilter().getNumElements();
                 }
-                componentBulkLoader = component.createBulkLoader(operation, 1.0f, false, numElements, 0L, false, false,
-                        false, pageWriteCallbackFactory.createPageWriteCallback());
+                componentBulkLoader = component.createBulkLoader(operation, 1.0f, false, numElements, 0L, 0L, false,
+                        false, false, pageWriteCallbackFactory.createPageWriteCallback());
                 loadDeleteTuples(opCtx, btreeCursor, mergePred, componentBulkLoader);
             } finally {
                 btreeCursor.destroy();
             }
         } else {
-            componentBulkLoader = component.createBulkLoader(operation, 1.0f, false, 0L, 0L, false, false, false,
+            componentBulkLoader = component.createBulkLoader(operation, 1.0f, false, 0L, 0L, 0L, false, false, false,
                     pageWriteCallbackFactory.createPageWriteCallback());
         }
         search(opCtx, cursor, mergePred);

@@ -18,8 +18,5 @@
  */
 use test;
 
-set `statistics.synopsis.type` `ContinuousHistogram`;
-set `statistics.synopsis.size` `4`;
-
 insert into TestDataset ({ "id": 75 , "sid": 50 });
 upsert into TestDataset ({ "id": 73 , "sid": -80 });

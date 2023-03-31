@@ -259,9 +259,6 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
 
     @Override
     public void sendDiskComponentsStatistics(ILSMIndexOperationContext ictx) throws HyracksDataException {
-        if (isPrimaryIndex()) {
-            throw HyracksDataException.create(ErrorCode.CANNOT_SEND_PRIMARY_INDEX_STATISTICS);
-        }
         LSMBTreeOpContext ctx = (LSMBTreeOpContext) ictx;
         List<ILSMComponent> operationalComponents = ctx.getComponentHolder();
         List<ILSMDiskComponent> diskComponents = new ArrayList<>();
@@ -284,6 +281,7 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
             RangePredicate nullPred = new RangePredicate(null, null, true, true, null, null);
             long numElements = 0L;
             long numAntimatterElements = 0L;
+            long totalTuplesSize = 0L;
             if (hasBloomFilter || hasStatistics) {
                 //count elements in btree for creating Bloomfilter or statistics
                 IIndexCursor countingCursor = accessor.createSearchCursor(false);
@@ -297,9 +295,12 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
                         }
                         if (tuple.isAntimatter()) {
                             numAntimatterElements++;
+                            totalTuplesSize -= tuple.getTupleSize();
                         } else {
                             numElements++;
+                            totalTuplesSize += tuple.getTupleSize();
                         }
+                        tuple.getTupleSize();
                     }
                 } finally {
                     try {
@@ -312,7 +313,7 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
             component = createDiskComponent(componentFactory, flushOp.getTarget(), null, flushOp.getBloomFilterTarget(),
                     true);
             componentBulkLoader = component.createBulkLoader(operation, 1.0f, false, numElements, numAntimatterElements,
-                    false, false, false, pageWriteCallbackFactory.createPageWriteCallback());
+                    totalTuplesSize, false, false, false, pageWriteCallbackFactory.createPageWriteCallback());
             IIndexCursor scanCursor = accessor.createSearchCursor(false);
             accessor.search(scanCursor, nullPred);
             try {
@@ -371,6 +372,7 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
                     List<ILSMComponent> mergedComponents = mergeOp.getMergingComponents();
                     long numElements = getNumberOfElements(mergedComponents);
                     long numAntimatterElements = 0L;
+                    long totalTuplesSize = 0L;
                     if (hasBloomFilter) {
                         //count elements in btree for creating Bloomfilter
                         for (int i = 0; i < mergedComponents.size(); ++i) {
@@ -384,13 +386,15 @@ public class LSMBTree extends AbstractLSMIndex implements ITreeIndex {
                             numElements += ((AbstractLSMDiskComponent) component).getStatistics().getNumTuples();
                             numAntimatterElements +=
                                     ((AbstractLSMDiskComponent) component).getStatistics().getNumAntimatterTuples();
+                            totalTuplesSize +=
+                                    ((AbstractLSMDiskComponent) component).getStatistics().getTotalTuplesSize();
                         }
                     }
                     mergedComponent = createDiskComponent(componentFactory, mergeOp.getTarget(), null,
                             mergeOp.getBloomFilterTarget(), true);
                     IPageWriteCallback pageWriteCallback = pageWriteCallbackFactory.createPageWriteCallback();
                     componentBulkLoader = mergedComponent.createBulkLoader(operation, 1.0f, false, numElements,
-                            numAntimatterElements, false, false, false, pageWriteCallback);
+                            numAntimatterElements, totalTuplesSize, false, false, false, pageWriteCallback);
                     while (cursor.hasNext()) {
                         cursor.next();
                         LSMBTreeTupleReference frameTuple = (LSMBTreeTupleReference) cursor.getTuple();

@@ -20,6 +20,8 @@ package org.apache.hyracks.storage.am.statistics.common;
 
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.dataflow.common.data.accessors.ITupleReference;
+import org.apache.hyracks.dataflow.common.data.accessors.PermutingFrameTupleReference;
+import org.apache.hyracks.storage.am.lsm.btree.tuples.LSMBTreeTupleReference;
 import org.apache.hyracks.storage.am.lsm.common.api.ILSMDiskComponent;
 import org.apache.hyracks.storage.am.lsm.common.api.ILSMIOOperation.LSMIOOperationType;
 import org.apache.hyracks.storage.am.lsm.common.api.IStatisticsManager;
@@ -40,6 +42,7 @@ public abstract class AbstractSynopsisBuilder<T extends ISynopsis> implements IS
     private final ComponentStatistics componentStatistics;
 
     private long numTuples = 0L;
+    private long tuplesSize = 0L;
 
     public AbstractSynopsisBuilder(T synopsis, String dataverse, String dataset, String index, String field,
             boolean isAntimatter, ComponentStatistics componentStatistics) {
@@ -68,15 +71,22 @@ public abstract class AbstractSynopsisBuilder<T extends ISynopsis> implements IS
         numTuples++;
         processTuple(tuple);
         isEmpty = false;
+
+        if (tuple instanceof PermutingFrameTupleReference) {
+            int tupleIdx = ((PermutingFrameTupleReference) tuple).getTupleIndex();
+            tuplesSize += ((PermutingFrameTupleReference) tuple).getFrameTupleAccessor().getTupleLength(tupleIdx);
+        } else if (tuple instanceof LSMBTreeTupleReference) {
+            tuplesSize += ((LSMBTreeTupleReference) tuple).getTupleSize();
+        }
     }
 
     @Override
     public void end() throws HyracksDataException {
         if (componentStatistics != null) {
             if (isAntimatter) {
-                componentStatistics.resetAntimatterTuples(numTuples);
+                componentStatistics.resetAntimatterTuples(numTuples, tuplesSize);
             } else {
-                componentStatistics.resetTuples(numTuples);
+                componentStatistics.resetTuples(numTuples, tuplesSize);
             }
         }
         if (!isEmpty) {

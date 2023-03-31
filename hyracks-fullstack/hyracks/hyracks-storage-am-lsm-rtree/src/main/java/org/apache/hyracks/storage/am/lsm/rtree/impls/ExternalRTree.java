@@ -490,7 +490,7 @@ public class ExternalRTree extends LSMRTree implements ITwoPCIndex {
             loadOp.setNewComponent(component);
             ioOpCallback.scheduled(loadOp);
             ioOpCallback.beforeOperation(loadOp);
-            componentBulkLoader = component.createBulkLoader(loadOp, fillFactor, verifyInput, numElementsHint, 0L,
+            componentBulkLoader = component.createBulkLoader(loadOp, fillFactor, verifyInput, numElementsHint, 0L, 0L,
                     false, true, false, pageWriteCallbackFactory.createPageWriteCallback());
         }
 

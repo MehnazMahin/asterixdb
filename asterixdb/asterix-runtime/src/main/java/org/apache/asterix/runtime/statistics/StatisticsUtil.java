@@ -37,10 +37,14 @@ public class StatisticsUtil {
     private StatisticsUtil() {
     }
 
+    /**
+     * Note: Statistics collection support only
+     * (1) indexed fields (non-composite field) of secondary indexes and
+     * (2) primary index field iff primary keys are enabled in Query-defined config
+     */
     public static List<IFieldExtractor> computeStatisticsFieldExtractors(
             IStorageComponentProvider storageComponentProvider, ARecordType recordType, List<List<String>> indexKeys,
-            boolean isPrimaryIndex, boolean keepStatisticsOnPrimaryKeys, String[] unorderedStatisticsFields)
-            throws AlgebricksException {
+            boolean isPrimaryIndex, boolean keepStatisticsOnPrimaryKeys) throws AlgebricksException {
         if (indexKeys.size() > 1) {
             throw new AsterixException("Cannot collect statistics on composite fields");
         }
@@ -60,60 +64,6 @@ public class StatisticsUtil {
             result.add(new FieldExtractor(serDe, 0, keyField, typeTraitProvider.getTypeTrait(keyType),
                     keyType.getTypeTag()));
         }
-        // add statistics on non-indexed fields
-        /*if (isPrimaryIndex && unorderedStatisticsFields != null && unorderedStatisticsFields.length > 0)
-        
-        {
-            for (int i = 0; i < unorderedStatisticsFields.length; i++) {
-                IAType statisticsType = recordType.getFieldType(unorderedStatisticsFields[i]);
-                if (ATypeHierarchy.getTypeDomain(statisticsType.getTypeTag()) == Domain.NUMERIC) {
-                    AIntegerSerializerDeserializer serDe =
-                            (AIntegerSerializerDeserializer) SerializerDeserializerProvider.INSTANCE
-                                    .getNonTaggedSerializerDeserializer(statisticsType);
-                    int statisticsFieldIdx = recordType.getFieldIndex(unorderedStatisticsFields[i]);
-                    result.add(getFieldExtractor(serDe, recordType, statisticsFieldIdx, unorderedStatisticsFields[i],
-                            typeTraitProvider.getTypeTrait(statisticsType)));
-                }
-            }
-        }*/
         return result;
     }
-
-    /*public static IFieldExtractor getFieldExtractor(AIntegerSerializerDeserializer serde, ARecordType recordType,
-            int statisticsFieldIdx, String statisticsFieldName, ITypeTraits typeTraits) {
-        //incoming tuple has format [PK][Record]... and we need to extract the record, i.e. 2nd field
-        final int hyracksFieldIdx = 1;
-        return new IFieldExtractor() {
-            private static final long serialVersionUID = 1L;
-    
-            @Override
-            public String getFieldName() {
-                return statisticsFieldName;
-            }
-    
-            @Override
-            public ITypeTraits getFieldTypeTraits() {
-                return typeTraits;
-            }
-    
-            @Override
-            public boolean isUnordered() {
-                return true;
-            }
-    
-            @Override
-            public Long extractFieldValue(ITupleReference tuple) throws HyracksDataException {
-                final ARecordPointable recPointable = ARecordPointable.FACTORY.createPointable();
-                if (tuple.getFieldCount() < hyracksFieldIdx) {
-                    throw new HyracksDataException(
-                            "Cannot extract field " + hyracksFieldIdx + " from incoming hyracks tuple");
-                }
-                recPointable.set(tuple.getFieldData(hyracksFieldIdx), tuple.getFieldStart(hyracksFieldIdx),
-                        tuple.getFieldLength(hyracksFieldIdx));
-                return serde.getLongValue(recPointable.getByteArray(),
-                        recPointable.getClosedFieldOffset(recordType, statisticsFieldIdx));
-    
-            }
-        };
-    }*/
 }

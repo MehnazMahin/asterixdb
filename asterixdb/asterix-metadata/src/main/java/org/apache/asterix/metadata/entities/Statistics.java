@@ -26,7 +26,6 @@ import org.apache.asterix.metadata.MetadataCache;
 import org.apache.asterix.metadata.api.IMetadataEntity;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
-import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 import org.apache.hyracks.storage.am.statistics.historgram.HistogramBucket;
 import org.apache.hyracks.storage.am.statistics.historgram.HistogramSynopsis;
 
@@ -37,14 +36,9 @@ public class Statistics implements IMetadataEntity {
 
     private static final long serialVersionUID = 1L;
 
-    public final static String MERGED_STATS_ID = "";
-
     private final DataverseName dataverseName;
     private final String dataset;
     private final String index;
-    private final String node;
-    private final String partition;
-    private final ComponentStatisticsId componentId;
     private final boolean isAntimatter;
     private final String field;
 
@@ -57,7 +51,6 @@ public class Statistics implements IMetadataEntity {
         Statistics that = (Statistics) o;
         boolean flag = temp == that.temp && Objects.equals(dataverseName, that.dataverseName)
                 && Objects.equals(dataset, that.dataset) && Objects.equals(index, that.index)
-                && Objects.equals(node, that.node)
                 && isAntimatter == that.isAntimatter && Objects.equals(field, that.field);
 
         if (flag) {
@@ -88,23 +81,18 @@ public class Statistics implements IMetadataEntity {
 
     @Override
     public int hashCode() {
-        return Objects.hash(dataverseName, dataset, index, field, node, partition, componentId, temp, isAntimatter,
-                synopsis);
+        return Objects.hash(dataverseName, dataset, index, field, temp, isAntimatter, synopsis);
     }
 
     private final boolean temp;
     private final ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis;
 
-    public Statistics(DataverseName dataverseName, String dataset, String index, String node, String partition,
-            ComponentStatisticsId componentId, boolean temp, boolean isAntimatter, String field,
-            ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis) {
+    public Statistics(DataverseName dataverseName, String dataset, String index, boolean temp, boolean isAntimatter,
+            String field, ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis) {
         this.dataverseName = dataverseName;
         this.dataset = dataset;
         this.index = index;
         this.field = field;
-        this.node = node;
-        this.partition = partition;
-        this.componentId = componentId;
         this.temp = temp;
         this.isAntimatter = isAntimatter;
         this.synopsis = synopsis;
@@ -124,18 +112,6 @@ public class Statistics implements IMetadataEntity {
 
     public String getFieldName() {
         return field;
-    }
-
-    public ComponentStatisticsId getComponentId() {
-        return componentId;
-    }
-
-    public String getNode() {
-        return node;
-    }
-
-    public String getPartition() {
-        return partition;
     }
 
     public boolean isTemp() {

@@ -137,6 +137,6 @@ public interface ILSMDiskComponent extends ILSMComponent {
      * @throws HyracksDataException
      */
     ILSMDiskComponentBulkLoader createBulkLoader(ILSMIOOperation operation, float fillFactor, boolean verifyInput,
-            long numElementsHint, long numAntimatterElementsHint, boolean checkIfEmptyIndex, boolean withFilter,
-            boolean cleanupEmptyComponent, IPageWriteCallback callback) throws HyracksDataException;
+            long numElementsHint, long numAntimatterElementsHint, long totalTuplesSizeHint, boolean checkIfEmptyIndex,
+            boolean withFilter, boolean cleanupEmptyComponent, IPageWriteCallback callback) throws HyracksDataException;
 }

@@ -47,15 +47,16 @@ public interface ISynopsisCombinationsHelper<T extends Number> {
 
     T getBucketSpan(NonEquiHeightSynopsisElement element);
 
-    List<StatisticsEntry>[] getCombinedEquiHeightSynopses(List<NonEquiHeightSynopsisElement> synopsisElements,
+    StatisticsEntry[] getCombinedEquiHeightSynopses(List<NonEquiHeightSynopsisElement> synopsisElements,
             List<NonEquiHeightSynopsisElement> antimatterSynopsisElements, String dataverse, String dataset,
             String index, String field, T domainStart, T domainEnd, int requiredBucketNum);
 
-    List<StatisticsEntry>[] getCombinedNonEquiHeightSynopses(List<NonEquiHeightSynopsisElement> synopsisElements,
+    StatisticsEntry[] getCombinedNonEquiHeightSynopses(List<NonEquiHeightSynopsisElement> synopsisElements,
             List<NonEquiHeightSynopsisElement> antimatterSynopsisElements, String dataverse, String dataset,
             String index, String field, T domainStart, T domainEnd);
 
     List<HistogramBucket> combineSynopsis(List<NonEquiHeightSynopsisElement> synopsisElements, T domainEnd);
 
-    List<HistogramBucket> createPseudoEquiHeightSynopses(List<HistogramBucket> buckets, int requiredBucketNum);
+    List<HistogramBucket> createPseudoEquiHeightSynopses(List<HistogramBucket> buckets, int requiredBucketNum,
+            Long[] totalTuplesNum);
 }

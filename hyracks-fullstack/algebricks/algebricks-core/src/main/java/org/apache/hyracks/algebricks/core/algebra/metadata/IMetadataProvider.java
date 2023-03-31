@@ -42,7 +42,6 @@ import org.apache.hyracks.api.job.JobSpecification;
 import org.apache.hyracks.api.result.IResultMetadata;
 import org.apache.hyracks.storage.am.common.api.ITupleFilterFactory;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
-import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 
 public interface IMetadataProvider<S, I> {
     public IDataSource<S> findDataSource(S id) throws AlgebricksException;
@@ -236,14 +235,12 @@ public interface IMetadataProvider<S, I> {
 
     public boolean isBlockingOperatorDisabled();
 
-    public void addStatistics(String dataverse, String datasetName, String indexName, String node, String partition,
-            ComponentStatisticsId componentId, boolean isAntimatter, String fieldName, ISynopsis synopsis)
-            throws AlgebricksException;
+    public void addStatistics(String dataverse, String datasetName, String indexName, boolean isAntimatter,
+            String fieldName, ISynopsis synopsis) throws AlgebricksException;
 
-    public void updateStatistics(String dataverse, String datasetName, String indexName, String node, String partition,
-            ComponentStatisticsId componentId, boolean isAntimatter, String fieldName, ISynopsis synopsis)
-            throws AlgebricksException;
+    public void updateStatistics(String dataverse, String datasetName, String indexName, boolean isAntimatter,
+            String fieldName, ISynopsis synopsis) throws AlgebricksException;
 
-    public void dropStatistics(String dataverse, String datasetName, String indexName, String node, String partition,
-            boolean isAntimatter, String fieldName) throws AlgebricksException;
+    public void dropStatistics(String dataverse, String datasetName, String indexName, boolean isAntimatter,
+            String fieldName) throws AlgebricksException;
 }

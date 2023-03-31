@@ -21,8 +21,9 @@ package org.apache.asterix.statistics.common;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,8 +36,6 @@ import org.apache.asterix.statistics.IndexListStatistics;
 import org.apache.asterix.statistics.message.ReportFlushComponentStatisticsMessage;
 import org.apache.asterix.statistics.message.ReportMergeComponentStatisticsMessage;
 import org.apache.asterix.statistics.message.UpdateStatisticsResponseMessage;
-import org.apache.commons.collections4.MultiValuedMap;
-import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 import org.apache.hyracks.api.application.INCServiceContext;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.data.std.api.IValueReference;
@@ -49,23 +48,23 @@ import org.apache.hyracks.storage.am.lsm.common.api.IStatisticsManager;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisElementType;
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
+import org.apache.hyracks.storage.am.lsm.common.impls.AbstractLSMDiskComponent;
 import org.apache.hyracks.storage.am.lsm.common.impls.AbstractLSMIndexFileManager;
 import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 
 public class StatisticsManager implements IStatisticsManager {
 
     private final INCServiceContext ncContext;
-    //TODO:refactor this to use component IDs instead
-    private final MultiValuedMap<ILSMDiskComponent, StatisticsEntry> synopsisMap;
-    private final MultiValuedMap<ILSMDiskComponent, StatisticsEntry> antimatterSynopsisMap;
+    private final Map<ILSMDiskComponent, StatisticsEntry> synopsisMap;
+    private final Map<ILSMDiskComponent, StatisticsEntry> antimatterSynopsisMap;
 
     private final IValueReference MATTER_STATISTICS_FLAG = BooleanPointable.FACTORY.createPointable(false);
     private final IValueReference ANTIMATTER_STATISTICS_FLAG = BooleanPointable.FACTORY.createPointable(true);
 
     public StatisticsManager(INCServiceContext ncApplicationContext) {
         ncContext = ncApplicationContext;
-        synopsisMap = new HashSetValuedHashMap<>();
-        antimatterSynopsisMap = new HashSetValuedHashMap<>();
+        synopsisMap = new HashMap<>();
+        antimatterSynopsisMap = new HashMap<>();
     }
 
     private List<String> parsePathComponents(String componentPath) throws HyracksDataException {
@@ -106,24 +105,26 @@ public class StatisticsManager implements IStatisticsManager {
         return results;
     }
 
-    private void gatherComponentSynopsisStatistics(Collection<StatisticsEntry> componentSynopses,
-            ILSMDiskComponent newComponent, boolean isAntimatter) throws HyracksDataException {
-        if (componentSynopses.size() > 0) {
+    private void gatherComponentSynopsisStatistics(StatisticsEntry componentSynopses, ILSMDiskComponent newComponent,
+            boolean isAntimatter) throws HyracksDataException {
+        // Never persist any null synopsis in the disk component metadata page
+        if (componentSynopses != null) {
             IndexListStatistics listStatistics = new IndexListStatistics();
-            List<StatisticsEntry> stats = new ArrayList<>(componentSynopses);
 
-            // Never persist any null synopsis in the disk component metadata page
-            stats.removeIf(entry -> entry.getSynopsis() == null);
-            if (stats.isEmpty()) {
-                return;
-            }
             try {
-                listStatistics.setStatisticsEntries(stats);
+                String componentRelativePath = ((BTree) newComponent.getIndex()).getFileReference().getRelativePath();
+                List<String> parsedComponentPath = parsePathComponents(componentRelativePath);
+                String dataverse = parsedComponentPath.get(2);
+                String dataset = parsedComponentPath.get(3);
+                String index = parsedComponentPath.get(4);
+
+                listStatistics.setStatisticsEntry(componentSynopses);
+                listStatistics.setStatisticsInfo(dataverse, dataset, index);
             } catch (IOException e) {
                 throw HyracksDataException.create(e);
             }
 
-            if (listStatistics.getStatisticsEntries().get(0).getSynopsis() != null) {
+            if (listStatistics.getStatisticsEntry().getSynopsis() != null) {
                 if (!isAntimatter) {
                     newComponent.getMetadata().put(MATTER_STATISTICS_FLAG, listStatistics);
                 } else {
@@ -150,31 +151,21 @@ public class StatisticsManager implements IStatisticsManager {
         List<NonEquiHeightSynopsisElement> componentsSynopsisElements = new ArrayList<>();
         List<NonEquiHeightSynopsisElement> componentsAntimatterSynopsisElements = new ArrayList<>();
 
-        String partition = "", dataverse = "", dataset = "", index = "", field = "";
-        Long minCompId = Long.MAX_VALUE, maxCompId = -1L;
+        String dataverse = "", dataset = "", index = "", field = "";
         long lDomainStart = Long.MAX_VALUE, lDomainEnd = Long.MIN_VALUE;
         double dDomainStart = Double.MAX_VALUE, dDomainEnd = Double.MIN_VALUE;
-        List<StatisticsEntry>[] entryLists = new List[2];
-        entryLists[0] = new ArrayList<>();
-        entryLists[1] = new ArrayList<>();
+        StatisticsEntry[] entryLists = new StatisticsEntry[2];
+
+        long tuplesCount = 0, antimatterTuplesCount = 0, totalTuplesSize = 0;
+        for (ILSMDiskComponent diskComponent : diskComponents) {
+            tuplesCount += ((AbstractLSMDiskComponent) diskComponent).getStatistics().getNumTuples();
+            antimatterTuplesCount +=
+                    ((AbstractLSMDiskComponent) diskComponent).getStatistics().getNumAntimatterTuples();
+            totalTuplesSize += ((AbstractLSMDiskComponent) diskComponent).getStatistics().getTotalTuplesSize();
+        }
 
         SynopsisElementType elementType = SynopsisElementType.Long; // default value
         for (ILSMDiskComponent diskComponent : diskComponents) {
-            // TODO: Find a better way to get the partition instead of parsing
-            String componentRelativePath =
-                    ((BTree) diskComponent.getIndex()).getFileReference().getRelativePath();
-            List<String> parsedComponentPath = parsePathComponents(componentRelativePath);
-            partition = parsedComponentPath.get(1);
-            dataverse = parsedComponentPath.get(2);
-            dataset = parsedComponentPath.get(3);
-            index = parsedComponentPath.get(4);
-            if (minCompId > Long.parseLong(parsedComponentPath.get(5))) {
-                minCompId = Long.parseLong(parsedComponentPath.get(5));
-            }
-            if (maxCompId < Long.parseLong(parsedComponentPath.get(6))) {
-                maxCompId = Long.parseLong(parsedComponentPath.get(6));
-            }
-
             for (int i = 0; i < 2; i++) {
                 IValueReference key = (i != 0) ? ANTIMATTER_STATISTICS_FLAG : MATTER_STATISTICS_FLAG;
                 ArrayBackedValueStorage value = new ArrayBackedValueStorage();
@@ -183,22 +174,28 @@ public class StatisticsManager implements IStatisticsManager {
                 IndexListStatistics listStatistics = new IndexListStatistics();
                 listStatistics.set(bytes, value.getStartOffset(), value.getLength());
 
-                List<StatisticsEntry> compStatEntries = listStatistics.getStatisticsEntries();
-                if (!listStatistics.getStatisticsEntries().isEmpty()) {
-                    entryLists[i] = listStatistics.getStatisticsEntries();
-                    elementType = entryLists[i].get(0).getSynopsis().getElementType();
+                if (dataverse.equals("") || dataset.equals("") || index.equals("")) {
+                    dataverse = listStatistics.getDataverse();
+                    dataset = listStatistics.getDataset();
+                    index = listStatistics.getIndex();
+                }
+
+                StatisticsEntry compStatEntry = listStatistics.getStatisticsEntry();
+                entryLists[i] = compStatEntry;
+                if (compStatEntry != null) {
+                    elementType = entryLists[i].getSynopsis().getElementType();
                 }
 
                 lDomainStart = Long.MAX_VALUE;
                 lDomainEnd = Long.MIN_VALUE;
                 dDomainStart = Double.MAX_VALUE;
                 dDomainEnd = Double.MIN_VALUE;
-                for (StatisticsEntry entry : compStatEntries) {
-                    field = entry.getField();
-                    if (entry.getSynopsis().getElements().size() > 0) {
-                        Number left = entry.getSynopsis().getElements().get(0).getLeftKey();
-                        Number right = entry.getSynopsis().getElements().get(
-                                entry.getSynopsis().getElements().size() - 1).getRightKey();
+                if (compStatEntry != null) {
+                    field = compStatEntry.getField();
+                    if (compStatEntry.getSynopsis().getElements().size() > 0) {
+                        Number left = compStatEntry.getSynopsis().getElements().get(0).getLeftKey();
+                        Number right = compStatEntry.getSynopsis().getElements()
+                                .get(compStatEntry.getSynopsis().getElements().size() - 1).getRightKey();
                         switch (elementType) {
                             case Long:
                                 lDomainStart = Math.min(lDomainStart, left.longValue());
@@ -210,14 +207,14 @@ public class StatisticsManager implements IStatisticsManager {
                                 break;
                         }
                     }
-                    for (Object obj : entry.getSynopsis().getElements()) {
+                    for (Object obj : compStatEntry.getSynopsis().getElements()) {
                         ISynopsisElement<Long> element = (ISynopsisElement) obj;
                         if (i != 0) {
                             componentsAntimatterSynopsisElements.add(new NonEquiHeightSynopsisElement(
                                     element.getLeftKey(), element.getRightKey(), element.getValue()));
                         } else {
-                            componentsSynopsisElements.add(new NonEquiHeightSynopsisElement(
-                                    element.getLeftKey(), element.getRightKey(), element.getValue()));
+                            componentsSynopsisElements.add(new NonEquiHeightSynopsisElement(element.getLeftKey(),
+                                    element.getRightKey(), element.getValue()));
                         }
                     }
                 }
@@ -228,21 +225,24 @@ public class StatisticsManager implements IStatisticsManager {
             switch (elementType) {
                 case Long:
                     entryLists = SynopsisUtils.getCombinedNonEquiHeightSynopses(componentsSynopsisElements,
-                            componentsAntimatterSynopsisElements, dataverse, dataset, index, field,
-                            lDomainStart, lDomainEnd);
+                            componentsAntimatterSynopsisElements, dataverse, dataset, index, field, lDomainStart,
+                            lDomainEnd);
                     break;
                 case Double:
                     entryLists = SynopsisUtils.getCombinedNonEquiHeightSynopses(componentsSynopsisElements,
-                            componentsAntimatterSynopsisElements, dataverse, dataset, index, field,
-                            dDomainStart, dDomainEnd);
+                            componentsAntimatterSynopsisElements, dataverse, dataset, index, field, dDomainStart,
+                            dDomainEnd);
                     break;
             }
-            message = new UpdateStatisticsResponseMessage(entryLists, ncContext.getNodeId(), partition,
-                    new ComponentStatisticsId(minCompId, maxCompId), field);
-        } else {
-            message = new UpdateStatisticsResponseMessage(entryLists, ncContext.getNodeId(), partition,
-                    new ComponentStatisticsId(0L, 0L), field);
+            if (entryLists[0] != null && entryLists[0].getLength() > 0) {
+                entryLists[0].setComponentStats(tuplesCount, antimatterTuplesCount, totalTuplesSize);
+            }
+            if (entryLists[1] != null && entryLists[1].getLength() > 0) {
+                entryLists[1].setComponentStats(tuplesCount, antimatterTuplesCount, totalTuplesSize);
+            }
         }
+        message = new UpdateStatisticsResponseMessage(entryLists, field);
+
         try {
             messageBroker.sendMessageToPrimaryCC(message);
         } catch (Exception e) {
@@ -255,7 +255,7 @@ public class StatisticsManager implements IStatisticsManager {
             boolean isAntimatter, ILSMDiskComponent component) throws HyracksDataException {
         synchronized (synopsisMap) {
             synchronized (antimatterSynopsisMap) {
-                StatisticsEntry newEntry = new StatisticsEntry(synopsis, dataverse, dataset, index, field);
+                StatisticsEntry newEntry = new StatisticsEntry(synopsis, field);
                 if (isAntimatter) {
                     antimatterSynopsisMap.put(component, newEntry);
                 } else {
@@ -270,13 +270,10 @@ public class StatisticsManager implements IStatisticsManager {
 
     private void persistComponentsStatistics(ILSMDiskComponent component, StatisticsEntry stats, boolean isAntimatter)
             throws HyracksDataException {
-        List<StatisticsEntry> entries = new ArrayList<>();
         if (stats != null) {
-            entries.add(stats);
-            gatherComponentSynopsisStatistics(entries, component, isAntimatter);
+            gatherComponentSynopsisStatistics(stats, component, isAntimatter);
         }
     }
-
 
     // TODO : Delete this function
     private void sendMessage(ICcAddressedMessage msg) throws HyracksDataException {
@@ -289,8 +286,10 @@ public class StatisticsManager implements IStatisticsManager {
     }
 
     // TODO : Delete this function
-    private void sendFlushSynopsisStatistics(Collection<StatisticsEntry> flushComponentSynopses,
-            ILSMDiskComponent newComponent, boolean isAntimatter) throws HyracksDataException {
+    private void sendFlushSynopsisStatistics(StatisticsEntry stats, ILSMDiskComponent newComponent,
+            boolean isAntimatter) throws HyracksDataException {
+        List<StatisticsEntry> flushComponentSynopses = new ArrayList<>();
+        flushComponentSynopses.add(stats);
         for (StatisticsEntry flushComponentSynopsis : flushComponentSynopses) {
             // send message only about non-empty statistics
             if (flushComponentSynopsis != null) {
@@ -307,9 +306,10 @@ public class StatisticsManager implements IStatisticsManager {
     }
 
     // TODO : Delete this function
-    private void sendMergeSynopsisStatistics(Collection<StatisticsEntry> flushComponentSynopses,
-            ILSMDiskComponent newComponent, List<ILSMDiskComponent> mergedComponents, boolean isAntimatter)
-            throws HyracksDataException {
+    private void sendMergeSynopsisStatistics(StatisticsEntry stats, ILSMDiskComponent newComponent,
+            List<ILSMDiskComponent> mergedComponents, boolean isAntimatter) throws HyracksDataException {
+        List<StatisticsEntry> flushComponentSynopses = new ArrayList<>();
+        flushComponentSynopses.add(stats);
         for (StatisticsEntry flushComponentSynopsis : flushComponentSynopses) {
             List<String> parsedComponentsPath =
                     parsePathComponents(((BTree) newComponent.getIndex()).getFileReference().getRelativePath());

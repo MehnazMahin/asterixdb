@@ -57,6 +57,7 @@ public class StatisticsBulkLoader implements IChainedComponentBulkLoader {
         statisticsBuilder.end();
         statisticsBuilder.gatherComponentStatistics(statisticsManager, component, opType);
         component.getStatistics().writeTuplesNum(component.getMetadata());
+        component.getStatistics().writeTotalTuplesSize(component.getMetadata());
     }
 
     @Override

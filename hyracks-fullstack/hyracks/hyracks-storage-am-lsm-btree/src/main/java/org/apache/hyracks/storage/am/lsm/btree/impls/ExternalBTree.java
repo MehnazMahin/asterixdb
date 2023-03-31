@@ -449,7 +449,7 @@ public class ExternalBTree extends LSMBTree implements ITwoPCIndex {
             ioOpCallback.scheduled(loadOp);
             ioOpCallback.beforeOperation(loadOp);
             IPageWriteCallback pageWriteCallback = pageWriteCallbackFactory.createPageWriteCallback();
-            componentBulkLoader = component.createBulkLoader(loadOp, fillFactor, verifyInput, numElementsHint, 0L,
+            componentBulkLoader = component.createBulkLoader(loadOp, fillFactor, verifyInput, numElementsHint, 0L, 0L,
                     false, true, true, pageWriteCallback);
         }
 

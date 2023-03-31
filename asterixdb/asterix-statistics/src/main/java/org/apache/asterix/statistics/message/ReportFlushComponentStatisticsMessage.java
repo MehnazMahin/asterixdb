@@ -92,11 +92,8 @@ public class ReportFlushComponentStatisticsMessage implements ICcAddressedMessag
             mdTxnCtx = MetadataManager.INSTANCE.beginTransaction();
             mdProvider.setMetadataTxnContext(mdTxnCtx);
             bActiveTxn = true;
-            //            MetadataLockUtil.insertStatisticsBegin(cs.getMetadataLockManager(), mdProvider.getLocks(),
-            //                    PROPERTIES_STATISTICS.getDatasetName(), DataverseName.createFromCanonicalForm(entry.getDataverse()),
-            //                    entry.getDataset(), entry.getIndex(), entry.getField(), node, partition, isAntimatter);
             MetadataLockUtil.insertStatisticsBegin(cs.getMetadataLockManager(), mdProvider.getLocks(),
-                    DataverseName.createFromCanonicalForm(entry.getDataverse()), entry.getDataset(), entry.getIndex());
+                    DataverseName.createFromCanonicalForm(""), "", "");
 
             handleMessage(mdProvider);
             MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);
@@ -116,7 +113,7 @@ public class ReportFlushComponentStatisticsMessage implements ICcAddressedMessag
     }
 
     void handleMessage(IMetadataProvider mdProvider) throws AlgebricksException {
-        StatisticsMetadataUtil.handleFlush(mdProvider, entry.getDataverse(), entry.getDataset(), entry.getIndex(),
-                entry.getField(), node, partition, componentId, isAntimatter, entry.getSynopsis());
+        StatisticsMetadataUtil.handleFlush(mdProvider, "", "", "", entry.getField(), node, partition, componentId,
+                isAntimatter, entry.getSynopsis());
     }
 }

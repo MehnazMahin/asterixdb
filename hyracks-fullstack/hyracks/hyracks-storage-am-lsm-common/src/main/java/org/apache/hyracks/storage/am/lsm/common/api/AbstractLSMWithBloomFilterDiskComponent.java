@@ -88,12 +88,12 @@ public abstract class AbstractLSMWithBloomFilterDiskComponent extends AbstractLS
 
     @Override
     public ChainedLSMDiskComponentBulkLoader createBulkLoader(ILSMIOOperation operation, float fillFactor,
-            boolean verifyInput, long numElementsHint, long numAntimatterElementsHint, boolean checkIfEmptyIndex,
-            boolean withFilter, boolean cleanupEmptyComponent, IPageWriteCallback callback)
+            boolean verifyInput, long numElementsHint, long numAntimatterElementsHint, long totalTuplesSizeHint,
+            boolean checkIfEmptyIndex, boolean withFilter, boolean cleanupEmptyComponent, IPageWriteCallback callback)
             throws HyracksDataException {
         ChainedLSMDiskComponentBulkLoader chainedBulkLoader =
                 super.createBulkLoader(operation, fillFactor, verifyInput, numElementsHint, numAntimatterElementsHint,
-                        checkIfEmptyIndex, withFilter, cleanupEmptyComponent, callback);
+                        totalTuplesSizeHint, checkIfEmptyIndex, withFilter, cleanupEmptyComponent, callback);
         if (numElementsHint + numAntimatterElementsHint > 0) {
             chainedBulkLoader
                     .addBulkLoader(createBloomFilterBulkLoader(numElementsHint + numAntimatterElementsHint, callback));

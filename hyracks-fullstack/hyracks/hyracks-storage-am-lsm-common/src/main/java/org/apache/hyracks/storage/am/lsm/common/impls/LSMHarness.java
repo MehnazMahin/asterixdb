@@ -495,9 +495,6 @@ public class LSMHarness implements ILSMHarness {
 
     @Override
     public void sendDiskComponentsStatistics(ILSMIndexOperationContext ctx) throws HyracksDataException {
-        if (lsmIndex.isPrimaryIndex()) {
-            throw HyracksDataException.create(ErrorCode.CANNOT_SEND_PRIMARY_INDEX_STATISTICS);
-        }
         LSMOperationType opType = LSMOperationType.DISK_COMPONENTS_STATISTICS_SEND;
         getAndEnterComponents(ctx, opType, false);
         boolean failedOperation = false;

@@ -39,13 +39,12 @@ public class StatisticsMetadataUtil {
         // delete old stats. Even if the new stats are empty we need to invalidate earlier synopses
         for (ComponentStatisticsId mergedComponentId : mergeComponentIds) {
             LOGGER.fine("Deleting old stat with componentId " + mergedComponentId);
-            mdProvider.dropStatistics(dataverseName, datasetName, indexName, node, partition, isAntimatter, fieldName);
+            mdProvider.dropStatistics(dataverseName, datasetName, indexName, isAntimatter, fieldName);
         }
         // insert statistics on merged component only if synopsis is not empty, i.e. skip empty statistics
         if (synopsis != null) {
             LOGGER.fine("Adding new stat with componentId " + newComponentId);
-            mdProvider.addStatistics(dataverseName, datasetName, indexName, node, partition, newComponentId,
-                    isAntimatter, fieldName, synopsis);
+            mdProvider.addStatistics(dataverseName, datasetName, indexName, isAntimatter, fieldName, synopsis);
         }
     }
 
@@ -54,8 +53,7 @@ public class StatisticsMetadataUtil {
             boolean isAntimatter, ISynopsis synopsis) throws AlgebricksException {
         if (synopsis != null) {
             LOGGER.fine("Adding new stat with componentId " + componentId);
-            mdProvider.addStatistics(dataverseName, datasetName, indexName, node, partition, componentId, isAntimatter,
-                    fieldName, synopsis);
+            mdProvider.addStatistics(dataverseName, datasetName, indexName, isAntimatter, fieldName, synopsis);
         }
     }
 }

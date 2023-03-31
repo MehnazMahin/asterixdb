@@ -18,7 +18,4 @@
  */
 use test;
 
-set `statistics.synopsis.type` `ContinuousHistogram`;
-set `statistics.synopsis.size` `4`;
-
 load dataset TestDataset using localfs(("path"="asterix_nc1://data/statistics/statistics.adm"),("format"="adm")) pre-sorted;

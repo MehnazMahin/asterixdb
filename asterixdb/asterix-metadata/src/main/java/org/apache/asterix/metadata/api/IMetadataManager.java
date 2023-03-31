@@ -46,7 +46,6 @@ import org.apache.asterix.metadata.entities.NodeGroup;
 import org.apache.asterix.metadata.entities.Statistics;
 import org.apache.asterix.metadata.entities.Synonym;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
-import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 
 /**
  * A metadata manager provides user access to Asterix metadata (e.g., types,
@@ -757,8 +756,7 @@ public interface IMetadataManager extends IMetadataBootstrap {
      *            The given field name of a qualified dataset
      */
     Statistics getFieldStatistics(MetadataTransactionContext ctx, DataverseName dataverseName, String datasetName,
-            String indexName, String node, String partition, ComponentStatisticsId componentId, boolean isAntimatter,
-            String fieldName) throws AlgebricksException;
+            String indexName, boolean isAntimatter, String fieldName) throws AlgebricksException;
 
     /**
      * Adds a statistics, acquiring local locks of the given transaction id.
@@ -786,8 +784,7 @@ public interface IMetadataManager extends IMetadataBootstrap {
      *            The given field name of a qualified dataset
      */
     void dropStatistics(MetadataTransactionContext ctx, DataverseName dataverseName, String datasetName,
-            String indexName, String node, String partition, boolean isAntimatter, String fieldName)
-            throws AlgebricksException;
+            String indexName, boolean isAntimatter, String fieldName) throws AlgebricksException;
 
     /**
      * Adds a synonym, acquiring local locks on behalf of the given transaction id.

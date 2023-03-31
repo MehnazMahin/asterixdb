@@ -2516,8 +2516,7 @@ public class MetadataNode implements IMetadataNode {
                 // In this case We can safely ignore the flushed statistics, the info is reflected in merged statistics.
             } else {
                 throw new MetadataException("A statistics with this name "
-                        + String.join(".", statistics.getDatasetName(), statistics.getFieldName(), statistics.getNode(),
-                                statistics.getPartition(), statistics.getComponentId().toString())
+                        + String.join(".", statistics.getDatasetName(), statistics.getFieldName())
                         + " already exists in dataverse '" + statistics.getDataverseName() + "'.", e);
             }
         } catch (ACIDException e) {

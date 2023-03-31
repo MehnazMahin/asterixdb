@@ -34,21 +34,20 @@ public class SynopsisUtils {
     /*
      * Combines lists of synopsis and antimatter synopsis (even positions contain antimatter synopses),
      * and returns an array of combined equiheight statistics.
-     * [0]-->contains combined statistics, [1]-->contains combined antimatter statistics.
+     * [0]-->contains combined non-antimatter statistics, [1]-->contains combined antimatter statistics.
      * */
-    public static List<StatisticsEntry>[] getCombinedEquiHeightSynopses(
-            List<List<StatisticsEntry>> partitionStatEntries, String dataverse, String dataset, String indexName,
-            String field, int requiredBucketsNum) {
+    public static StatisticsEntry[] getCombinedEquiHeightSynopses(List<StatisticsEntry> partitionStatEntries,
+            String dataverse, String dataset, String indexName, String field, int requiredBucketsNum) {
         List<NonEquiHeightSynopsisElement> synopsesElements = new ArrayList<>();
         List<NonEquiHeightSynopsisElement> antimatterSynopsesElements = new ArrayList<>();
 
-        List<StatisticsEntry>[] combinedStatistics = new List[2];
+        StatisticsEntry[] combinedStatistics = new StatisticsEntry[2];
         SynopsisElementType elementType = SynopsisElementType.Long;
         for (int i = 0; i < partitionStatEntries.size(); i++) {
-            if (partitionStatEntries.get(i).isEmpty()) {
+            if (partitionStatEntries.get(i) == null) {
                 continue;
             }
-            elementType = partitionStatEntries.get(i).get(0).getSynopsis().getElementType();
+            elementType = partitionStatEntries.get(i).getSynopsis().getElementType();
             break;
         }
         switch (elementType) {
@@ -73,14 +72,14 @@ public class SynopsisUtils {
     /*
      * Combines both lists of synopsis and antimatter synopsis,
      * and returns an array of combined non-equiheight statistics.
-     * [0]-->contains combined statistics, [1]-->contains combined antimatter statistics.
+     * [0]-->contains combined non-antimatter statistics, [1]-->contains combined antimatter statistics.
      * */
-    public static <T> List<StatisticsEntry>[] getCombinedNonEquiHeightSynopses(
+    public static <T> StatisticsEntry[] getCombinedNonEquiHeightSynopses(
             List<NonEquiHeightSynopsisElement> synopsisElements,
             List<NonEquiHeightSynopsisElement> antimatterSynopsisElements, String dataverse, String dataset,
             String index, String field, T domainStart, T domainEnd) {
 
-        List<StatisticsEntry>[] combinedStatistics = new List[2];
+        StatisticsEntry[] combinedStatistics = new StatisticsEntry[2];
         if (domainStart instanceof Long) {
             combinedStatistics = new SynopsisLongCombinationsHelper().getCombinedNonEquiHeightSynopses(synopsisElements,
                     antimatterSynopsisElements, dataverse, dataset, index, field, (Long) domainStart, (Long) domainEnd);
@@ -92,26 +91,23 @@ public class SynopsisUtils {
         return combinedStatistics;
     }
 
-    private static List<Long> getLongDomainStartEnd(List<List<StatisticsEntry>> partitionStatEntries,
+    private static List<Long> getLongDomainStartEnd(List<StatisticsEntry> partitionStatEntries,
             List<NonEquiHeightSynopsisElement> synopsisElements,
             List<NonEquiHeightSynopsisElement> antimatterSynopsisElements) {
         Long domainStart = Long.MAX_VALUE, domainEnd = Long.MIN_VALUE;
         for (int i = 0; i < partitionStatEntries.size(); i++) {
-            if (partitionStatEntries.get(i).size() == 0) {
+            if (partitionStatEntries.get(i) == null) {
                 continue;
             }
-            if ((Long) ((HistogramSynopsis) partitionStatEntries.get(i).get(0).getSynopsis())
-                    .getDomainStart() < domainStart) {
-                domainStart = ((HistogramSynopsis) partitionStatEntries.get(i).get(0).getSynopsis()).getDomainStart()
-                        .longValue();
+            if ((Long) ((HistogramSynopsis) partitionStatEntries.get(i).getSynopsis()).getDomainStart() < domainStart) {
+                domainStart =
+                        ((HistogramSynopsis) partitionStatEntries.get(i).getSynopsis()).getDomainStart().longValue();
             }
-            if ((Long) ((HistogramSynopsis) partitionStatEntries.get(i).get(0).getSynopsis())
-                    .getDomainEnd() > domainEnd) {
-                domainEnd = ((HistogramSynopsis) partitionStatEntries.get(i).get(0).getSynopsis()).getDomainEnd()
-                        .longValue();
+            if ((Long) ((HistogramSynopsis) partitionStatEntries.get(i).getSynopsis()).getDomainEnd() > domainEnd) {
+                domainEnd = ((HistogramSynopsis) partitionStatEntries.get(i).getSynopsis()).getDomainEnd().longValue();
             }
 
-            for (ISynopsisElement element : partitionStatEntries.get(i).get(0).getSynopsis().getElements()) {
+            for (ISynopsisElement element : partitionStatEntries.get(i).getSynopsis().getElements()) {
                 if (i % 2 == 0) {
                     synopsisElements.add(new NonEquiHeightSynopsisElement<Long>((Long) element.getLeftKey(),
                             ((Long) element.getRightKey()), element.getValue()));
@@ -127,26 +123,25 @@ public class SynopsisUtils {
         return domain;
     }
 
-    private static List<Double> getDoubleDomainStartEnd(List<List<StatisticsEntry>> partitionStatEntries,
+    private static List<Double> getDoubleDomainStartEnd(List<StatisticsEntry> partitionStatEntries,
             List<NonEquiHeightSynopsisElement> synopsisElements,
             List<NonEquiHeightSynopsisElement> antimatterSynopsisElements) {
         Double domainStart = Double.MAX_VALUE, domainEnd = Double.MIN_VALUE;
         for (int i = 0; i < partitionStatEntries.size(); i++) {
-            if (partitionStatEntries.get(i).size() == 0) {
+            if (partitionStatEntries.get(i) == null) {
                 continue;
             }
-            if ((Double) ((HistogramSynopsis) partitionStatEntries.get(i).get(0).getSynopsis())
+            if ((Double) ((HistogramSynopsis) partitionStatEntries.get(i).getSynopsis())
                     .getDomainStart() < domainStart) {
-                domainStart = ((HistogramSynopsis) partitionStatEntries.get(i).get(0).getSynopsis()).getDomainStart()
-                        .doubleValue();
+                domainStart =
+                        ((HistogramSynopsis) partitionStatEntries.get(i).getSynopsis()).getDomainStart().doubleValue();
             }
-            if ((Double) ((HistogramSynopsis) partitionStatEntries.get(i).get(0).getSynopsis())
-                    .getDomainEnd() > domainEnd) {
-                domainEnd = ((HistogramSynopsis) partitionStatEntries.get(i).get(0).getSynopsis()).getDomainEnd()
-                        .doubleValue();
+            if ((Double) ((HistogramSynopsis) partitionStatEntries.get(i).getSynopsis()).getDomainEnd() > domainEnd) {
+                domainEnd =
+                        ((HistogramSynopsis) partitionStatEntries.get(i).getSynopsis()).getDomainEnd().doubleValue();
             }
 
-            for (ISynopsisElement element : partitionStatEntries.get(i).get(0).getSynopsis().getElements()) {
+            for (ISynopsisElement element : partitionStatEntries.get(i).getSynopsis().getElements()) {
                 if (i % 2 == 0) {
                     synopsisElements.add(new NonEquiHeightSynopsisElement<Double>((Double) element.getLeftKey(),
                             ((Double) element.getRightKey()), element.getValue()));

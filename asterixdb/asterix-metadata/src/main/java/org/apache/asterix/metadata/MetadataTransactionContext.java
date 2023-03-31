@@ -44,7 +44,6 @@ import org.apache.asterix.metadata.entities.Statistics;
 import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.runtime.fulltext.AbstractFullTextFilterDescriptor;
 import org.apache.asterix.runtime.fulltext.FullTextConfigDescriptor;
-import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 import org.apache.hyracks.storage.am.lsm.invertedindex.fulltext.FullTextFilterType;
 import org.apache.hyracks.storage.am.lsm.invertedindex.fulltext.IFullTextFilterEvaluatorFactory;
 
@@ -227,10 +226,9 @@ public class MetadataTransactionContext extends MetadataCache {
         logAndApply(new MetadataLogicalOperation(library, false));
     }
 
-    public void dropStatistics(DataverseName dataverseName, String datasetName, String indexName, String node,
-            String partition, boolean isAntimatter, String fieldName) {
-        Statistics stat = new Statistics(dataverseName, datasetName, indexName, node, partition,
-                new ComponentStatisticsId(0L, 0L), false, isAntimatter, fieldName, null);
+    public void dropStatistics(DataverseName dataverseName, String datasetName, String indexName, boolean isAntimatter,
+            String fieldName) {
+        Statistics stat = new Statistics(dataverseName, datasetName, indexName, false, isAntimatter, fieldName, null);
         //        droppedCache.addStatisticsIfNotExists(stat);
         droppedCache.addStatisticsToCache(stat);
         logAndApply(new MetadataLogicalOperation(stat, false));
