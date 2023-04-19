@@ -476,9 +476,13 @@ public class MetadataProvider implements IMetadataProvider<DataSourceId, String>
         return MetadataManagerUtil.findFullTextFilterDescriptor(mdTxnCtx, dataverseName, ftFilterName);
     }
 
-    public List<Statistics> getMergedStatistics(DataverseName dataverseName, String datasetName, String indexName,
-            String fieldName) throws AlgebricksException {
-        return MetadataManager.INSTANCE.getMergedStatistics(mdTxnCtx, dataverseName, datasetName, indexName, fieldName);
+    @Override
+    public void updateStatistics(String dataverse, String datasetName, String indexName, boolean isAntimatter,
+            String fieldName, ISynopsis synopsis, long numTuples, long totalTuplesSize) throws AlgebricksException {
+        // add statistics to the metadata using metadata manager
+        DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverse);
+        MetadataManager.INSTANCE.updateStatistics(mdTxnCtx, new Statistics(dataverseName, datasetName, indexName, false,
+                isAntimatter, fieldName, synopsis, numTuples, totalTuplesSize));
     }
 
     @Override
@@ -489,23 +493,9 @@ public class MetadataProvider implements IMetadataProvider<DataSourceId, String>
                 fieldName);
     }
 
-    //TODO: Delete this function before merge to the main branch
-    @Override
-    public void addStatistics(String dataverse, String datasetName, String indexName, boolean isAntimatter,
-            String fieldName, ISynopsis synopsis) throws AlgebricksException {
-        // add statistics to the metadata using metadata manager
-        DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverse);
-        MetadataManager.INSTANCE.addStatistics(mdTxnCtx,
-                new Statistics(dataverseName, datasetName, indexName, false, isAntimatter, fieldName, synopsis));
-    }
-
-    @Override
-    public void updateStatistics(String dataverse, String datasetName, String indexName, boolean isAntimatter,
-            String fieldName, ISynopsis synopsis) throws AlgebricksException {
-        // add statistics to the metadata using metadata manager
-        DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverse);
-        MetadataManager.INSTANCE.updateStatistics(mdTxnCtx,
-                new Statistics(dataverseName, datasetName, indexName, false, isAntimatter, fieldName, synopsis));
+    public List<Statistics> getFieldStatistics(DataverseName dataverseName, String datasetName, String indexName,
+            String fieldName) throws AlgebricksException {
+        return MetadataManager.INSTANCE.getFieldStatistics(mdTxnCtx, dataverseName, datasetName, indexName, fieldName);
     }
 
     @Override

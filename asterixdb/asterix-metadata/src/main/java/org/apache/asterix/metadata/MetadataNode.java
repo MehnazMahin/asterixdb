@@ -844,14 +844,6 @@ public class MetadataNode implements IMetadataNode {
     public void dropIndex(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName)
             throws AlgebricksException {
         try {
-            Index deletedIndex = getIndex(txnId, dataverseName, datasetName, indexName);
-            // Delete related entry(s) from the 'statistics' dataset.
-            // TODO: allow nested & composite field names
-            //            String fullNestedFieldName = "";
-            //            for (List<String> firstField : ((Index.ValueIndexDetails) deletedIndex.getIndexDetails())
-            //                    .getKeyFieldNames()) {
-            //                fullNestedFieldName = String.join(".", firstField);
-            //            }
             List<Statistics> indexStatistics = getIndexStatistics(txnId, dataverseName, datasetName, indexName);
             if (indexStatistics != null) {
                 for (Statistics stats : indexStatistics) {
@@ -2503,7 +2495,7 @@ public class MetadataNode implements IMetadataNode {
     }
 
     @Override
-    public void addStatistics(TxnId txnId, Statistics statistics) throws MetadataException {
+    public void addStatistics(TxnId txnId, Statistics statistics) throws AlgebricksException {
         try {
             // Insert into the 'Statistics' dataset.
             StatisticsTupleTranslator tupleReaderWriter =
@@ -2511,7 +2503,7 @@ public class MetadataNode implements IMetadataNode {
             ITupleReference statsTuple = tupleReaderWriter.getTupleFromMetadataEntity(statistics);
             insertTupleIntoIndex(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, statsTuple);
         } catch (HyracksDataException e) {
-            if (e.getComponent().equals(ErrorCode.HYRACKS) && e.getComponent().equals(ErrorCode.DUPLICATE_KEY)) {
+            if (e.matches(ErrorCode.DUPLICATE_KEY)) {
                 // This could happen only if the statistics on merged component was persisted before the flushed one.
                 // In this case We can safely ignore the flushed statistics, the info is reflected in merged statistics.
             } else {
@@ -2534,8 +2526,7 @@ public class MetadataNode implements IMetadataNode {
                     getTupleToBeDeleted(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, searchKey);
             deleteTupleFromIndex(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, deletedStatsTuples);
         } catch (HyracksDataException e) {
-            if (e.getComponent().equals(ErrorCode.HYRACKS)
-                    && e.getComponent().equals(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
+            if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
                 // This could happen if either matter or antimatter synopses, but
                 // not both synopses of an index partition were persisted and tries to drop the earlier ones
             } else {
@@ -2558,29 +2549,12 @@ public class MetadataNode implements IMetadataNode {
             statTuples = tupleReaderWriter.getTupleFromMetadataEntity(statistics);
             insertTupleIntoIndex(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, statTuples);
         } catch (HyracksDataException e) {
-            if (e.getComponent().equals(ErrorCode.HYRACKS)
-                    && e.getComponent().equals(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
+            if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
                 // This could happen if either matter or antimatter synopses, but
                 // not both synopses of an index partition were persisted and tries to drop the earlier ones
             } else {
                 throw new AlgebricksException(e);
             }
-        }
-    }
-
-    @Override
-    public List<Statistics> getDatasetStatistics(TxnId txnId, DataverseName dataverse, String dataset)
-            throws AlgebricksException {
-        try {
-            ITupleReference searchKey = createTuple(dataverse, dataset);
-            StatisticsTupleTranslator tupleReaderWriter =
-                    tupleTranslatorProvider.getStatisticsTupleTranslator(txnId, this, false);
-            IValueExtractor<Statistics> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
-            List<Statistics> results = new ArrayList<>();
-            searchIndex(txnId, MetadataPrimaryIndexes.STATISTICS_DATASET, searchKey, valueExtractor, results);
-            return results;
-        } catch (HyracksDataException e) {
-            throw new MetadataException(e);
         }
     }
 
@@ -2615,15 +2589,6 @@ public class MetadataNode implements IMetadataNode {
         } catch (HyracksDataException e) {
             throw new MetadataException(e);
         }
-    }
-
-    @Override
-    public List<Statistics> getFullFieldStatistics(TxnId txnId, DataverseName dataverseName, String datasetName,
-            String indexName, String node, String partition, String fieldName) throws AlgebricksException {
-        List<Statistics> results = new ArrayList<>();
-        results.add(getFieldStatistics(txnId, dataverseName, datasetName, indexName, false, fieldName));
-        results.add(getFieldStatistics(txnId, dataverseName, datasetName, indexName, true, fieldName));
-        return results;
     }
 
     public ITupleReference createIndexStatsSearchTuple(DataverseName dataverseName, String datasetName,

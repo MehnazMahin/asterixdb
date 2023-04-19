@@ -156,18 +156,8 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
     }
 
     @Override
-    public void addStatistics(String dataverseName, String datasetName, String indexName, boolean isAntimatter,
-            String fieldName, ISynopsis synopsis) throws AlgebricksException {
-        TestStatisticsID statsId = new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, isAntimatter);
-        PriorityQueue<TestStatisticsEntry> entries =
-                (PriorityQueue<TestStatisticsEntry>) stats.computeIfAbsent(statsId, (k) -> new PriorityQueue<>());
-        entries.add(new TestStatisticsEntry(new ComponentStatisticsId(0L, 0L), synopsis));
-
-    }
-
-    @Override
     public void updateStatistics(String dataverseName, String datasetName, String indexName, boolean isAntimatter,
-            String fieldName, ISynopsis synopsis) throws AlgebricksException {
+            String fieldName, ISynopsis synopsis, long numTuples, long totalTuplesSize) throws AlgebricksException {
         TestStatisticsID statsId = new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, isAntimatter);
         PriorityQueue<TestStatisticsEntry> entries =
                 (PriorityQueue<TestStatisticsEntry>) stats.computeIfAbsent(statsId, (k) -> new PriorityQueue<>());
@@ -191,31 +181,6 @@ public class TestMetadataProvider implements IMetadataProvider<DataSourceId, Str
             eIt.remove();
         }
     }
-
-    //    @Override
-    //    public void updateStatistics(String dataverseName, String datasetName, String indexName, String node,
-    //            String partition, ComponentStatisticsId componentId, String fieldName, boolean isAntimatter, ISynopsis synopsis)
-    //            throws AlgebricksException {
-    //        TestStatisticsID statsId =
-    //                new TestStatisticsID(dataverseName, datasetName, indexName, fieldName, node, partition, isAntimatter);
-    //        PriorityQueue<TestStatisticsEntry> entries =
-    //                (PriorityQueue<TestStatisticsEntry>) stats.computeIfAbsent(statsId, (k) -> new PriorityQueue<>());
-    //        Iterator<TestStatisticsEntry> eIt = entries.iterator();
-    //        TestStatisticsEntry currEntry = null;
-    //
-    //        List<TestStatisticsEntry> statisticsEntries = new ArrayList<>();
-    //        while (currEntry == null || eIt.hasNext()) {
-    //            currEntry = eIt.next();
-    //            if (componentId.getMinTimestamp() <= currEntry.componentId.getMinTimestamp()
-    //                    && currEntry.componentId.getMaxTimestamp() <= componentId.getMaxTimestamp()) {
-    //                statisticsEntries.add(currEntry);
-    //            }
-    //        }
-    //        for (TestStatisticsEntry entry : statisticsEntries) {
-    //            entries.remove(entry);
-    //        }
-    //        entries.add(new TestStatisticsEntry(componentId, synopsis));
-    //    }
 
     @Override
     public IDataSource<DataSourceId> findDataSource(DataSourceId id) throws AlgebricksException {

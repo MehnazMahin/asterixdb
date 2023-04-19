@@ -416,9 +416,7 @@ public class MetadataCache {
                         datasetMap.computeIfAbsent(statistics.getDatasetName(), k -> new HashMap<>());
                 Map<String, Statistics> fieldMap =
                         indexMap.computeIfAbsent(statistics.getIndexName(), k -> new HashMap<>());
-                //Statistics stats = fieldMap.get(statistics.getFieldName());
                 return fieldMap.put(statistics.getFieldName(), statistics);
-                //return stats;
             }
         }
     }
@@ -557,67 +555,6 @@ public class MetadataCache {
                 return fieldMap.get(fieldName);
             }
         }
-    }
-
-    public Map<String, Map<String, Map<String, Statistics>[]>> getIndexStatistics(DataverseName dataverseName,
-            String datasetName, String indexName) {
-        // TODO: Check the return type (remove method if not used)
-        Map<String, Map<String, Map<String, Statistics>[]>> resultMap = new HashMap<>();
-        Map<String, Statistics>[] indexStats = new Map[2];
-        synchronized (indexSynopsesMap) {
-            synchronized (indexAntimatterSynopsesMap) {
-                // non-antimatter synopsis
-                Map<String, Map<String, Map<String, Statistics>>> datasetMap = indexSynopsesMap.get(dataverseName);
-                if (datasetMap == null) {
-                    return null;
-                }
-                Map<String, Map<String, Statistics>> indexMap = datasetMap.get(datasetName);
-                if (indexMap == null) {
-                    return null;
-                }
-                Map<String, Statistics> fieldMap = indexMap.get(indexName);
-                if (fieldMap == null) {
-                    return null;
-                }
-                indexStats[0] = fieldMap;
-
-                // antimatter synopsis
-                datasetMap = indexAntimatterSynopsesMap.get(dataverseName);
-                if (datasetMap == null) {
-                    return null;
-                }
-                indexMap = datasetMap.get(datasetName);
-                if (indexMap == null) {
-                    return null;
-                }
-                fieldMap = indexMap.get(indexName);
-                if (fieldMap == null) {
-                    return null;
-                }
-                indexStats[1] = fieldMap;
-
-                if (indexStats[0] != null || indexStats[1] != null) {
-                    Map<String, Map<String, Statistics>[]> m = new HashMap<>();
-                    m.put(datasetName, indexStats);
-                    resultMap.put(dataverseName.getCanonicalForm(), m);
-                    return resultMap;
-                }
-            }
-        }
-        //        synchronized (partitionStats) {
-        //            Map<String, Map<String, Map<String, Map<String, Map<String, Statistics>[]>>>> datasetMap =
-        //                    partitionStats.get(dataverseName);
-        //            if (datasetMap == null) {
-        //                return null;
-        //            }
-        //            Map<String, Map<String, Map<String, Map<String, Statistics>[]>>> indexMap = datasetMap.get(datasetName);
-        //            if (indexMap == null) {
-        //                return null;
-        //            }
-        //            return indexMap.get(indexName);
-        //        }
-        // TODO: check and finish it
-        return null;
     }
 
     protected void doOperation(MetadataLogicalOperation op) {

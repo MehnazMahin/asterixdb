@@ -178,6 +178,7 @@ public class MetadataBootstrap {
                 insertNewCompactionPoliciesIfNotExist(mdTxnCtx);
                 insertSynonymEntitiesIfNotExist(mdTxnCtx);
                 insertFullTextConfigAndFilterIfNotExist(mdTxnCtx);
+                insertStatisticsEntitiesIfNotExist(mdTxnCtx);
             }
             // #. initialize datasetIdFactory
             MetadataManager.INSTANCE.initializeDatasetIdFactory(mdTxnCtx);
@@ -348,6 +349,20 @@ public class MetadataBootstrap {
         if (MetadataManager.INSTANCE.getDataset(mdTxnCtx, MetadataConstants.METADATA_DATAVERSE_NAME,
                 MetadataConstants.FULL_TEXT_FILTER_DATASET_NAME) == null) {
             insertMetadataDatasets(mdTxnCtx, new IMetadataIndex[] { MetadataPrimaryIndexes.FULL_TEXT_FILTER_DATASET });
+        }
+    }
+
+    private static void insertStatisticsEntitiesIfNotExist(MetadataTransactionContext mdTxnCtx)
+            throws AlgebricksException {
+        IAType statisticsDatasetRecordType = MetadataPrimaryIndexes.STATISTICS_DATASET.getPayloadRecordType();
+        if (MetadataManager.INSTANCE.getDatatype(mdTxnCtx, MetadataConstants.METADATA_DATAVERSE_NAME,
+                statisticsDatasetRecordType.getTypeName()) == null) {
+            MetadataManager.INSTANCE.addDatatype(mdTxnCtx, new Datatype(MetadataConstants.METADATA_DATAVERSE_NAME,
+                    statisticsDatasetRecordType.getTypeName(), statisticsDatasetRecordType, false));
+        }
+        if (MetadataManager.INSTANCE.getDataset(mdTxnCtx, MetadataConstants.METADATA_DATAVERSE_NAME,
+                MetadataConstants.STATISTICS_DATASET_NAME) == null) {
+            insertMetadataDatasets(mdTxnCtx, new IMetadataIndex[] { MetadataPrimaryIndexes.STATISTICS_DATASET });
         }
     }
 

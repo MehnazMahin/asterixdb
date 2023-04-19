@@ -33,8 +33,6 @@ import org.apache.asterix.metadata.declared.StatisticsEntry;
 import org.apache.asterix.metadata.utils.ISynopsisCombinationsHelper.NonEquiHeightSynopsisElement;
 import org.apache.asterix.metadata.utils.SynopsisUtils;
 import org.apache.asterix.statistics.IndexListStatistics;
-import org.apache.asterix.statistics.message.ReportFlushComponentStatisticsMessage;
-import org.apache.asterix.statistics.message.ReportMergeComponentStatisticsMessage;
 import org.apache.asterix.statistics.message.UpdateStatisticsResponseMessage;
 import org.apache.hyracks.api.application.INCServiceContext;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
@@ -50,7 +48,6 @@ import org.apache.hyracks.storage.am.lsm.common.api.ISynopsis.SynopsisElementTyp
 import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 import org.apache.hyracks.storage.am.lsm.common.impls.AbstractLSMDiskComponent;
 import org.apache.hyracks.storage.am.lsm.common.impls.AbstractLSMIndexFileManager;
-import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatisticsId;
 
 public class StatisticsManager implements IStatisticsManager {
 
@@ -272,84 +269,6 @@ public class StatisticsManager implements IStatisticsManager {
             throws HyracksDataException {
         if (stats != null) {
             gatherComponentSynopsisStatistics(stats, component, isAntimatter);
-        }
-    }
-
-    // TODO : Delete this function
-    private void sendMessage(ICcAddressedMessage msg) throws HyracksDataException {
-        //TODO: make message sending routine asynchronous?
-        try {
-            ((INCMessageBroker) ncContext.getMessageBroker()).sendMessageToPrimaryCC(msg);
-        } catch (Exception e) {
-            throw HyracksDataException.create(e);
-        }
-    }
-
-    // TODO : Delete this function
-    private void sendFlushSynopsisStatistics(StatisticsEntry stats, ILSMDiskComponent newComponent,
-            boolean isAntimatter) throws HyracksDataException {
-        List<StatisticsEntry> flushComponentSynopses = new ArrayList<>();
-        flushComponentSynopses.add(stats);
-        for (StatisticsEntry flushComponentSynopsis : flushComponentSynopses) {
-            // send message only about non-empty statistics
-            if (flushComponentSynopsis != null) {
-                List<String> parsedComponentsPath =
-                        parsePathComponents(((BTree) newComponent.getIndex()).getFileReference().getRelativePath());
-                ICcAddressedMessage msg = new ReportFlushComponentStatisticsMessage(flushComponentSynopsis,
-                        ncContext.getNodeId(), parsedComponentsPath.get(1),
-                        new ComponentStatisticsId(Long.parseLong(parsedComponentsPath.get(6)),
-                                Long.parseLong(parsedComponentsPath.get(5))),
-                        isAntimatter);
-                sendMessage(msg);
-            }
-        }
-    }
-
-    // TODO : Delete this function
-    private void sendMergeSynopsisStatistics(StatisticsEntry stats, ILSMDiskComponent newComponent,
-            List<ILSMDiskComponent> mergedComponents, boolean isAntimatter) throws HyracksDataException {
-        List<StatisticsEntry> flushComponentSynopses = new ArrayList<>();
-        flushComponentSynopses.add(stats);
-        for (StatisticsEntry flushComponentSynopsis : flushComponentSynopses) {
-            List<String> parsedComponentsPath =
-                    parsePathComponents(((BTree) newComponent.getIndex()).getFileReference().getRelativePath());
-            List<ComponentStatisticsId> mergedComponentIds = new ArrayList<>(mergedComponents.size());
-            for (ILSMDiskComponent mergedComponent : mergedComponents) {
-                List<String> parsedMergedComponentPath =
-                        parsePathComponents(((BTree) mergedComponent.getIndex()).getFileReference().getRelativePath());
-                mergedComponentIds.add(new ComponentStatisticsId(Long.parseLong(parsedMergedComponentPath.get(6)),
-                        Long.parseLong(parsedMergedComponentPath.get(5))));
-            }
-            ICcAddressedMessage msg = new ReportMergeComponentStatisticsMessage(flushComponentSynopsis,
-                    ncContext.getNodeId(), parsedComponentsPath.get(1),
-                    new ComponentStatisticsId(Long.parseLong(parsedComponentsPath.get(6)),
-                            Long.parseLong(parsedComponentsPath.get(5))),
-                    isAntimatter, mergedComponentIds);
-            sendMessage(msg);
-        }
-    }
-
-    // TODO : Delete this function
-    @Override
-    public void sendFlushStatistics(ILSMDiskComponent flushedComponent) throws HyracksDataException {
-        synchronized (synopsisMap) {
-            synchronized (antimatterSynopsisMap) {
-                sendFlushSynopsisStatistics(synopsisMap.remove(flushedComponent), flushedComponent, false);
-                sendFlushSynopsisStatistics(antimatterSynopsisMap.remove(flushedComponent), flushedComponent, true);
-            }
-        }
-    }
-
-    // TODO : Delete this function
-    @Override
-    public void sendMergeStatistics(ILSMDiskComponent newComponent, List<ILSMDiskComponent> mergedComponents)
-            throws HyracksDataException {
-        synchronized (synopsisMap) {
-            synchronized (antimatterSynopsisMap) {
-                sendMergeSynopsisStatistics(synopsisMap.remove(newComponent), newComponent, mergedComponents, false);
-                sendMergeSynopsisStatistics(antimatterSynopsisMap.remove(newComponent), newComponent, mergedComponents,
-                        true);
-            }
         }
     }
 }

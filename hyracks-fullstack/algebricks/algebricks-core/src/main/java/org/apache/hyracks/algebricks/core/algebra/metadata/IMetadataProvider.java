@@ -235,11 +235,8 @@ public interface IMetadataProvider<S, I> {
 
     public boolean isBlockingOperatorDisabled();
 
-    public void addStatistics(String dataverse, String datasetName, String indexName, boolean isAntimatter,
-            String fieldName, ISynopsis synopsis) throws AlgebricksException;
-
     public void updateStatistics(String dataverse, String datasetName, String indexName, boolean isAntimatter,
-            String fieldName, ISynopsis synopsis) throws AlgebricksException;
+            String fieldName, ISynopsis synopsis, long numTuples, long totalTuplesSize) throws AlgebricksException;
 
     public void dropStatistics(String dataverse, String datasetName, String indexName, boolean isAntimatter,
             String fieldName) throws AlgebricksException;

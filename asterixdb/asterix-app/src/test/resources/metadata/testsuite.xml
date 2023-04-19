@@ -605,15 +605,15 @@
         <output-dir compare="Text">pidx_bulkload</output-dir>
       </compilation-unit>
     </test-case>
-<!--    <test-case FilePath="statistics">-->
-<!--      <compilation-unit name="sidx_merge_double">-->
-<!--        <output-dir compare="Text">sidx_merge_double</output-dir>-->
-<!--      </compilation-unit>-->
-<!--    </test-case>-->
-<!--    <test-case FilePath="statistics">-->
-<!--      <compilation-unit name="sidx_bulkload_double">-->
-<!--        <output-dir compare="Text">sidx_bulkload_double</output-dir>-->
-<!--      </compilation-unit>-->
-<!--    </test-case>-->
+    <test-case FilePath="statistics">
+      <compilation-unit name="sidx_merge_double">
+        <output-dir compare="Text">sidx_merge_double</output-dir>
+      </compilation-unit>
+    </test-case>
+    <test-case FilePath="statistics">
+      <compilation-unit name="sidx_bulkload_double">
+        <output-dir compare="Text">sidx_bulkload_double</output-dir>
+      </compilation-unit>
+    </test-case>
   </test-group>
 </test-suite>

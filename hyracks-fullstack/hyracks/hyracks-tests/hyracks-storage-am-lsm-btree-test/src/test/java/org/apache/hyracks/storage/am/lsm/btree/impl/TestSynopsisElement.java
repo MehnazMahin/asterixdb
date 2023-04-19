@@ -22,22 +22,24 @@ import org.apache.hyracks.storage.am.lsm.common.api.ISynopsisElement;
 
 public class TestSynopsisElement implements ISynopsisElement<Comparable>, Comparable<TestSynopsisElement> {
 
-    public TestSynopsisElement(Comparable key, double value) {
-        this.key = key;
+    public TestSynopsisElement(Comparable leftKey, Comparable rightKey, double value) {
+        this.leftKey = leftKey;
+        this.rightKey = rightKey;
         this.value = value;
     }
 
-    private Comparable key;
+    private Comparable leftKey;
+    private Comparable rightKey;
     private double value;
 
     @Override
     public Comparable getLeftKey() {
-        return key;
+        return leftKey;
     }
 
     @Override
     public Comparable getRightKey() {
-        return key;
+        return rightKey;
     }
 
     @Override
@@ -51,12 +53,15 @@ public class TestSynopsisElement implements ISynopsisElement<Comparable>, Compar
 
     @Override
     public String toString() {
-        return "TestSynopsisElement{" + "key=" + key + ", value=" + value + '}';
+        return "TestSynopsisElement{" + "leftKey=" + leftKey + ", rightKey=" + rightKey + ", value=" + value + '}';
     }
 
     @Override
     public int compareTo(TestSynopsisElement o) {
-        return key.compareTo(o.getRightKey());
+        if (leftKey != o.leftKey) {
+            return leftKey.compareTo(o.getLeftKey());
+        }
+        return rightKey.compareTo(o.getRightKey());
     }
 
     @Override
@@ -68,11 +73,7 @@ public class TestSynopsisElement implements ISynopsisElement<Comparable>, Compar
 
         TestSynopsisElement that = (TestSynopsisElement) o;
 
-        return key != null ? key.equals(that.key) : that.key == null;
-    }
-
-    @Override
-    public int hashCode() {
-        return key != null ? key.hashCode() : 0;
+        return (leftKey != null && rightKey != null) ? (leftKey.equals(that.leftKey) && rightKey.equals(that.rightKey))
+                : (that.leftKey == null || that.rightKey == null);
     }
 }

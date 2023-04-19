@@ -51,8 +51,8 @@ public class LSMColumnBTreeWithBloomFilterDiskComponent extends LSMBTreeWithBloo
 
     @Override
     public ChainedLSMDiskComponentBulkLoader createBulkLoader(ILSMIOOperation operation, float fillFactor,
-            boolean verifyInput, long numElementsHint, long numAntimatterElementsHint, boolean checkIfEmptyIndex,
-            boolean withFilter, boolean cleanupEmptyComponent, IPageWriteCallback callback)
+            boolean verifyInput, long numElementsHint, long numAntimatterElementsHint, long totalTuplesSizeHint,
+            boolean checkIfEmptyIndex, boolean withFilter, boolean cleanupEmptyComponent, IPageWriteCallback callback)
             throws HyracksDataException {
         ChainedLSMDiskComponentBulkLoader chainedBulkLoader =
                 new ChainedLSMDiskComponentBulkLoader(operation, this, cleanupEmptyComponent);

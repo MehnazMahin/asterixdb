@@ -41,6 +41,8 @@ public class Statistics implements IMetadataEntity {
     private final String index;
     private final boolean isAntimatter;
     private final String field;
+    private final long numTuples;
+    private final long totalTuplesSize;
 
     @Override
     public boolean equals(Object o) {
@@ -88,7 +90,8 @@ public class Statistics implements IMetadataEntity {
     private final ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis;
 
     public Statistics(DataverseName dataverseName, String dataset, String index, boolean temp, boolean isAntimatter,
-            String field, ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis) {
+            String field, ISynopsis<? extends ISynopsisElement<? extends Number>> synopsis, long numTuples,
+            long totalTuplesSize) {
         this.dataverseName = dataverseName;
         this.dataset = dataset;
         this.index = index;
@@ -96,6 +99,8 @@ public class Statistics implements IMetadataEntity {
         this.temp = temp;
         this.isAntimatter = isAntimatter;
         this.synopsis = synopsis;
+        this.numTuples = numTuples;
+        this.totalTuplesSize = totalTuplesSize;
     }
 
     public DataverseName getDataverseName() {
@@ -124,6 +129,14 @@ public class Statistics implements IMetadataEntity {
 
     public ISynopsis<? extends ISynopsisElement<? extends Number>> getSynopsis() {
         return synopsis;
+    }
+
+    public long getNumTuples() {
+        return numTuples;
+    }
+
+    public long getTotalTuplesSize() {
+        return totalTuplesSize;
     }
 
     @Override

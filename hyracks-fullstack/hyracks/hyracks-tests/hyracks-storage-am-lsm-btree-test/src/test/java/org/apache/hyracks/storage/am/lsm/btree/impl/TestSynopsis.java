@@ -52,16 +52,6 @@ public class TestSynopsis implements ISynopsis<TestSynopsisElement> {
         throw new UnsupportedOperationException();
     }
 
-    /*@Override
-    public double pointQuery(long position) {
-        throw new UnsupportedOperationException();
-    }
-    
-    @Override
-    public double rangeQuery(long startPosition, long endPosition) {
-        throw new UnsupportedOperationException();
-    }*/
-
     @Override
     public void merge(ISynopsis<TestSynopsisElement> mergeSynopsis) throws HyracksDataException {
         if (mergeSynopsis != null) {

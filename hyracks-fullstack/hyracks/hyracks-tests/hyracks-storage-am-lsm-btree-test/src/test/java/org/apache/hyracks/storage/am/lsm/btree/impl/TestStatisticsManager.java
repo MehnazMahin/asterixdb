@@ -51,27 +51,6 @@ public class TestStatisticsManager implements IStatisticsManager {
     }
 
     @Override
-    public void sendFlushStatistics(ILSMDiskComponent flushedComponent) throws HyracksDataException {
-        for (TestStatisticsEntry e : componentIndex.get(flushedComponent)) {
-            flushed.add(e.synopsis);
-        }
-    }
-
-    @Override
-    public void sendMergeStatistics(ILSMDiskComponent newComponent, List<ILSMDiskComponent> mergedComponents)
-            throws HyracksDataException {
-        for (ILSMDiskComponent c : mergedComponents) {
-            for (TestStatisticsEntry removedEntry : componentIndex.remove(c)) {
-                synopsisIndex.get(removedEntry.fieldName).remove(removedEntry.synopsis);
-                flushed.remove(removedEntry.synopsis);
-            }
-        }
-        for (TestStatisticsEntry e : componentIndex.get(newComponent)) {
-            flushed.add(e.synopsis);
-        }
-    }
-
-    @Override
     public void persistComponentStatistics(ILSMDiskComponent newComponent) throws HyracksDataException {
         for (TestStatisticsEntry e : componentIndex.get(newComponent)) {
             //
@@ -91,7 +70,9 @@ public class TestStatisticsManager implements IStatisticsManager {
     public void addStatistics(ISynopsis synopsis, String dataverse, String dataset, String index, String field,
             boolean isAntimatter, ILSMDiskComponent component) {
         TestStatisticsEntry newEntry = new TestStatisticsEntry(field, synopsis);
+        componentIndex.remove(field);
         componentIndex.put(component, newEntry);
+        synopsisIndex.remove(field);
         synopsisIndex.put(field, synopsis);
     }
 

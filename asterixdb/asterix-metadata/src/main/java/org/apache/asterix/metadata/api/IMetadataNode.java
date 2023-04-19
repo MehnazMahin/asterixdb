@@ -998,19 +998,6 @@ public interface IMetadataNode extends Remote, Serializable {
     void updateStatistics(TxnId txnId, Statistics statistics) throws AlgebricksException, RemoteException;
 
     /**
-     * Retrieves all statistics for a given dataset.
-     *
-     * @param txnId
-     * @param dataverse
-     * @param dataset
-     * @return
-     * @throws AlgebricksException
-     * @throws RemoteException
-     */
-    List<Statistics> getDatasetStatistics(TxnId txnId, DataverseName dataverse, String dataset)
-            throws AlgebricksException, RemoteException;
-
-    /**
      * Deletes a statistics from a particular index component, acquiring local locks on behalf of the given
      * transaction id.
      *
@@ -1044,28 +1031,10 @@ public interface IMetadataNode extends Remote, Serializable {
             throws AlgebricksException, RemoteException;
 
     /**
-     * Retrieves the statistics for a given component in given dataverse and dataset,
-     * acquiring local locks on behalf of the given transaction id.
-     * @param componentId
-     *            The given component Id
-     */
-    //    List<Statistics> getComponentStatistics(TxnId txnId, DataverseName dataverseName, String datasetName,
-    //            String indexName, String node, String partition, ComponentStatisticsId componentId)
-    //            throws AlgebricksException, RemoteException;
-
-    /**
      * Retrieves matter/ antimatter statistics of a given field of an index component.
      * @param isAntimatter
      *            Is antimatter statistics required?
      */
     Statistics getFieldStatistics(TxnId txnId, DataverseName dataverseName, String datasetName, String indexName,
             boolean isAntimatter, String fieldName) throws AlgebricksException, RemoteException;
-
-    /**
-     * Retrieves full statistics (both matter and antimatter) of a given field
-     * of an index component.
-     */
-    List<Statistics> getFullFieldStatistics(TxnId txnId, DataverseName dataverseName, String datasetName,
-            String indexName, String node, String partition, String fieldName)
-            throws AlgebricksException, RemoteException;
 }

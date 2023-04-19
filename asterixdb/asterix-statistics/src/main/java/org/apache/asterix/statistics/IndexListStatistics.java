@@ -69,7 +69,7 @@ public class IndexListStatistics extends AbstractPointable implements Serializab
 
     @Override
     public byte[] getByteArray() {
-        if (binaryStats.getLength() == 0) {
+        if (length == 0) {
             int binarySize = Integer.BYTES + statisticsEntry.getLength();
             binaryStats.setSize(binarySize);
             byte[] statsByteArray = binaryStats.getByteArray();

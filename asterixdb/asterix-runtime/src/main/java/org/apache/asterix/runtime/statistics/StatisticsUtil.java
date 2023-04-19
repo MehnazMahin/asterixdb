@@ -38,7 +38,7 @@ public class StatisticsUtil {
     }
 
     /**
-     * Note: Statistics collection support only
+     * Note: Statistics collection supports only
      * (1) indexed fields (non-composite field) of secondary indexes and
      * (2) primary index field iff primary keys are enabled in Query-defined config
      */

@@ -36,10 +36,8 @@ public class TestStatisticsMessageBroker implements INCMessageBroker {
 
     @Override
     public void sendMessageToPrimaryCC(ICcAddressedMessage message) throws Exception {
-        //ReportFlushComponentStatisticsMessage statsMsg = (ReportFlushComponentStatisticsMessage) message;
         UpdateStatisticsResponseMessage updateMsg = (UpdateStatisticsResponseMessage) message;
         updateMsg.handleMessage(mdProvider);
-        //statsMsg.handleMessage(mdProvider);
     }
 
     @Override

@@ -48,7 +48,7 @@ public class TestSynopsisBuilder extends AbstractSynopsisBuilder<TestSynopsis> {
     @Override
     public void finishSynopsisBuild() throws HyracksDataException {
         for (Map.Entry<Comparable, Integer> e : elementsCardinality.entrySet()) {
-            synopsis.getElements().add(new TestSynopsisElement(e.getKey(), e.getValue()));
+            synopsis.getElements().add(new TestSynopsisElement(e.getKey(), e.getKey(), e.getValue()));
         }
     }
 

@@ -47,7 +47,7 @@ public class CardinalityEstimator implements ICardinalityEstimator {
                 .getDatasetIndexes(DataverseName.createFromCanonicalForm(dataverseName), datasetName);
         for (Index idx : datasetIndexes) {
             // TODO : allow statistics on nested fields
-            List<Statistics> fieldStats = ((MetadataProvider) metadataProvider).getMergedStatistics(
+            List<Statistics> fieldStats = ((MetadataProvider) metadataProvider).getFieldStatistics(
                     DataverseName.createFromCanonicalForm(dataverseName), datasetName, idx.getIndexName(),
                     String.join(".", fieldName));
             // use the last if multiple stats on the same field are available

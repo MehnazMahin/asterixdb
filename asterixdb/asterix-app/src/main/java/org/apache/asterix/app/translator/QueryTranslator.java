@@ -276,6 +276,7 @@ import org.apache.hyracks.storage.am.common.dataflow.IIndexDataflowHelperFactory
 import org.apache.hyracks.storage.am.common.dataflow.IndexDataflowHelperFactory;
 import org.apache.hyracks.storage.am.common.dataflow.IndexDropOperatorDescriptor.DropOption;
 import org.apache.hyracks.storage.am.lsm.common.api.ILSMMergePolicyFactory;
+import org.apache.hyracks.storage.am.lsm.common.impls.ComponentStatistics;
 import org.apache.hyracks.storage.am.lsm.invertedindex.fulltext.TokenizerCategory;
 import org.apache.hyracks.util.LogRedactionUtil;
 import org.apache.hyracks.util.OptionalBoolean;
@@ -1523,6 +1524,16 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
                             ((Index.ValueIndexDetails) index.getIndexDetails()).getKeyFieldNames().get(0).get(0);
                     String queryDefinedStatsSize = (String) metadataProvider.getConfig()
                             .get(StatisticsProperties.STATISTICS_SYNOPSIS_SIZE_KEY);
+
+                    long totalTuples = 0, totalTuplesSize = 0;
+                    for (int i = 0; i < partitionStatEntries.size(); i += 2) {
+                        StatisticsEntry entry = partitionStatEntries.get(i);
+                        if (entry == null)
+                            continue;
+                        ComponentStatistics stat = entry.getPartitionStats();
+                        totalTuples += (stat.getNumTuples() - stat.getNumAntimatterTuples());
+                        totalTuplesSize += stat.getTotalTuplesSize();
+                    }
                     /* *
                      * Query-defined properties take precedence over config-defined
                      * Warning: Be consistent about the synopsis size in DDL and UpdateStatistics query
@@ -1537,11 +1548,11 @@ public class QueryTranslator extends AbstractLangTranslator implements IStatemen
                     if (combinedSynopses.length > 0) {
                         if (combinedSynopses[0] != null) {
                             metadataProvider.updateStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,
-                                    false, fieldName, combinedSynopses[0].getSynopsis());
+                                    false, fieldName, combinedSynopses[0].getSynopsis(), totalTuples, totalTuplesSize);
                         }
                         if (combinedSynopses[1] != null) {
                             metadataProvider.updateStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,
-                                    true, fieldName, combinedSynopses[1].getSynopsis());
+                                    true, fieldName, combinedSynopses[1].getSynopsis(), totalTuples, totalTuplesSize);
                         } else {
                             // This can happen if all antimatter tuples are resolved during merge operations
                             metadataProvider.dropStatistics(dataverseName.getCanonicalForm(), datasetName, indexName,

@@ -54,7 +54,6 @@ public final class MetadataRecordTypes {
     public static final String FIELD_NAME_DEPENDENCIES = "Dependencies";
     public static final String FIELD_NAME_DERIVED = "Derived";
     public static final String FIELD_NAME_DESCRIPTION = "Description";
-    public static final String FIELD_NAME_ELEMENTS = "Elements";
     public static final String FIELD_NAME_EXTERNAL_DETAILS = "ExternalDetails";
     public static final String FIELD_NAME_FEED_NAME = "FeedName";
     public static final String FIELD_NAME_FEED_TYPE = "FeedType";
@@ -80,7 +79,6 @@ public final class MetadataRecordTypes {
     public static final String FIELD_NAME_IS_NULLABLE = "IsNullable";
     public static final String FIELD_NAME_IS_OPEN = "IsOpen";
     public static final String FIELD_NAME_IS_PRIMARY = "IsPrimary";
-    //    public static final String FIELD_NAME_KEY = "Key";
     public static final String FIELD_NAME_KIND = "Kind";
     public static final String FIELD_NAME_LANGUAGE = "Language";
     public static final String FIELD_NAME_HASH = "MD5Hash";
@@ -110,11 +108,8 @@ public final class MetadataRecordTypes {
     public static final String FIELD_NAME_RETURN_TYPE = "ReturnType";
     public static final String FIELD_NAME_RETURN_TYPE_DATAVERSE_NAME = "ReturnTypeDataverseName";
     public static final String FIELD_NAME_SEARCH_KEY = "SearchKey";
-    public static final String FIELD_NAME_SIZE = "Size";
     public static final String FIELD_NAME_STATUS = "Status";
     public static final String FIELD_NAME_SYNONYM_NAME = "SynonymName";
-    public static final String FIELD_NAME_SYNOPSIS = "Synopsis";
-    public static final String FIELD_NAME_SYNOPSIS_DOUBLE = "SynopsisDouble";
     public static final String FIELD_NAME_TAG = "Tag";
     public static final String FIELD_NAME_TIMESTAMP = "Timestamp";
     public static final String FIELD_NAME_TRANSACTION_STATE = "TransactionState";
@@ -518,84 +513,18 @@ public final class MetadataRecordTypes {
             //IsOpen?
             true);
     //---------------------------------- Synopsis of Statistics -------------------------------//
-    public static final String RECORD_NAME_SYNOPSIS_ELEMENT = "StatisticsSynopsisElementRecordType";
     public static final int SYNOPSIS_ELEMENT_ARECORD_LBORDER_FIELD_INDEX = 0;
     public static final int SYNOPSIS_ELEMENT_ARECORD_RBORDER_FIELD_INDEX = 1;
     public static final int SYNOPSIS_ELEMENT_ARECORD_VALUE_FIELD_INDEX = 2;
+    public static final String STATISTICS_ARECORD_SYNOPSIS_FIELD_NAME = "Synopsis";
+    public static final String STATISTICS_SYNOPSIS_ARECORD_TYPE_FIELD_NAME = "Type";
+    public static final String STATISTICS_SYNOPSIS_ARECORD_SIZE_FIELD_NAME = "Size";
+    public static final String STATISTICS_SYNOPSIS_ARECORD_ELEMENTS_FIELD_NAME = "Elements";
     public static final String SYNOPSIS_ELEMENT_ARECORD_UNIQUE_VALUES_NUM_FIELD_NAME = "UniqueValuesNum";
-
-    public static ARecordType SYNOPSIS_ELEMENT_RECORDTYPE = createRecordType(
-            // RecordTypeName
-            RECORD_NAME_SYNOPSIS_ELEMENT,
-            // FieldNames
-            new String[] { FIELD_NAME_LKEY, FIELD_NAME_RKEY, FIELD_NAME_VALUE },
-            // TODO: Check BuiltinTypes here for integer and double
-            // FieldTypes
-            new IAType[] { BuiltinType.AINT64, BuiltinType.AINT64, BuiltinType.ADOUBLE },
-            //new String[] {}, new IAType[] {},
-            //IsOpen?
-            true);
-
-    public static ARecordType SYNOPSIS_ELEMENT_LONG_RECORDTYPE = createRecordType(
-            // RecordTypeName
-            RECORD_NAME_SYNOPSIS_ELEMENT,
-            // FieldNames
-            new String[] { FIELD_NAME_LKEY, FIELD_NAME_RKEY, FIELD_NAME_VALUE },
-            // TODO: Check BuiltinTypes here for integer and double
-            // FieldTypes
-            new IAType[] { BuiltinType.AINT64, BuiltinType.AINT64, BuiltinType.ADOUBLE },
-            //IsOpen?
-            true);
-
-    public static ARecordType SYNOPSIS_ELEMENT_DOUBLE_RECORDTYPE = createRecordType(
-            // RecordTypeName
-            RECORD_NAME_SYNOPSIS_ELEMENT,
-            // FieldNames
-            new String[] { FIELD_NAME_LKEY, FIELD_NAME_RKEY, FIELD_NAME_VALUE },
-            // TODO: Check BuiltinTypes here for integer and double
-            // FieldTypes
-            new IAType[] { BuiltinType.ADOUBLE, BuiltinType.ADOUBLE, BuiltinType.ADOUBLE },
-            //IsOpen?
-            true);
+    public static final String STATISTICS_NUM_TUPLES_FIELD_NAME = "NumTuples";
+    public static final String STATISTICS_TOTAL_TUPLES_SIZE_FIELD_NAME = "TuplesLength";
 
     //-------------------------------------- Statistics ---------------------------------------//
-    public static final String RECORD_NAME_STATISTICS_SYNOPSIS = "StatisticsSynopsisRecordType";
-    public static final int STATISTICS_SYNOPSIS_ARECORD_TYPE_FIELD_INDEX = 0;
-    public static final int STATISTICS_SYNOPSIS_ARECORD_SIZE_FIELD_INDEX = 1;
-    public static final int STATISTICS_SYNOPSIS_ARECORD_ELEMENTS_FIELD_INDEX = 2;
-
-    public static ARecordType STATISTICS_SYNOPSIS_RECORDTYPE = createRecordType(
-            // RecordTypeName
-            RECORD_NAME_STATISTICS_SYNOPSIS,
-            // FieldNames
-            new String[] { FIELD_NAME_TYPE, FIELD_NAME_SIZE, FIELD_NAME_ELEMENTS },
-            // FieldTypes
-            new IAType[] { BuiltinType.ASTRING, BuiltinType.AINT32,
-                    new AOrderedListType(SYNOPSIS_ELEMENT_RECORDTYPE, null) },
-            //IsOpen?
-            true);
-
-    public static ARecordType STATISTICS_SYNOPSIS_LONG_RECORDTYPE = createRecordType(
-            // RecordTypeName
-            RECORD_NAME_STATISTICS_SYNOPSIS,
-            // FieldNames
-            new String[] { FIELD_NAME_TYPE, FIELD_NAME_SIZE, FIELD_NAME_ELEMENTS },
-            // FieldTypes
-            new IAType[] { BuiltinType.ASTRING, BuiltinType.AINT32,
-                    new AOrderedListType(SYNOPSIS_ELEMENT_LONG_RECORDTYPE, null) },
-            //IsOpen?
-            true);
-    public static ARecordType STATISTICS_SYNOPSIS_DOUBLE_RECORDTYPE = createRecordType(
-            // RecordTypeName
-            RECORD_NAME_STATISTICS_SYNOPSIS,
-            // FieldNames
-            new String[] { FIELD_NAME_TYPE, FIELD_NAME_SIZE, FIELD_NAME_ELEMENTS },
-            // FieldTypes
-            new IAType[] { BuiltinType.ASTRING, BuiltinType.AINT32,
-                    new AOrderedListType(SYNOPSIS_ELEMENT_DOUBLE_RECORDTYPE, null) },
-            //IsOpen?
-            true);
-
     public static final String RECORD_NAME_STATISTICS = "StatisticsRecordType";
     public static final int STATISTICS_ARECORD_DATAVERSE_NAME_FIELD_INDEX = 0;
     public static final int STATISTICS_ARECORD_DATASET_NAME_FIELD_INDEX = 1;
@@ -603,19 +532,15 @@ public final class MetadataRecordTypes {
     public static final int STATISTICS_ARECORD_ISANTIMATTER_FIELD_INDEX = 3;
     public static final int STATISTICS_ARECORD_FIELD_NAME_FIELD_INDEX = 4;
     public static final int STATISTICS_ARECORD_SYNOPSIS_ELEMENTS_TYPE_INDEX = 5;
-    public static final int STATISTICS_ARECORD_SYNOPSIS_FIELD_INDEX = 6;
-    //    public static final int STATISTICS_ARECORD_SYNOPSIS_DOUBLE_FIELD_INDEX = 7;
     public static ARecordType STATISTICS_RECORDTYPE = createRecordType(
             // RecordTypeName
             RECORD_NAME_STATISTICS,
             // FieldNames
             new String[] { FIELD_NAME_DATAVERSE_NAME, FIELD_NAME_DATASET_NAME, FIELD_NAME_INDEX_NAME,
-                    FIELD_NAME_IS_ANTIMATTER, FIELD_NAME_FIELD_NAME, FIELD_NAME_ELEMENTS_TYPE, FIELD_NAME_SYNOPSIS },
-            //                    , FIELD_NAME_SYNOPSIS_DOUBLE },
+                    FIELD_NAME_IS_ANTIMATTER, FIELD_NAME_FIELD_NAME, FIELD_NAME_ELEMENTS_TYPE },
             // FieldTypes
             new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ABOOLEAN,
-                    BuiltinType.ASTRING, BuiltinType.AINT32, STATISTICS_SYNOPSIS_RECORDTYPE },
-            //                    , STATISTICS_SYNOPSIS_DOUBLE_RECORDTYPE},
+                    BuiltinType.ASTRING, BuiltinType.AINT32 },
             //IsOpen?
             true);
 

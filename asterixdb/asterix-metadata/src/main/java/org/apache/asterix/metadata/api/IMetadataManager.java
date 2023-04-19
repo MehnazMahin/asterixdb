@@ -728,8 +728,7 @@ public interface IMetadataManager extends IMetadataBootstrap {
             Integer fileNumber) throws AlgebricksException;
 
     /**
-     * Computes and retrieves the merged statistics (both matter and antimatter)
-     * of the given field of an index within a node/partition,
+     * Retrieves both matter and antimatter statistics of a given field of an index of a qualified dataset
      * acqiring local locks on behalf of the given transaction id.
      *
      * @param indexName
@@ -737,13 +736,13 @@ public interface IMetadataManager extends IMetadataBootstrap {
      * @param fieldName
      *            The given field name
      * @return
-     *            A list of statistics of the field, merged within a node/partition
+     *            A list of non-antimatter and antimatter statistics of the field
      */
-    List<Statistics> getMergedStatistics(MetadataTransactionContext ctx, DataverseName dataverseName,
-            String datasetName, String indexName, String fieldName) throws AlgebricksException;
+    List<Statistics> getFieldStatistics(MetadataTransactionContext ctx, DataverseName dataverseName, String datasetName,
+            String indexName, String fieldName) throws AlgebricksException;
 
     /**
-     * Retrieves the matter/ antimatter statistics of a given field of an index of a qualified dataset,
+     * Retrieves the non-antimatter/ antimatter statistics of a given field of an index of a qualified dataset,
      * acquiring local locks on behalf of the given transaction id.
      *
      * @param datasetName
@@ -753,19 +752,10 @@ public interface IMetadataManager extends IMetadataBootstrap {
      * @param isAntimatter
      *            Is antimatter statistics required?
      * @param fieldName
-     *            The given field name of a qualified dataset
+     *            The given field name of an index of a qualified dataset
      */
     Statistics getFieldStatistics(MetadataTransactionContext ctx, DataverseName dataverseName, String datasetName,
             String indexName, boolean isAntimatter, String fieldName) throws AlgebricksException;
-
-    /**
-     * Adds a statistics, acquiring local locks of the given transaction id.
-     * @param mdTxnCtx
-     *           MetadataTransactionContext of an active metadata transaction.
-     * @param statistics
-     *           The statistics to be added
-     */
-    void addStatistics(MetadataTransactionContext mdTxnCtx, Statistics statistics) throws AlgebricksException;
 
     /**
      * Updates a statistics, acquiring local locks of the given transaction id.

@@ -45,11 +45,6 @@ import org.apache.hyracks.api.exceptions.HyracksDataException;
 
 public interface IStatisticsManager {
 
-    void sendFlushStatistics(ILSMDiskComponent flushedComponent) throws HyracksDataException;
-
-    void sendMergeStatistics(ILSMDiskComponent newComponent, List<ILSMDiskComponent> mergedComponents)
-            throws HyracksDataException;
-
     /**
      * Persists the statistics to the metadata page of the given disk component
      * before being immutable.

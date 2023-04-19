@@ -50,7 +50,7 @@ public class StatisticsMerger extends TimerTask {
                             ds.getDatasetName());
                     for (Index idx : indexes) {
                         MetadataManager.INSTANCE
-                                .getMergedStatistics(mdTxnCtx,
+                                .getFieldStatistics(mdTxnCtx,
                                         dv.getDataverseName(), ds
                                                 .getDatasetName(),
                                         idx.getIndexName(),

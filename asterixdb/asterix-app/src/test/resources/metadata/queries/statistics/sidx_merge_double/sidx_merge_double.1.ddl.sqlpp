@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+drop dataverse test if exists;
 drop  dataverse testDouble if exists;
 create  dataverse testDouble;
 use testDouble;
