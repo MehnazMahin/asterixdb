@@ -847,8 +847,8 @@ public class JoinEnum {
                     continue; // what happens to the cards and sizes then? this may happen in case of in lists
                 }
                 ILogicalOperator grpByDistinctOp = this.dataScanOrSelectAndDistinctOps.get(scanOp);
-                double distinctCardinality =
-                        (grpByDistinctOp != null) ? distinctEst.findDistinctCardinality(grpByDistinctOp) : 0.0;
+                long distinctCardinality =
+                        (grpByDistinctOp != null) ? distinctEst.findDistinctCardinality(grpByDistinctOp) : 0L;
 
                 finalDatasetCard = origDatasetCard = idxDetails.getSourceCardinality();
 
