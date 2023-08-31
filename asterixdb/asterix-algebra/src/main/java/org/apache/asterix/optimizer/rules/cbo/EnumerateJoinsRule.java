@@ -77,6 +77,8 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
     boolean[] unUsedJoinOps;
     List<JoinOperator> allJoinOps; // can be inner join or left outer join
     HashMap<EmptyTupleSourceOperator, ILogicalOperator> joinLeafInputsHashMap;
+    // The Distinct operators for each Select or DataSourceScan operator (if applicable)
+    HashMap<DataSourceScanOperator, ILogicalOperator> dataScanOrSelectAndDistinctOps;
     HashMap<LogicalVariable, Integer> varLeafInputIds;
     // The data scan operators. Will be in the order of the from clause.
     // Important for position ordering when assigning bits to join expressions.
@@ -88,6 +90,7 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
 
     public EnumerateJoinsRule(JoinEnum joinEnum) {
         this.joinEnum = joinEnum;
+        dataScanOrSelectAndDistinctOps = new HashMap<>(); // initialized only once at the beginning of the rule
     }
 
     @Override
@@ -118,6 +121,11 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
         ILogicalOperator op = opRef.getValue();
         if (!(joinClause(op) || ((op.getOperatorTag() == LogicalOperatorTag.DISTRIBUTE_RESULT)))) {
             return false;
+        }
+
+        // If cboMode or cboTestMode is true, identify each DistinctOp or GroupByOp for the corresponding DataScanOp
+        if (op.getOperatorTag() == LogicalOperatorTag.DISTRIBUTE_RESULT) {
+            getDistinctOpsForJoinNodes(op, context);
         }
 
         // if this join has already been seen before, no need to apply the rule again
@@ -170,6 +178,7 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
         joinEnum.initEnum((AbstractLogicalOperator) op, cboMode, cboTestMode, numberOfFromTerms,
                 emptyTupleAndDataSourceOps, joinLeafInputsHashMap, allJoinOps, assignOps, outerJoinsDependencyList,
                 buildSets, context);
+        joinEnum.dataScanOrSelectAndDistinctOps = this.dataScanOrSelectAndDistinctOps;
 
         if (cboMode) {
             if (!doAllDataSourcesHaveSamples(emptyTupleAndDataSourceOps, context)) {
@@ -402,6 +411,41 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
             }
 
             op = op.getInputs().get(0).getValue();
+        }
+    }
+
+    private void getDistinctOpsForJoinNodes(ILogicalOperator op, IOptimizationContext context) {
+        if (op.getOperatorTag() != LogicalOperatorTag.DISTRIBUTE_RESULT) {
+            return;
+        }
+        ILogicalOperator grpByDistinctOp = null; // null indicates no DistinctOp or GroupByOp
+        DataSourceScanOperator scanOp;
+        while (true) {
+            LogicalOperatorTag tag = op.getOperatorTag();
+            if (tag == LogicalOperatorTag.DISTINCT || tag == LogicalOperatorTag.GROUP) {
+                grpByDistinctOp = op; // GroupByOp Variable expressions (if any) take over DistinctOp ones
+            } else if (tag == LogicalOperatorTag.INNERJOIN || tag == LogicalOperatorTag.LEFTOUTERJOIN) {
+                if (grpByDistinctOp != null) {
+                    for (int i = 0; i < op.getInputs().size(); i++) {
+                        ILogicalOperator nextOp = op.getInputs().get(i).getValue();
+                        CBODistinctOperatorUtils.createDistinctOpsForJoinNodes(nextOp, grpByDistinctOp, context,
+                                dataScanOrSelectAndDistinctOps);
+                    }
+                }
+                return;
+            } else if (tag == LogicalOperatorTag.DATASOURCESCAN) { // single table queries
+                scanOp = (DataSourceScanOperator) op;
+                if (grpByDistinctOp != null
+                        && !CBODistinctOperatorUtils.containsAllGroupByDistinctVarsInScanOp(scanOp, grpByDistinctOp)) {
+                    // doesn't contain all PK attribute(s), so CBO can get estimated cardinality from samples
+                    dataScanOrSelectAndDistinctOps.put(scanOp, grpByDistinctOp);
+                }
+                return;
+            }
+            op = op.getInputs().get(0).getValue();
+            if (op.getOperatorTag() == LogicalOperatorTag.EMPTYTUPLESOURCE) {
+                return; // if this happens, there is nothing we can do in CBO code since there is no DataSourceScan
+            }
         }
     }
 
