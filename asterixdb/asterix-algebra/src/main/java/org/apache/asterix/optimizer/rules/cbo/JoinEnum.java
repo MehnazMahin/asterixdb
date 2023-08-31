@@ -104,6 +104,8 @@ public class JoinEnum {
     protected JoinNode[] jnArray; // array of all join nodes
     protected int jnArraySize;
     protected List<ILogicalOperator> leafInputs;
+    // The Distinct operators for each Select or DataScan operator (if applicable)
+    HashMap<DataSourceScanOperator, ILogicalOperator> dataScanOrSelectAndDistinctOps;
     protected List<ILogicalExpression> singleDatasetPreds;
     protected List<AssignOperator> assignOps;
     List<Quadruple<Integer, Integer, JoinOperator, Integer>> outerJoinsDependencyList;
@@ -117,6 +119,7 @@ public class JoinEnum {
     protected int maxBits; // the joinNode where the dataset bits are the highest is where all the tables have been joined
 
     protected Stats stats;
+    protected DistinctCardinalityEstimation distinctEst;
     private boolean cboMode;
     private boolean cboTestMode;
     protected int cboFullEnumLevel;
@@ -149,6 +152,7 @@ public class JoinEnum {
         this.connectedJoinGraph = true;
         this.optCtx = context;
         this.leafInputs = leafInputs;
+        this.dataScanOrSelectAndDistinctOps = new HashMap<>();
         this.assignOps = assignOps;
         this.outerJoin = false; // assume no outerjoins anywhere in the query at first.
         this.outerJoinsDependencyList = outerJoinsDependencyList;
@@ -167,6 +171,7 @@ public class JoinEnum {
         this.cost = new Cost();
         this.costMethods = new CostMethods(context);
         this.stats = new Stats(optCtx, this);
+        this.distinctEst = new DistinctCardinalityEstimation(context, this, stats);
         this.jnArraySize = (int) Math.pow(2.0, this.numberOfTerms);
         this.jnArray = new JoinNode[this.jnArraySize];
         // initialize all the join nodes
@@ -841,6 +846,9 @@ public class JoinEnum {
                 if (scanOp == null) {
                     continue; // what happens to the cards and sizes then? this may happen in case of in lists
                 }
+                ILogicalOperator grpByDistinctOp = this.dataScanOrSelectAndDistinctOps.get(scanOp);
+                double distinctCardinality =
+                        (grpByDistinctOp != null) ? distinctEst.findDistinctCardinality(grpByDistinctOp) : 0.0;
 
                 finalDatasetCard = origDatasetCard = idxDetails.getSourceCardinality();
 
