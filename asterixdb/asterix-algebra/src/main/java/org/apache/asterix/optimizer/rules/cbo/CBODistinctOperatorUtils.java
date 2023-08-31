@@ -44,7 +44,6 @@ import org.apache.hyracks.algebricks.core.algebra.operators.logical.AssignOperat
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.DataSourceScanOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.DistinctOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.GroupByOperator;
-import org.apache.hyracks.algebricks.core.algebra.plan.ALogicalPlanImpl;
 import org.apache.hyracks.api.exceptions.SourceLocation;
 
 public class CBODistinctOperatorUtils {
@@ -128,8 +127,6 @@ public class CBODistinctOperatorUtils {
                         createDistinctOp(foundDistinctVars, inputOp, sourceLocation, distinctPair.second, context);
                 if (distinctOp != null) {
                     map.put(scanOp, distinctOp);
-                    //String viewInPlan = new ALogicalPlanImpl(new MutableObject<>(distinctOp)).toString(); //useful when debugging
-                    //distinctOp.getExpressions();
                 }
             }
         } else if (tag == LogicalOperatorTag.INNERJOIN || tag == LogicalOperatorTag.LEFTOUTERJOIN) {
@@ -276,7 +273,7 @@ public class CBODistinctOperatorUtils {
             nextOp.getInputs().add(new MutableObject<>(inputOp));
         }
         distinctOp.setExecutionMode(inputOp.getExecutionMode());
-        String viewInPlan = new ALogicalPlanImpl(new MutableObject<>(distinctOp)).toString(); //useful when debugging
+
         return distinctOp;
     }
 }
