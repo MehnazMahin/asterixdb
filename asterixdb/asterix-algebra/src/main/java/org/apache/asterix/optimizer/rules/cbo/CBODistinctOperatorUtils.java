@@ -101,20 +101,24 @@ public class CBODistinctOperatorUtils {
                     }
                 } else if (tag == LogicalOperatorTag.DATASOURCESCAN) {
                     scanOp = (DataSourceScanOperator) op;
-                    if (containsAllGroupByDistinctVarsInScanOp(scanOp, grpByDistinctOp)) {
+                    // will work for any attributes present in GroupByOp or DistinctOp
+                    // Note: uncomment the following if-else-statement if CBO doesn't need to estimate the number of distinct values
+                    // when GroupByOp or DistinctOp contains all PK attributes
+                    // (in the case of estimated cardinality from samples can be mostly same as original dataset cardinality)
+                    /*if (containsAllGroupByDistinctVarsInScanOp(scanOp, grpByDistinctOp)) {
                         // contains all PK attribute(s), so estimated distinct cardinality is same as original dataset cardinality
                         scanOp = null;
-                    } else { // at least one PK attribute is not in GroupByOp or DistinctOp variables
-                        List<LogicalVariable> scanVars = scanOp.getVariables();
-                        for (LogicalVariable scanVar : scanVars) { // add all required variables of the DataSourceScanOp
-                            if (distinctVars.contains(scanVar)) {
-                                foundDistinctVars.add(scanVar);
-                            }
-                        }
-                        if (foundDistinctVars.size() == 0) {
-                            scanOp = null; // GroupByOp or DistinctOp doesn't contain any attributes of the dataset
+                    } else { // at least one PK attribute is not in GroupByOp or DistinctOp variables */
+                    List<LogicalVariable> scanVars = scanOp.getVariables();
+                    for (LogicalVariable scanVar : scanVars) { // add all required variables of the DataSourceScanOp
+                        if (distinctVars.contains(scanVar)) {
+                            foundDistinctVars.add(scanVar);
                         }
                     }
+                    if (foundDistinctVars.size() == 0) {
+                        scanOp = null; // GroupByOp or DistinctOp doesn't contain any attributes of the dataset
+                    }
+                    //}
                 }
                 op = op.getInputs().get(0).getValue();
                 tag = op.getOperatorTag();

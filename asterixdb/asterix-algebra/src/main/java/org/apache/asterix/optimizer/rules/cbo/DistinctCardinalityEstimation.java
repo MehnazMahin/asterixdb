@@ -37,23 +37,16 @@ import org.apache.hyracks.algebricks.core.algebra.plan.ALogicalPlanImpl;
 import org.apache.hyracks.algebricks.core.algebra.util.OperatorManipulationUtil;
 
 public class DistinctCardinalityEstimation {
-    public enum DistinctEstimatorType {
-        MMO,
-        GEE,
-        NONE
-    }
-
     private final IOptimizationContext optCtx;
     private final JoinEnum joinEnum;
     private final Stats stats;
     private long totalSamples;
     private double distinctFromSamples;
-    private DistinctEstimatorType distinctEstimatorType;
 
-    public DistinctCardinalityEstimation(IOptimizationContext context, JoinEnum joinE, Stats stats) {
+    public DistinctCardinalityEstimation(IOptimizationContext context, JoinEnum joinE) {
         optCtx = context;
         joinEnum = joinE;
-        this.stats = stats;
+        stats = joinEnum.getStatsHandle();
     }
 
     public void setTotalSamples(long numSamples) {
@@ -64,11 +57,10 @@ public class DistinctCardinalityEstimation {
         distinctFromSamples = distinctSamples;
     }
 
-    public void setDistinctEstimatorType(DistinctEstimatorType type) {
-        distinctEstimatorType = type;
-    }
-
     public long findDistinctCardinality(ILogicalOperator grpByDistinctOp) throws AlgebricksException {
+        if (stats == null) {
+            return 0L; // stats object is not initialized yet
+        }
         long distinctCard = 0L;
         LogicalOperatorTag tag = grpByDistinctOp.getOperatorTag();
 
@@ -87,7 +79,6 @@ public class DistinctCardinalityEstimation {
 
             Index.SampleIndexDetails idxDetails = (Index.SampleIndexDetails) index.getIndexDetails();
             double origDatasetCard = idxDetails.getSourceCardinality();
-            setDistinctEstimatorType(DistinctEstimatorType.MMO);
 
             byte dsType = ((DataSource) scanOp.getDataSource()).getDatasourceType();
             if (!(dsType == DataSource.Type.INTERNAL_DATASET || dsType == DataSource.Type.EXTERNAL_DATASET)) {
@@ -109,11 +100,11 @@ public class DistinctCardinalityEstimation {
             // get the estimated distinct cardinality for the dataset (i.e., D_est or D_est_f)
             distinctCard = findEstDistinctWithPredicates(grpByDistinctOp, origDatasetCard, sampleDataSource);
 
-            // TODO: delete the following if condition
+            /*// only for the verification purpose of the estimator accuracy
             if (selOp != null) { // get distinct estimation without predicates (i.e., D_est, for verification of accuracy)
                 setTotalSamples(idxDetails.getSampleCardinalityTarget());
                 long initCard = findEstDistinctWithoutPredicates(grpByDistinctOp, origDatasetCard, sampleDataSource);
-            }
+            }*/
         }
         return distinctCard;
     }
@@ -189,31 +180,22 @@ public class DistinctCardinalityEstimation {
         }
         setDistinctFromSamples(estCardinality);
 
-        if (distinctEstimatorType.equals(DistinctEstimatorType.MMO)) {
-            double denominator = derivativeFunctionForMMO(estCardinality);
-            if (denominator == 0.0) { // Newton-Raphson method requires it to be non-zero
-                return estCardinality;
+        double denominator = derivativeFunctionForMMO(estCardinality);
+        if (denominator == 0.0) { // Newton-Raphson method requires it to be non-zero
+            return estCardinality;
+        }
+        double fraction = functionForMMO(estCardinality) / denominator;
+        while (Math.abs(fraction) >= 0.001) {
+            denominator = derivativeFunctionForMMO(estCardinality);
+            if (denominator == 0.0) {
+                break;
             }
-            double fraction = functionForMMO(estCardinality) / denominator;
-            while (Math.abs(fraction) >= 0.001) {
-                denominator = derivativeFunctionForMMO(estCardinality);
-                if (denominator == 0.0) {
-                    break;
-                }
-                fraction = functionForMMO(estCardinality) / denominator;
-                estCardinality = estCardinality - fraction;
-                if (estCardinality > origDatasetCardinality) {
-                    estCardinality = origDatasetCardinality; // for preventing infinite growth beyond N
-                    break;
-                }
+            fraction = functionForMMO(estCardinality) / denominator;
+            estCardinality = estCardinality - fraction;
+            if (estCardinality > origDatasetCardinality) {
+                estCardinality = origDatasetCardinality; // for preventing infinite growth beyond N
+                break;
             }
-        } else if (distinctEstimatorType.equals(DistinctEstimatorType.GEE)) {
-            // TODO: complete GEE estimator for an operator, or delete it
-            double uniqueCard = 1.0; // unique distinct values cardinality. FIX IT!!
-            estCardinality =
-                    distinctFromSamples + Math.sqrt(origDatasetCardinality / (double) totalSamples) * uniqueCard;
-        } else {
-            estCardinality = 0.0; // for neither of MMO or GEE estimators, cardinality should be 0
         }
         return estCardinality;
     }
