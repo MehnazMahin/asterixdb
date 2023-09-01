@@ -170,7 +170,7 @@ public class JoinEnum {
         this.cost = new Cost();
         this.costMethods = new CostMethods(context);
         this.stats = new Stats(optCtx, this);
-        this.distinctEst = new DistinctCardinalityEstimation(context, this, stats);
+        this.distinctEst = new DistinctCardinalityEstimation(optCtx, this);
         this.jnArraySize = (int) Math.pow(2.0, this.numberOfTerms);
         this.jnArray = new JoinNode[this.jnArraySize];
         // initialize all the join nodes
