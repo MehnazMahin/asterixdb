@@ -49,13 +49,16 @@ import org.apache.hyracks.algebricks.core.algebra.expressions.BroadcastExpressio
 import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.HashJoinExpressionAnnotation;
 import org.apache.hyracks.algebricks.core.algebra.expressions.IExpressionAnnotation;
+import org.apache.hyracks.algebricks.core.algebra.expressions.VariableReferenceExpression;
 import org.apache.hyracks.algebricks.core.algebra.functions.AlgebricksBuiltinFunctions;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.AbstractBinaryJoinOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.AbstractLogicalOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.AssignOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.DataSourceScanOperator;
+import org.apache.hyracks.algebricks.core.algebra.operators.logical.DistinctOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.EmptyTupleSourceOperator;
+import org.apache.hyracks.algebricks.core.algebra.operators.logical.GroupByOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.SelectOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.visitors.VariableUtilities;
 import org.apache.hyracks.algebricks.core.algebra.plan.ALogicalPlanImpl;
@@ -64,6 +67,7 @@ import org.apache.hyracks.algebricks.core.algebra.util.OperatorManipulationUtil;
 import org.apache.hyracks.algebricks.core.rewriter.base.IAlgebraicRewriteRule;
 import org.apache.hyracks.algebricks.core.rewriter.base.PhysicalOptimizationConfig;
 import org.apache.hyracks.api.exceptions.IWarningCollector;
+import org.apache.hyracks.api.exceptions.SourceLocation;
 import org.apache.hyracks.api.exceptions.Warning;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -83,6 +87,9 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
     List<Quadruple<Integer, Integer, JoinOperator, Integer>> outerJoinsDependencyList;
     List<AssignOperator> assignOps;
     List<ILogicalExpression> assignJoinExprs; // These are the join expressions below the assign operator.
+
+    // The Distinct operators for each Select or DataSourceScan operator (if applicable)
+    HashMap<DataSourceScanOperator, ILogicalOperator> dataScanOrSelectAndDistinctOps;
 
     public EnumerateJoinsRule(JoinEnum joinEnum) {
         this.joinEnum = joinEnum;
@@ -118,6 +125,13 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
             return false;
         }
 
+        // The Distinct operators for each Select or DataSourceScan operator (if applicable)
+        dataScanOrSelectAndDistinctOps = new HashMap<>();
+        // If cboMode or cboTestMode is true, identify each DistinctOp or GroupByOp for the corresponding DataScanOp
+        if (op.getOperatorTag() == LogicalOperatorTag.DISTRIBUTE_RESULT) {
+            getDistinctOpsForJoinNodes(op);
+        }
+
         // if this join has already been seen before, no need to apply the rule again
         if (context.checkIfInDontApplySet(this, op)) {
             return false;
@@ -132,7 +146,6 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
         assignOps = new ArrayList<>();
         assignJoinExprs = new ArrayList<>();
         buildSets = new ArrayList<>();
-
         IPlanPrettyPrinter pp = context.getPrettyPrinter();
         printPlan(pp, (AbstractLogicalOperator) op, "Original Whole plan1");
         leafInputNumber = 0;
@@ -158,7 +171,8 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
             // we need to build the smaller sets first. So we need to find these first.
         }
         joinEnum.initEnum((AbstractLogicalOperator) op, cboMode, cboTestMode, numberOfFromTerms, leafInputs, allJoinOps,
-                assignOps, outerJoinsDependencyList, buildSets, varLeafInputIds, context);
+                assignOps, outerJoinsDependencyList, buildSets, varLeafInputIds, dataScanOrSelectAndDistinctOps,
+                context);
 
         if (cboMode) {
             if (!doAllDataSourcesHaveSamples(leafInputs, context)) {
@@ -385,6 +399,147 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
             }
 
             op = op.getInputs().get(0).getValue();
+        }
+    }
+
+    private List<LogicalVariable> getGroupByDistinctVarList(ILogicalOperator grpByDistinctOp) {
+        List<LogicalVariable> distinctVars = new ArrayList<>();
+        ILogicalExpression varRef;
+        ILogicalOperator nextOp;
+        if (grpByDistinctOp.getOperatorTag() == LogicalOperatorTag.DISTINCT) {
+            nextOp = grpByDistinctOp.getInputs().get(0).getValue();
+            if (nextOp.getOperatorTag() == LogicalOperatorTag.ASSIGN) {
+                List<Mutable<ILogicalExpression>> argList =
+                        ((AbstractFunctionCallExpression) ((AssignOperator) nextOp).getExpressions().get(0).getValue())
+                                .getArguments();
+                for (int i = 0; i < argList.size(); i += 2) {
+                    varRef = argList.get(i + 1).getValue();
+                    if (varRef.getExpressionTag() == LogicalExpressionTag.VARIABLE) {
+                        distinctVars.add(((VariableReferenceExpression) varRef).getVariableReference());
+                    }
+                }
+            }
+        } else if (grpByDistinctOp.getOperatorTag() == LogicalOperatorTag.GROUP) {
+            distinctVars = ((GroupByOperator) grpByDistinctOp).getGroupByVarList();
+        }
+        return distinctVars;
+    }
+
+    private boolean containsAllGroupByDistinctVarsInScanOp(DataSourceScanOperator scanOp,
+            ILogicalOperator grpByDistinctOp) {
+        LogicalOperatorTag tag = grpByDistinctOp.getOperatorTag();
+        if (tag == LogicalOperatorTag.GROUP || tag == LogicalOperatorTag.DISTINCT) {
+            List<LogicalVariable> distinctVars = getGroupByDistinctVarList(grpByDistinctOp);
+            if (distinctVars.size() == 0) {
+                return false; // no Variable expressions in DistinctOp or GroupByOp
+            }
+            List<LogicalVariable> scanVars = scanOp.getVariables();
+            List<LogicalVariable> foundDistinctVars = new ArrayList<>();
+            for (LogicalVariable scanVar : scanVars) {
+                if (distinctVars.contains(scanVar)) {
+                    foundDistinctVars.add(scanVar);
+                }
+            }
+            // discarding the variable for Dataset name or alias from scanOp
+            return ((scanVars.size() - 1) == foundDistinctVars.size());
+        }
+        return false;
+    }
+
+    private void getDistinctOpsForJoinNodes(ILogicalOperator op) {
+        if (op.getOperatorTag() != LogicalOperatorTag.DISTRIBUTE_RESULT) {
+            return;
+        }
+        ILogicalOperator grpByDistinctOp = null; // null indicates no DistinctOp or GroupByOp
+        DataSourceScanOperator scanOp;
+        while (true) {
+            LogicalOperatorTag tag = op.getOperatorTag();
+            if (tag == LogicalOperatorTag.DISTINCT || tag == LogicalOperatorTag.GROUP) {
+                grpByDistinctOp = op; // GroupByOp Variable expressions (if any) take over DistinctOp ones
+            } else if (tag == LogicalOperatorTag.INNERJOIN || tag == LogicalOperatorTag.LEFTOUTERJOIN) {
+                if (grpByDistinctOp != null) {
+                    for (int i = 0; i < op.getInputs().size(); i++) {
+                        ILogicalOperator nextOp = op.getInputs().get(i).getValue();
+                        getDistinctOpsForJoinNodes(nextOp, grpByDistinctOp);
+                    }
+                }
+                return;
+            } else if (tag == LogicalOperatorTag.DATASOURCESCAN) { // single table queries
+                scanOp = (DataSourceScanOperator) op;
+                if (grpByDistinctOp != null) {
+                    if (!containsAllGroupByDistinctVarsInScanOp(scanOp, grpByDistinctOp)) {
+                        // doesn't contain all PK attribute(s), so CBO can get estimated cardinality from samples
+                        dataScanOrSelectAndDistinctOps.put(scanOp, grpByDistinctOp);
+                        //                        String viewInPlan = new ALogicalPlanImpl(new MutableObject<>(grpByDistinctOp)).toString(); //useful when debugging
+                    }
+                }
+                return;
+            }
+            op = op.getInputs().get(0).getValue();
+            if (op.getOperatorTag() == LogicalOperatorTag.EMPTYTUPLESOURCE) {
+                return; // if this happens, there is nothing we can do in CBO code since there is no DataSourceScan
+            }
+        }
+    }
+
+    private void getDistinctOpsForJoinNodes(ILogicalOperator op, ILogicalOperator grpByDistinctOp) {
+        List<LogicalVariable> foundDistinctVars = new ArrayList<>();
+        ILogicalOperator selOp = null, assignOp = null;
+
+        LogicalOperatorTag tag = op.getOperatorTag();
+        // add DistinctOp to count distinct values in an attribute (except PK attribute(s))
+        if (tag == LogicalOperatorTag.ASSIGN || tag == LogicalOperatorTag.SELECT) {
+            List<LogicalVariable> distinctVars = getGroupByDistinctVarList(grpByDistinctOp);
+            if (distinctVars.size() == 0) {
+                return; // no Variable expressions in DistinctOp or GroupByOp
+            }
+
+            DataSourceScanOperator scanOp = null;
+            LogicalVariable assignVar;
+            while (tag != LogicalOperatorTag.EMPTYTUPLESOURCE) {
+                if (tag == LogicalOperatorTag.SELECT) {
+                    selOp = op;
+                } else if (tag == LogicalOperatorTag.ASSIGN) {
+                    assignVar = ((AssignOperator) op).getVariables().get(0);
+                    int idx = distinctVars.indexOf(assignVar);
+                    if (idx != -1 && assignOp == null) { // first corresponding AssignOp found
+                        assignOp = op;
+                    }
+                    if (idx != -1) { // add all Variable expressions of the DataSourceScanOp
+                        foundDistinctVars.add(assignVar);
+                    }
+                } else if (tag == LogicalOperatorTag.DATASOURCESCAN) {
+                    scanOp = (DataSourceScanOperator) op;
+                }
+                op = op.getInputs().get(0).getValue();
+                tag = op.getOperatorTag();
+            }
+
+            if (assignOp != null && scanOp != null) {
+                SourceLocation sourceLocation =
+                        (selOp == null) ? assignOp.getSourceLocation() : selOp.getSourceLocation();
+                ILogicalOperator inputOp = (selOp == null) ? assignOp : selOp;
+                List<Mutable<ILogicalExpression>> distinctExpr = new ArrayList<>();
+                for (LogicalVariable var : foundDistinctVars) {
+                    VariableReferenceExpression varExpr = new VariableReferenceExpression(var);
+                    varExpr.setSourceLocation(sourceLocation);
+                    Mutable<ILogicalExpression> vRef = new MutableObject<>(varExpr);
+                    distinctExpr.add(vRef);
+                }
+
+                // create a Distinct operator
+                DistinctOperator distinctOp = new DistinctOperator(distinctExpr);
+                distinctOp.setSourceLocation(sourceLocation);
+                distinctOp.getInputs().add(new MutableObject<>(inputOp));
+                distinctOp.setExecutionMode(inputOp.getExecutionMode());
+                dataScanOrSelectAndDistinctOps.put(scanOp, distinctOp);
+                //                String viewInPlan = new ALogicalPlanImpl(new MutableObject<>(distinctOp)).toString(); //useful when debugging
+            }
+        } else if (tag == LogicalOperatorTag.INNERJOIN || tag == LogicalOperatorTag.LEFTOUTERJOIN) {
+            for (int i = 0; i < op.getInputs().size(); i++) {
+                ILogicalOperator nextOp = op.getInputs().get(i).getValue();
+                getDistinctOpsForJoinNodes(nextOp, grpByDistinctOp);
+            }
         }
     }
 

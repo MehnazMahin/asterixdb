@@ -523,6 +523,52 @@ public class Stats {
     private void transformtoAnyInPlan(SelectOperator newSelOp) {
     }
 
+    protected double findDistinctValuesCardinality(ILogicalOperator grpByDistinctOp) throws AlgebricksException {
+        ILogicalOperator parent = joinEnum.findDataSourceScanOperatorParent(grpByDistinctOp);
+        DataSourceScanOperator scanOp = (DataSourceScanOperator) parent.getInputs().get(0).getValue();
+
+        if (scanOp == null) {
+            return 1.0; // what happens to the cards and sizes then? this may happen in case of in lists
+        }
+
+        Index index = findSampleIndex(scanOp, optCtx);
+        if (index == null) {
+            return 1.0;
+        }
+
+        Index.SampleIndexDetails idxDetails = (Index.SampleIndexDetails) index.getIndexDetails();
+        double origDatasetCard = idxDetails.getSourceCardinality();
+        // origDatasetCard must be equal to datasetCard. So we do not need datasetCard passed in here. VIJAY check if
+        // this parameter can be removed.
+        double sampleCard = Math.min(idxDetails.getSampleCardinalityTarget(), origDatasetCard);
+        if (sampleCard == 0) {
+            sampleCard = 1;
+            IWarningCollector warningCollector = optCtx.getWarningCollector();
+            if (warningCollector.shouldWarn()) {
+                warningCollector.warn(Warning.of(scanOp.getSourceLocation(),
+                        org.apache.asterix.common.exceptions.ErrorCode.SAMPLE_HAS_ZERO_ROWS));
+            }
+        }
+
+        // replace the DataSourceScanOp with the sampling source
+        SampleDataSource sampledatasource = joinEnum.getSampleDataSource(scanOp);
+        DataSourceScanOperator deepCopyOfScan =
+                (DataSourceScanOperator) OperatorManipulationUtil.bottomUpCopyOperators(scanOp);
+        deepCopyOfScan.setDataSource(sampledatasource);
+
+        // insert this in place of the DataSourceScanOp.
+        parent.getInputs().get(0).setValue(deepCopyOfScan);
+
+        List<List<IAObject>> result = runSamplingQuery(optCtx, grpByDistinctOp);
+        double cardinality = ((double) ((AInt64) result.get(0).get(0)).getLongValue());
+        // TODO: Do cardinality estimation (Jackknife maybe?)
+
+        // switch  the scanOp back
+        parent.getInputs().get(0).setValue(scanOp);
+
+        return cardinality;
+    }
+
     protected List<List<IAObject>> runSamplingQuery(IOptimizationContext ctx, ILogicalOperator logOp)
             throws AlgebricksException {
         LOGGER.info("***running sample query***");

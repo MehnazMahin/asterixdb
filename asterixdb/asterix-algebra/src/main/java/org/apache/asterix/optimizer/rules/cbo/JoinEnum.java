@@ -60,6 +60,7 @@ import org.apache.hyracks.algebricks.core.algebra.base.IOptimizationContext;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalOperatorTag;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalVariable;
+import org.apache.hyracks.algebricks.core.algebra.base.OperatorAnnotations;
 import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.BroadcastExpressionAnnotation;
 import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
@@ -103,6 +104,7 @@ public class JoinEnum {
     protected JoinNode[] jnArray; // array of all join nodes
     protected int jnArraySize;
     protected List<ILogicalOperator> leafInputs;
+    protected HashMap<DataSourceScanOperator, ILogicalOperator> dataScanOrSelectAndDistinctOps;
     protected List<ILogicalExpression> singleDatasetPreds;
     protected List<AssignOperator> assignOps;
     List<Quadruple<Integer, Integer, JoinOperator, Integer>> outerJoinsDependencyList;
@@ -135,6 +137,7 @@ public class JoinEnum {
             List<ILogicalOperator> leafInputs, List<JoinOperator> allJoinOps, List<AssignOperator> assignOps,
             List<Quadruple<Integer, Integer, JoinOperator, Integer>> outerJoinsDependencyList,
             List<Triple<Integer, Integer, Boolean>> buildSets, HashMap<LogicalVariable, Integer> varLeafInputIds,
+            HashMap<DataSourceScanOperator, ILogicalOperator> dataScanOrSelectAndDistinctOps,
             IOptimizationContext context) throws AsterixException {
         this.singleDatasetPreds = new ArrayList<>();
         this.joinConditions = new ArrayList<>();
@@ -154,6 +157,7 @@ public class JoinEnum {
         this.allJoinOps = allJoinOps;
         this.buildSets = buildSets;
         this.varLeafInputIds = varLeafInputIds;
+        this.dataScanOrSelectAndDistinctOps = dataScanOrSelectAndDistinctOps;
         this.op = op;
         this.forceJoinOrderMode = getForceJoinOrderMode(context);
         this.queryPlanShape = getQueryPlanShape(context);
@@ -874,6 +878,16 @@ public class JoinEnum {
                     // now switch the input back.
                     parent.getInputs().get(0).setValue(scanOp);
                     jn.setCardinality(finalDatasetCard);
+
+                    ILogicalOperator grpByDistinctOp = this.dataScanOrSelectAndDistinctOps.get(scanOp);
+                    // This needs to be scaled up, Mehnaz will fill in correct value.
+                    double distinctCardinality =
+                            (grpByDistinctOp != null) ? stats.findDistinctValuesCardinality(grpByDistinctOp) : 0.0;
+
+                    grpByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_OUTPUT_CARDINALITY,
+                            (double) Math.round(distinctCardinality * 100) / 100);
+                    grpByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_INPUT_CARDINALITY,
+                            (double) Math.round(finalDatasetCard * 100) / 100);
                 }
             }
             dataScanPlan = jn.addSingleDatasetPlans();
