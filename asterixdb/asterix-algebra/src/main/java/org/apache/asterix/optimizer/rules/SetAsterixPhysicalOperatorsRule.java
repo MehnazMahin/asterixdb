@@ -36,6 +36,10 @@ import org.apache.asterix.metadata.entities.Dataset;
 import org.apache.asterix.metadata.functions.ExternalFunctionCompilerUtil;
 import org.apache.asterix.om.functions.BuiltinFunctions;
 import org.apache.asterix.optimizer.base.AnalysisUtil;
+import org.apache.asterix.optimizer.cost.Cost;
+import org.apache.asterix.optimizer.cost.CostMethods;
+import org.apache.asterix.optimizer.cost.ICost;
+import org.apache.asterix.optimizer.cost.ICostMethods;
 import org.apache.asterix.optimizer.rules.am.AccessMethodJobGenParams;
 import org.apache.asterix.optimizer.rules.am.BTreeJobGenParams;
 import org.apache.asterix.optimizer.rules.util.AsterixJoinUtils;
@@ -50,6 +54,7 @@ import org.apache.hyracks.algebricks.core.algebra.base.IPhysicalOperator;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalOperatorTag;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalVariable;
+import org.apache.hyracks.algebricks.core.algebra.base.OperatorAnnotations;
 import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.AggregateFunctionCallExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.IMergeAggregationExpressionFactory;
@@ -73,7 +78,7 @@ import org.apache.hyracks.algebricks.core.algebra.properties.INodeDomain;
 import org.apache.hyracks.algebricks.core.algebra.visitors.ILogicalOperatorVisitor;
 import org.apache.hyracks.algebricks.rewriter.rules.SetAlgebricksPhysicalOperatorsRule;
 
-public final class SetAsterixPhysicalOperatorsRule extends SetAlgebricksPhysicalOperatorsRule {
+public class SetAsterixPhysicalOperatorsRule extends SetAlgebricksPhysicalOperatorsRule {
 
     // Disable ASSIGN_BATCH physical operator if this option is set to 'false'
     public static final String REWRITE_ATTEMPT_BATCH_ASSIGN = "rewrite_attempt_batch_assign";
@@ -90,13 +95,32 @@ public final class SetAsterixPhysicalOperatorsRule extends SetAlgebricksPhysical
         return metadataProvider.getBooleanProperty(REWRITE_ATTEMPT_BATCH_ASSIGN, REWRITE_ATTEMPT_BATCH_ASSIGN_DEFAULT);
     }
 
-    private static class AsterixPhysicalOperatorFactoryVisitor extends AlgebricksPhysicalOperatorFactoryVisitor {
+    protected static class AsterixPhysicalOperatorFactoryVisitor extends AlgebricksPhysicalOperatorFactoryVisitor {
 
         private final boolean isBatchAssignEnabled;
+        protected ICost cost;
+        protected ICostMethods costMethods;
 
-        private AsterixPhysicalOperatorFactoryVisitor(IOptimizationContext context) {
+        protected AsterixPhysicalOperatorFactoryVisitor(IOptimizationContext context) {
             super(context);
             isBatchAssignEnabled = isBatchAssignEnabled(context);
+            cost = new Cost();
+            costMethods = new CostMethods(context);
+        }
+
+        protected Enum groupByAlgorithm(GroupByOperator gby, Boolean topLevelOp) {
+            ICost costHashGroupBy = costMethods.costHashGroupBy(gby);
+            ICost costSortGroupBy = costMethods.costSortGroupBy(gby);
+            if (gby.getNestedPlans().size() == 1 && gby.getNestedPlans().get(0).getRoots().size() == 1) {
+                if (costHashGroupBy.costLE(costSortGroupBy)) {
+                    gby.getAnnotations().put(OperatorAnnotations.OP_COST_LOCAL,
+                            (double) Math.round(costHashGroupBy.computeTotalCost() * 100) / 100);
+                    return GroupByAlgorithm.HASH_GROUP_BY;
+                }
+            }
+            gby.getAnnotations().put(OperatorAnnotations.OP_COST_LOCAL,
+                    (double) Math.round(costSortGroupBy.computeTotalCost() * 100) / 100);
+            return GroupByAlgorithm.SORT_GROUP_BY;
         }
 
         @Override

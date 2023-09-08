@@ -20,6 +20,9 @@
 package org.apache.asterix.optimizer.cost;
 
 import org.apache.asterix.optimizer.rules.cbo.JoinNode;
+import org.apache.hyracks.algebricks.core.algebra.operators.logical.GroupByOperator;
+import org.apache.hyracks.algebricks.core.algebra.operators.logical.LimitOperator;
+import org.apache.hyracks.algebricks.core.algebra.operators.logical.OrderOperator;
 
 public interface ICostMethods {
     Cost costFullScan(JoinNode jn);
@@ -33,4 +36,12 @@ public interface ICostMethods {
     Cost costIndexNLJoin(JoinNode currentJn);
 
     Cost costCartesianProductJoin(JoinNode currentJn);
+
+    Cost costHashGroupBy(GroupByOperator groupByOperator);
+
+    Cost costSortGroupBy(GroupByOperator groupByOperator);
+
+    Cost costOrderBy(OrderOperator orderOp);
+
+    Cost costLimit(LimitOperator limitOp);
 }

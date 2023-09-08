@@ -91,8 +91,23 @@ public class EstimatedCostComputationVisitor implements ILogicalOperatorVisitor<
 
     @Override
     public Pair<Double, Double> visitGroupByOperator(GroupByOperator op, Double arg) throws AlgebricksException {
-        // Needs more work in the cardinality estimation code to estimate group by cardinality and cost.
-        return annotate(this, op, arg);
+
+        double grpByCost = 0.0;
+        Pair<Double, Double> cardCost = op.getInputs().get(0).getValue().accept(this, arg);
+
+        for (Map.Entry<String, Object> anno : op.getAnnotations().entrySet()) {
+            if (anno.getValue() != null && anno.getKey().equals(OperatorAnnotations.OP_OUTPUT_CARDINALITY)) {
+                cardCost.setFirst((Double) anno.getValue());
+            }
+            if (anno.getValue() != null && anno.getKey().equals(OperatorAnnotations.OP_COST_LOCAL)) {
+                grpByCost = (double) anno.getValue();
+            }
+        }
+        double totalCost = cardCost.getSecond() + grpByCost;
+        op.getAnnotations().put(OperatorAnnotations.OP_COST_TOTAL, totalCost);
+        cardCost.setSecond(totalCost);
+
+        return cardCost;
     }
 
     @Override
