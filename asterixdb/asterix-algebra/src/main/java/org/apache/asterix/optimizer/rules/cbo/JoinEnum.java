@@ -119,7 +119,6 @@ public class JoinEnum {
     protected int maxBits; // the joinNode where the dataset bits are the highest is where all the tables have been joined
 
     protected Stats stats;
-    protected DistinctCardinalityEstimation distinctEst;
     private boolean cboMode;
     private boolean cboTestMode;
     protected int cboFullEnumLevel;
@@ -171,7 +170,6 @@ public class JoinEnum {
         this.cost = new Cost();
         this.costMethods = new CostMethods(context);
         this.stats = new Stats(optCtx, this);
-        this.distinctEst = new DistinctCardinalityEstimation(optCtx, this);
         this.jnArraySize = (int) Math.pow(2.0, this.numberOfTerms);
         this.jnArray = new JoinNode[this.jnArraySize];
         // initialize all the join nodes
@@ -847,7 +845,7 @@ public class JoinEnum {
 
                 ILogicalOperator grpByDistinctOp = this.dataScanOrSelectAndDistinctOps.get(scanOp);
                 long distinctCardinality =
-                        (grpByDistinctOp != null) ? distinctEst.findDistinctCardinality(grpByDistinctOp) : 0L;
+                        (grpByDistinctOp != null) ? stats.findDistinctCardinality(grpByDistinctOp) : 0L;
                 if (grpByDistinctOp != null) {
                     grpByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_OUTPUT_CARDINALITY,
                             (double) Math.round(distinctCardinality * 100) / 100);
