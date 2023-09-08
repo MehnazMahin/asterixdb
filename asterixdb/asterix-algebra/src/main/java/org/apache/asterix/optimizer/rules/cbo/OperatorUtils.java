@@ -50,6 +50,10 @@ public class OperatorUtils {
 
     public static boolean containsAllGroupByDistinctVarsInScanOp(DataSourceScanOperator scanOp,
             ILogicalOperator grpByDistinctOp) {
+        if (grpByDistinctOp == null) {
+            return false;
+        }
+
         LogicalOperatorTag tag = grpByDistinctOp.getOperatorTag();
         if (tag == LogicalOperatorTag.GROUP || tag == LogicalOperatorTag.DISTINCT) {
             List<LogicalVariable> distinctVars = getGroupByDistinctVarFuncPair(grpByDistinctOp).first;
@@ -71,6 +75,10 @@ public class OperatorUtils {
 
     public static void createDistinctOpsForJoinNodes(ILogicalOperator op, ILogicalOperator grpByDistinctOp,
             IOptimizationContext context, HashMap<DataSourceScanOperator, ILogicalOperator> map) {
+        if (op == null) {
+            return;
+        }
+
         List<LogicalVariable> foundDistinctVars = new ArrayList<>();
         ILogicalOperator selOp = null, assignOp = null;
 
@@ -158,6 +166,10 @@ public class OperatorUtils {
             ILogicalOperator grpByDistinctOp) {
         List<LogicalVariable> distinctVars = new ArrayList<>();
         List<AbstractFunctionCallExpression> distinctFunctions = new ArrayList<>();
+        if (grpByDistinctOp == null) {
+            return new Pair<>(distinctVars, distinctFunctions);
+        }
+
         ILogicalExpression varRef;
         ILogicalOperator nextOp;
         if (grpByDistinctOp.getOperatorTag() == LogicalOperatorTag.DISTINCT) {
