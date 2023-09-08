@@ -60,6 +60,7 @@ import org.apache.hyracks.algebricks.core.algebra.base.IOptimizationContext;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalOperatorTag;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalVariable;
+import org.apache.hyracks.algebricks.core.algebra.base.OperatorAnnotations;
 import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
 import org.apache.hyracks.algebricks.core.algebra.expressions.BroadcastExpressionAnnotation;
 import org.apache.hyracks.algebricks.core.algebra.expressions.ConstantExpression;
@@ -841,11 +842,18 @@ public class JoinEnum {
                 if (scanOp == null) {
                     continue; // what happens to the cards and sizes then? this may happen in case of in lists
                 }
+
+                finalDatasetCard = origDatasetCard = idxDetails.getSourceCardinality();
+
                 ILogicalOperator grpByDistinctOp = this.dataScanOrSelectAndDistinctOps.get(scanOp);
                 long distinctCardinality =
                         (grpByDistinctOp != null) ? distinctEst.findDistinctCardinality(grpByDistinctOp) : 0L;
-
-                finalDatasetCard = origDatasetCard = idxDetails.getSourceCardinality();
+                if (grpByDistinctOp != null) {
+                    grpByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_OUTPUT_CARDINALITY,
+                            (double) Math.round(distinctCardinality * 100) / 100);
+                    grpByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_INPUT_CARDINALITY,
+                            (double) Math.round(finalDatasetCard * 100) / 100);
+                }
 
                 List<List<IAObject>> result;
                 SelectOperator selop = (SelectOperator) findASelectOp(leafInput);
