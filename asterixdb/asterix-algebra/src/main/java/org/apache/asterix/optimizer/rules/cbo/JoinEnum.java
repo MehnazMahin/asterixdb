@@ -842,12 +842,12 @@ public class JoinEnum {
                 if (scanOp == null) {
                     continue; // what happens to the cards and sizes then? this may happen in case of in lists
                 }
-                ILogicalOperator grpByDistinctOp = this.dataScanOrSelectAndDistinctOps.get(scanOp);
-                long distinctCardinality =
-                        (grpByDistinctOp != null) ? distinctEst.findDistinctCardinality(grpByDistinctOp) : 0L;
 
                 finalDatasetCard = origDatasetCard = idxDetails.getSourceCardinality();
 
+                ILogicalOperator grpByDistinctOp = this.dataScanOrSelectAndDistinctOps.get(scanOp);
+                long distinctCardinality =
+                        (grpByDistinctOp != null) ? distinctEst.findDistinctCardinality(grpByDistinctOp) : 0L;
                 if (grpByDistinctOp != null) {
                     grpByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_OUTPUT_CARDINALITY,
                             (double) Math.round(distinctCardinality * 100) / 100);

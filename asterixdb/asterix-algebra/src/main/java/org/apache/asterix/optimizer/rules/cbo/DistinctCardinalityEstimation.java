@@ -172,6 +172,7 @@ public class DistinctCardinalityEstimation {
     }
 
     private double distinctEstimator(double estCardinality, double origDatasetCardinality) {
+        double initCard = estCardinality; // initial number of distinct values from samples
         if (totalSamples <= 1) {
             totalSamples += 2;
             estCardinality = totalSamples - 1;
@@ -180,22 +181,27 @@ public class DistinctCardinalityEstimation {
         }
         setDistinctFromSamples(estCardinality);
 
+        int itr_counter = 0, max_counter = 1000; // allow a maximum number of iterations
         double denominator = derivativeFunctionForMMO(estCardinality);
         if (denominator == 0.0) { // Newton-Raphson method requires it to be non-zero
             return estCardinality;
         }
         double fraction = functionForMMO(estCardinality) / denominator;
-        while (Math.abs(fraction) >= 0.001) {
+        while (Math.abs(fraction) >= 0.001 && itr_counter < max_counter) {
             denominator = derivativeFunctionForMMO(estCardinality);
             if (denominator == 0.0) {
                 break;
             }
             fraction = functionForMMO(estCardinality) / denominator;
             estCardinality = estCardinality - fraction;
+            itr_counter++;
             if (estCardinality > origDatasetCardinality) {
                 estCardinality = origDatasetCardinality; // for preventing infinite growth beyond N
                 break;
             }
+        }
+        if (initCard > estCardinality) { // estimated cardinality cannot be less the initial one from samples
+            estCardinality = initCard;
         }
         return estCardinality;
     }

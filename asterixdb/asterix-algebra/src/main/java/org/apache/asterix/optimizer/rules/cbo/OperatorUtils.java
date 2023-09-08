@@ -46,7 +46,7 @@ import org.apache.hyracks.algebricks.core.algebra.operators.logical.DistinctOper
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.GroupByOperator;
 import org.apache.hyracks.api.exceptions.SourceLocation;
 
-public class CBODistinctOperatorUtils {
+public class OperatorUtils {
 
     public static boolean containsAllGroupByDistinctVarsInScanOp(DataSourceScanOperator scanOp,
             ILogicalOperator grpByDistinctOp) {
