@@ -79,7 +79,7 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
     // Will be in the order of the from clause. Important for position ordering when assigning bits to join expressions.
     List<ILogicalOperator> leafInputs;
     // The Distinct operators for each Select or DataSourceScan operator (if applicable)
-    HashMap<DataSourceScanOperator, ILogicalOperator> dataScanOrSelectAndDistinctOps;
+    HashMap<DataSourceScanOperator, Pair<ILogicalOperator, ILogicalOperator>> dataScanAndGrpByDistinctOps;
     HashMap<LogicalVariable, Integer> varLeafInputIds;
     List<Triple<Integer, Integer, Boolean>> buildSets; // the first is the bits and the second is the number of tables.
     List<Quadruple<Integer, Integer, JoinOperator, Integer>> outerJoinsDependencyList;
@@ -88,7 +88,7 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
 
     public EnumerateJoinsRule(JoinEnum joinEnum) {
         this.joinEnum = joinEnum;
-        dataScanOrSelectAndDistinctOps = new HashMap<>(); // initialized only once at the beginning of the rule
+        dataScanAndGrpByDistinctOps = new HashMap<>(); // initialized only once at the beginning of the rule
     }
 
     @Override
@@ -167,7 +167,7 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
         }
         joinEnum.initEnum((AbstractLogicalOperator) op, cboMode, cboTestMode, numberOfFromTerms, leafInputs, allJoinOps,
                 assignOps, outerJoinsDependencyList, buildSets, varLeafInputIds, context);
-        joinEnum.dataScanOrSelectAndDistinctOps = this.dataScanOrSelectAndDistinctOps;
+        joinEnum.dataScanAndGrpByDistinctOps = this.dataScanAndGrpByDistinctOps;
 
         if (cboMode) {
             if (!doAllDataSourcesHaveSamples(leafInputs, context)) {
@@ -412,7 +412,7 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
                     for (int i = 0; i < op.getInputs().size(); i++) {
                         ILogicalOperator nextOp = op.getInputs().get(i).getValue();
                         OperatorUtils.createDistinctOpsForJoinNodes(nextOp, grpByDistinctOp, context,
-                                dataScanOrSelectAndDistinctOps);
+                                dataScanAndGrpByDistinctOps);
                     }
                 }
                 return;
@@ -425,7 +425,7 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
                 // when GroupByOp or DistinctOp contains all PK attributes
                 // (in the case of estimated cardinality from samples can be mostly same as original dataset cardinality)
                 if (grpByDistinctOp != null) {
-                    dataScanOrSelectAndDistinctOps.put(scanOp, grpByDistinctOp);
+                    dataScanAndGrpByDistinctOps.put(scanOp, new Pair<>(grpByDistinctOp, grpByDistinctOp));
                 }
                 return;
             }
