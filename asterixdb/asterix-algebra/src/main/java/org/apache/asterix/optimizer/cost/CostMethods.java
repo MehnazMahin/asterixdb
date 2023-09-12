@@ -22,6 +22,10 @@ package org.apache.asterix.optimizer.cost;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.optimizer.rules.cbo.JoinNode;
 import org.apache.hyracks.algebricks.core.algebra.base.IOptimizationContext;
+import org.apache.hyracks.algebricks.core.algebra.operators.logical.DistinctOperator;
+import org.apache.hyracks.algebricks.core.algebra.operators.logical.GroupByOperator;
+import org.apache.hyracks.algebricks.core.algebra.operators.logical.LimitOperator;
+import org.apache.hyracks.algebricks.core.algebra.operators.logical.OrderOperator;
 import org.apache.hyracks.algebricks.core.rewriter.base.PhysicalOptimizationConfig;
 
 public class CostMethods implements ICostMethods {
@@ -30,14 +34,18 @@ public class CostMethods implements ICostMethods {
     protected PhysicalOptimizationConfig physOptConfig;
     protected long blockSize;
     protected long DOP;
-    protected double maxMemorySize;
+    protected double maxMemorySizeForJoin;
+    protected double maxMemorySizeForGroup;
+    protected double maxMemorySizeForSort;
 
     public CostMethods(IOptimizationContext context) {
         optCtx = context;
         physOptConfig = context.getPhysicalOptimizationConfig();
         blockSize = getBufferCachePageSize();
         DOP = getDOP();
-        maxMemorySize = getMaxMemorySize();
+        maxMemorySizeForJoin = getMaxMemorySizeForJoin();
+        maxMemorySizeForGroup = getMaxMemorySizeForGroup();
+        maxMemorySizeForJoin = getMaxMemorySizeForSort();
     }
 
     private long getBufferCacheSize() {
@@ -54,8 +62,16 @@ public class CostMethods implements ICostMethods {
         return optCtx.getComputationNodeDomain().cardinality();
     }
 
-    public double getMaxMemorySize() {
+    public double getMaxMemorySizeForJoin() {
         return physOptConfig.getMaxFramesForJoin() * physOptConfig.getFrameSize();
+    }
+
+    public double getMaxMemorySizeForGroup() {
+        return physOptConfig.getMaxFramesForGroupBy() * physOptConfig.getFrameSize();
+    }
+
+    public double getMaxMemorySizeForSort() {
+        return physOptConfig.getMaxFramesExternalSort() * physOptConfig.getFrameSize();
     }
 
     // These cost methods are very simple and rudimentary for now. These can be improved by asterixdb developers as needed.
@@ -118,5 +134,25 @@ public class CostMethods implements ICostMethods {
     public Cost computeCPRightExchangeCost(JoinNode jn) {
         JoinNode rightJn = jn.getRightJn();
         return new Cost(DOP * rightJn.computeJoinCardinality());
+    }
+
+    public Cost costHashGroupBy(GroupByOperator groupByOperator) {
+        return new Cost(100.0);
+    }
+
+    public Cost costSortGroupBy(GroupByOperator groupByOperator) {
+        return new Cost(200.0);
+    }
+
+    public Cost costDistinct(DistinctOperator distinctOperator) {
+        return new Cost(100.0);
+    }
+
+    public Cost costOrderBy(OrderOperator orderOp) {
+        return null;
+    }
+
+    public Cost costLimit(LimitOperator limitOp) {
+        return null;
     }
 }
