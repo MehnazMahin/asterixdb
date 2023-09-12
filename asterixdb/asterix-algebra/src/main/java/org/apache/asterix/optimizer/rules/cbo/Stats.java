@@ -622,7 +622,7 @@ public class Stats {
     }
 
     private long findEstDistinctWithPredicates(ILogicalOperator grpByDistinctOp, double origDatasetCardinality,
-                                               SampleDataSource sampleDataSource) throws AlgebricksException {
+            SampleDataSource sampleDataSource) throws AlgebricksException {
         double estCardinality = -1.0;
         LogicalOperatorTag tag = grpByDistinctOp.getOperatorTag();
         if (tag == LogicalOperatorTag.GROUP || tag == LogicalOperatorTag.DISTINCT) {

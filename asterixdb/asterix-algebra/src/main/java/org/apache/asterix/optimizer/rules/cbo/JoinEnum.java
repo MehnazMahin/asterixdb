@@ -52,6 +52,7 @@ import org.apache.asterix.optimizer.cost.ICostMethods;
 import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
+import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.algebricks.common.utils.Quadruple;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
@@ -105,7 +106,7 @@ public class JoinEnum {
     protected int jnArraySize;
     protected List<ILogicalOperator> leafInputs;
     // The Distinct operators for each Select or DataScan operator (if applicable)
-    HashMap<DataSourceScanOperator, ILogicalOperator> dataScanOrSelectAndDistinctOps;
+    protected HashMap<DataSourceScanOperator, Pair<ILogicalOperator, ILogicalOperator>> dataScanAndGrpByDistinctOps;
     protected List<ILogicalExpression> singleDatasetPreds;
     protected List<AssignOperator> assignOps;
     List<Quadruple<Integer, Integer, JoinOperator, Integer>> outerJoinsDependencyList;
@@ -151,7 +152,7 @@ public class JoinEnum {
         this.connectedJoinGraph = true;
         this.optCtx = context;
         this.leafInputs = leafInputs;
-        this.dataScanOrSelectAndDistinctOps = new HashMap<>();
+        this.dataScanAndGrpByDistinctOps = new HashMap<>();
         this.assignOps = assignOps;
         this.outerJoin = false; // assume no outerjoins anywhere in the query at first.
         this.outerJoinsDependencyList = outerJoinsDependencyList;
@@ -842,16 +843,7 @@ public class JoinEnum {
                 }
 
                 finalDatasetCard = origDatasetCard = idxDetails.getSourceCardinality();
-
-                ILogicalOperator grpByDistinctOp = this.dataScanOrSelectAndDistinctOps.get(scanOp);
-                long distinctCardinality =
-                        (grpByDistinctOp != null) ? stats.findDistinctCardinality(grpByDistinctOp) : 0L;
-                if (grpByDistinctOp != null) {
-                    grpByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_OUTPUT_CARDINALITY,
-                            (double) Math.round(distinctCardinality * 100) / 100);
-                    grpByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_INPUT_CARDINALITY,
-                            (double) Math.round(finalDatasetCard * 100) / 100);
-                }
+                updateRootGroupByDistinctOpAnnotations(scanOp);
 
                 List<List<IAObject>> result;
                 SelectOperator selop = (SelectOperator) findASelectOp(leafInput);
@@ -898,6 +890,25 @@ public class JoinEnum {
             jn.addIndexAccessPlans(leafInput);
         }
         return this.numberOfTerms;
+    }
+
+    private void updateRootGroupByDistinctOpAnnotations(DataSourceScanOperator scanOp) throws AlgebricksException {
+        if (scanOp != null) {
+            Pair<ILogicalOperator, ILogicalOperator> rootAndJoinNodeOpPairs = dataScanAndGrpByDistinctOps.get(scanOp);
+            if (rootAndJoinNodeOpPairs != null) {
+                ILogicalOperator rootGrpByDistinctOp = rootAndJoinNodeOpPairs.first;
+                ILogicalOperator joinNodeGrpByDistinctOp = rootAndJoinNodeOpPairs.second;
+                long distinctCard = stats.findDistinctCardinality(joinNodeGrpByDistinctOp);
+                double rootDistinctCard = 0.0;
+                if (rootGrpByDistinctOp.getAnnotations().get((OperatorAnnotations.OP_OUTPUT_CARDINALITY)) != null) {
+                    rootDistinctCard = (Double) rootGrpByDistinctOp.getAnnotations()
+                            .get(OperatorAnnotations.OP_OUTPUT_CARDINALITY);
+                }
+                double updatedCard = (rootDistinctCard == 0.0) ? distinctCard
+                        : (Math.max(rootDistinctCard, distinctCard) + (rootDistinctCard * distinctCard)) / 2.0;
+                rootGrpByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_OUTPUT_CARDINALITY, updatedCard);
+            }
+        }
     }
 
     private boolean isPredicateCardinalityAnnotationPresent(ILogicalExpression leExpr) {
