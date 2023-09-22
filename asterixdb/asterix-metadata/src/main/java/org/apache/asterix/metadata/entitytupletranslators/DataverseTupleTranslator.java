@@ -24,6 +24,7 @@ import java.util.Calendar;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.metadata.bootstrap.DataverseEntity;
 import org.apache.asterix.metadata.entities.Dataverse;
+import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.om.base.AInt32;
 import org.apache.asterix.om.base.AMutableInt32;
 import org.apache.asterix.om.base.ARecord;
@@ -53,10 +54,17 @@ public class DataverseTupleTranslator extends AbstractTupleTranslator<Dataverse>
         String dataverseCanonicalName =
                 ((AString) dataverseRecord.getValueByPos(dataverseEntity.dataverseNameIndex())).getStringValue();
         DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverseCanonicalName);
+        int databaseNameIndex = dataverseEntity.databaseNameIndex();
+        String databaseName;
+        if (databaseNameIndex >= 0) {
+            databaseName = ((AString) dataverseRecord.getValueByPos(databaseNameIndex)).getStringValue();
+        } else {
+            databaseName = MetadataUtil.databaseFor(dataverseName);
+        }
         String format = ((AString) dataverseRecord.getValueByPos(dataverseEntity.dataFormatIndex())).getStringValue();
         int pendingOp = ((AInt32) dataverseRecord.getValueByPos(dataverseEntity.pendingOpIndex())).getIntegerValue();
 
-        return new Dataverse(dataverseName, format, pendingOp);
+        return new Dataverse(databaseName, dataverseName, format, pendingOp);
     }
 
     @Override
@@ -65,12 +73,24 @@ public class DataverseTupleTranslator extends AbstractTupleTranslator<Dataverse>
 
         // write the key in the first field of the tuple
         tupleBuilder.reset();
+        if (dataverseEntity.databaseNameIndex() >= 0) {
+            aString.setValue(dataverse.getDatabaseName());
+            stringSerde.serialize(aString, tupleBuilder.getDataOutput());
+            tupleBuilder.addFieldEndOffset();
+        }
         aString.setValue(dataverseCanonicalName);
         stringSerde.serialize(aString, tupleBuilder.getDataOutput());
         tupleBuilder.addFieldEndOffset();
 
         // write the payload in the second field of the tuple
         recordBuilder.reset(dataverseEntity.getRecordType());
+
+        if (dataverseEntity.databaseNameIndex() >= 0) {
+            fieldValue.reset();
+            aString.setValue(dataverse.getDatabaseName());
+            stringSerde.serialize(aString, fieldValue.getDataOutput());
+            recordBuilder.addField(dataverseEntity.databaseNameIndex(), fieldValue);
+        }
         // write field 0
         fieldValue.reset();
         aString.setValue(dataverseCanonicalName);

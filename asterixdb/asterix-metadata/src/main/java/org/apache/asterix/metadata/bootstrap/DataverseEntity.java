@@ -20,6 +20,7 @@
 package org.apache.asterix.metadata.bootstrap;
 
 import static org.apache.asterix.metadata.bootstrap.MetadataPrimaryIndexes.PROPERTIES_DATAVERSE;
+import static org.apache.asterix.metadata.bootstrap.MetadataRecordTypes.FIELD_NAME_DATABASE_NAME;
 import static org.apache.asterix.metadata.bootstrap.MetadataRecordTypes.FIELD_NAME_DATAVERSE_NAME;
 import static org.apache.asterix.metadata.bootstrap.MetadataRecordTypes.FIELD_NAME_DATA_FORMAT;
 import static org.apache.asterix.metadata.bootstrap.MetadataRecordTypes.FIELD_NAME_PENDING_OP;
@@ -39,6 +40,12 @@ public final class DataverseEntity {
                     new MetadataIndex(PROPERTIES_DATAVERSE, 2, new IAType[] { BuiltinType.ASTRING },
                             List.of(List.of(FIELD_NAME_DATAVERSE_NAME)), 0, dataverseType(), true, new int[] { 0 }),
                     1, -1);
+
+    private static final DataverseEntity DB_DATAVERSE = new DataverseEntity(
+            new MetadataIndex(PROPERTIES_DATAVERSE, 3, new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING },
+                    List.of(List.of(FIELD_NAME_DATABASE_NAME), List.of(FIELD_NAME_DATAVERSE_NAME)), 0,
+                    databaseDataverseType(), true, new int[] { 0, 1 }),
+            2, 0);
 
     private final int payloadPosition;
     private final MetadataIndex index;
@@ -103,6 +110,20 @@ public final class DataverseEntity {
                         FIELD_NAME_PENDING_OP },
                 // FieldTypes
                 new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.AINT32 },
+                //IsOpen?
+                true);
+    }
+
+    private static ARecordType databaseDataverseType() {
+        return MetadataRecordTypes.createRecordType(
+                // RecordTypeName
+                RECORD_NAME_DATAVERSE,
+                // FieldNames
+                new String[] { FIELD_NAME_DATABASE_NAME, FIELD_NAME_DATAVERSE_NAME, FIELD_NAME_DATA_FORMAT,
+                        FIELD_NAME_TIMESTAMP, FIELD_NAME_PENDING_OP },
+                // FieldTypes
+                new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING,
+                        BuiltinType.AINT32 },
                 //IsOpen?
                 true);
     }

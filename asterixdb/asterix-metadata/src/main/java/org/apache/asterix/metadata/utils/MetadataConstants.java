@@ -34,11 +34,16 @@ public class MetadataConstants {
     public static final Pattern METADATA_OBJECT_NAME_INVALID_CHARS =
             Pattern.compile(SystemUtils.IS_OS_WINDOWS ? "[\u0000-\u001F\u007F\"*/:<>\\\\|+,;=\\[\\]\n]" : "[\u0000/]");
 
+    // Pre-defined databases
+    public static final String SYSTEM_DATABASE = "System";
+    public static final String DEFAULT_DATABASE = "Default";
+
     // Name of the dataverse the metadata lives in.
     public static final DataverseName METADATA_DATAVERSE_NAME = DataverseName.createBuiltinDataverseName("Metadata");
     // Name of the node group where metadata is stored on.
     public static final String METADATA_NODEGROUP_NAME = "MetadataGroup";
 
+    public static final String DATABASE_DATASET_NAME = "Database";
     public static final String DATAVERSE_DATASET_NAME = "Dataverse";
     public static final String DATASET_DATASET_NAME = "Dataset";
     public static final String INDEX_DATASET_NAME = "Index";

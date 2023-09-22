@@ -27,6 +27,7 @@ import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.common.transactions.TxnId;
 import org.apache.asterix.external.dataset.adapter.AdapterIdentifier;
 import org.apache.asterix.metadata.entities.CompactionPolicy;
+import org.apache.asterix.metadata.entities.Database;
 import org.apache.asterix.metadata.entities.Dataset;
 import org.apache.asterix.metadata.entities.DatasourceAdapter;
 import org.apache.asterix.metadata.entities.Datatype;
@@ -86,6 +87,11 @@ public class MetadataTransactionContext extends MetadataCache {
         return txnId;
     }
 
+    public void addDatabase(Database database) {
+        droppedCache.dropDatabase(database);
+        logAndApply(new MetadataLogicalOperation(database, true));
+    }
+
     public void addDataverse(Dataverse dataverse) {
         droppedCache.dropDataverse(dataverse);
         logAndApply(new MetadataLogicalOperation(dataverse, true));
@@ -136,22 +142,28 @@ public class MetadataTransactionContext extends MetadataCache {
         logAndApply(new MetadataLogicalOperation(compactionPolicy, true));
     }
 
-    public void dropDataset(DataverseName dataverseName, String datasetName) {
-        Dataset dataset = new Dataset(dataverseName, datasetName, null, null, null, null, null, null, null, null, -1,
-                MetadataUtil.PENDING_NO_OP);
+    public void dropDataset(String database, DataverseName dataverseName, String datasetName) {
+        Dataset dataset = new Dataset(database, dataverseName, datasetName, null, null, null, null, null, null, null,
+                null, -1, MetadataUtil.PENDING_NO_OP);
         droppedCache.addDatasetIfNotExists(dataset);
         logAndApply(new MetadataLogicalOperation(dataset, false));
     }
 
-    public void dropIndex(DataverseName dataverseName, String datasetName, String indexName) {
-        Index index =
-                new Index(dataverseName, datasetName, indexName, null, null, false, false, MetadataUtil.PENDING_NO_OP);
+    public void dropIndex(String database, DataverseName dataverseName, String datasetName, String indexName) {
+        Index index = new Index(database, dataverseName, datasetName, indexName, null, null, false, false,
+                MetadataUtil.PENDING_NO_OP);
         droppedCache.addIndexIfNotExists(index);
         logAndApply(new MetadataLogicalOperation(index, false));
     }
 
-    public void dropDataverse(DataverseName dataverseName) {
-        Dataverse dataverse = new Dataverse(dataverseName, null, MetadataUtil.PENDING_NO_OP);
+    public void dropDatabase(String databaseName) {
+        Database database = new Database(databaseName, false, MetadataUtil.PENDING_NO_OP);
+        droppedCache.addDatabaseIfNotExists(database);
+        logAndApply(new MetadataLogicalOperation(database, false));
+    }
+
+    public void dropDataverse(String database, DataverseName dataverseName) {
+        Dataverse dataverse = new Dataverse(database, dataverseName, null, MetadataUtil.PENDING_NO_OP);
         droppedCache.addDataverseIfNotExists(dataverse);
         logAndApply(new MetadataLogicalOperation(dataverse, false));
     }
@@ -161,8 +173,8 @@ public class MetadataTransactionContext extends MetadataCache {
         logAndApply(new MetadataLogicalOperation(library, true));
     }
 
-    public void dropDataDatatype(DataverseName dataverseName, String datatypeName) {
-        Datatype datatype = new Datatype(dataverseName, datatypeName, null, false);
+    public void dropDataDatatype(String database, DataverseName dataverseName, String datatypeName) {
+        Datatype datatype = new Datatype(database, dataverseName, datatypeName, null, false);
         droppedCache.addDatatypeIfNotExists(datatype);
         logAndApply(new MetadataLogicalOperation(datatype, false));
     }
@@ -180,42 +192,43 @@ public class MetadataTransactionContext extends MetadataCache {
         logAndApply(new MetadataLogicalOperation(function, false));
     }
 
-    public void dropFullTextConfig(DataverseName dataverseName, String configName) {
-        FullTextConfigDescriptor config = new FullTextConfigDescriptor(dataverseName, configName, null, null);
+    public void dropFullTextConfig(String database, DataverseName dataverseName, String configName) {
+        FullTextConfigDescriptor config = new FullTextConfigDescriptor(database, dataverseName, configName, null, null);
         FullTextConfigMetadataEntity configMetadataEntity = new FullTextConfigMetadataEntity(config);
 
         droppedCache.addFullTextConfigIfNotExists(configMetadataEntity);
         logAndApply(new MetadataLogicalOperation(configMetadataEntity, false));
     }
 
-    public void dropFullTextFilter(DataverseName dataverseName, String filterName) {
-        AbstractFullTextFilterDescriptor filter = new AbstractFullTextFilterDescriptor(dataverseName, filterName) {
-            private static final long serialVersionUID = -8222222581298765902L;
+    public void dropFullTextFilter(String database, DataverseName dataverseName, String filterName) {
+        AbstractFullTextFilterDescriptor filter =
+                new AbstractFullTextFilterDescriptor(database, dataverseName, filterName) {
+                    private static final long serialVersionUID = -8222222581298765902L;
 
-            @Override
-            public FullTextFilterType getFilterType() {
-                return null;
-            }
+                    @Override
+                    public FullTextFilterType getFilterType() {
+                        return null;
+                    }
 
-            @Override
-            public IFullTextFilterEvaluatorFactory createEvaluatorFactory() {
-                return null;
-            }
-        };
+                    @Override
+                    public IFullTextFilterEvaluatorFactory createEvaluatorFactory() {
+                        return null;
+                    }
+                };
         FullTextFilterMetadataEntity filterMetadataEntity = new FullTextFilterMetadataEntity(filter);
         droppedCache.addFullTextFilterIfNotExists(filterMetadataEntity);
         logAndApply(new MetadataLogicalOperation(filterMetadataEntity, false));
     }
 
-    public void dropAdapter(DataverseName dataverseName, String adapterName) {
-        AdapterIdentifier adapterIdentifier = new AdapterIdentifier(dataverseName, adapterName);
-        DatasourceAdapter adapter = new DatasourceAdapter(adapterIdentifier, null, null, null, null);
+    public void dropAdapter(String database, DataverseName dataverseName, String adapterName) {
+        AdapterIdentifier adapterIdentifier = new AdapterIdentifier(database, dataverseName, adapterName);
+        DatasourceAdapter adapter = new DatasourceAdapter(adapterIdentifier, null, null, null, null, null);
         droppedCache.addAdapterIfNotExists(adapter);
         logAndApply(new MetadataLogicalOperation(adapter, false));
     }
 
-    public void dropLibrary(DataverseName dataverseName, String libraryName) {
-        Library library = new Library(dataverseName, libraryName, null, null, MetadataUtil.PENDING_NO_OP);
+    public void dropLibrary(String database, DataverseName dataverseName, String libraryName) {
+        Library library = new Library(database, dataverseName, libraryName, null, null, MetadataUtil.PENDING_NO_OP);
         droppedCache.addLibraryIfNotExists(library);
         logAndApply(new MetadataLogicalOperation(library, false));
     }
@@ -294,9 +307,9 @@ public class MetadataTransactionContext extends MetadataCache {
         logAndApply(new MetadataLogicalOperation(feedConnection, true));
     }
 
-    public void dropFeedConnection(DataverseName dataverseName, String feedName, String datasetName) {
+    public void dropFeedConnection(String database, DataverseName dataverseName, String feedName, String datasetName) {
         FeedConnection feedConnection =
-                new FeedConnection(dataverseName, feedName, datasetName, null, null, null, null);
+                new FeedConnection(database, dataverseName, feedName, datasetName, null, null, null, null);
         droppedCache.addFeedConnectionIfNotExists(feedConnection);
         logAndApply(new MetadataLogicalOperation(feedConnection, false));
     }

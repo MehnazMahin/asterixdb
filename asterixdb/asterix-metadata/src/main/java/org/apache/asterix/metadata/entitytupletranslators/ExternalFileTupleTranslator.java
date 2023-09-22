@@ -25,6 +25,7 @@ import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.external.indexing.ExternalFile;
 import org.apache.asterix.formats.nontagged.SerializerDeserializerProvider;
 import org.apache.asterix.metadata.bootstrap.ExternalFileEntity;
+import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.om.base.ADateTime;
 import org.apache.asterix.om.base.AInt32;
 import org.apache.asterix.om.base.AInt64;
@@ -64,6 +65,13 @@ public class ExternalFileTupleTranslator extends AbstractTupleTranslator<Externa
         String dataverseCanonicalName =
                 ((AString) externalFileRecord.getValueByPos(externalFileEntity.dataverseNameIndex())).getStringValue();
         DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverseCanonicalName);
+        int databaseNameIndex = externalFileEntity.databaseNameIndex();
+        String databaseName;
+        if (databaseNameIndex >= 0) {
+            databaseName = ((AString) externalFileRecord.getValueByPos(databaseNameIndex)).getStringValue();
+        } else {
+            databaseName = MetadataUtil.databaseFor(dataverseName);
+        }
         String datasetName =
                 ((AString) externalFileRecord.getValueByPos(externalFileEntity.datasetNameIndex())).getStringValue();
         int fileNumber =
@@ -76,8 +84,8 @@ public class ExternalFileTupleTranslator extends AbstractTupleTranslator<Externa
         ExternalFilePendingOp pendingOp = ExternalFilePendingOp
                 .values()[((AInt32) externalFileRecord.getValueByPos(externalFileEntity.pendingOpIndex()))
                         .getIntegerValue()];
-        return new ExternalFile(dataverseName, datasetName, fileNumber, fileName, lastMoDifiedDate, fileSize,
-                pendingOp);
+        return new ExternalFile(databaseName, dataverseName, datasetName, fileNumber, fileName, lastMoDifiedDate,
+                fileSize, pendingOp);
     }
 
     @Override
@@ -86,6 +94,11 @@ public class ExternalFileTupleTranslator extends AbstractTupleTranslator<Externa
 
         // write the key in the first 3 fields of the tuple
         tupleBuilder.reset();
+        if (externalFileEntity.databaseNameIndex() >= 0) {
+            aString.setValue(externalFile.getDatabaseName());
+            stringSerde.serialize(aString, tupleBuilder.getDataOutput());
+            tupleBuilder.addFieldEndOffset();
+        }
         // dataverse name
         aString.setValue(dataverseCanonicalName);
         stringSerde.serialize(aString, tupleBuilder.getDataOutput());
@@ -102,6 +115,12 @@ public class ExternalFileTupleTranslator extends AbstractTupleTranslator<Externa
         // write the pay-load in the fourth field of the tuple
         recordBuilder.reset(externalFileEntity.getRecordType());
 
+        if (externalFileEntity.databaseNameIndex() >= 0) {
+            fieldValue.reset();
+            aString.setValue(externalFile.getDatabaseName());
+            stringSerde.serialize(aString, fieldValue.getDataOutput());
+            recordBuilder.addField(externalFileEntity.databaseNameIndex(), fieldValue);
+        }
         // write field 0
         fieldValue.reset();
         aString.setValue(dataverseCanonicalName);

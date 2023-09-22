@@ -56,6 +56,7 @@ import org.apache.asterix.metadata.MetadataNode;
 import org.apache.asterix.metadata.bootstrap.FunctionEntity;
 import org.apache.asterix.metadata.bootstrap.MetadataRecordTypes;
 import org.apache.asterix.metadata.entities.Function;
+import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.om.base.ABoolean;
 import org.apache.asterix.om.base.ANull;
 import org.apache.asterix.om.base.AOrderedList;
@@ -106,6 +107,13 @@ public class FunctionTupleTranslator extends AbstractDatatypeTupleTranslator<Fun
         String dataverseCanonicalName =
                 ((AString) functionRecord.getValueByPos(functionEntity.dataverseNameIndex())).getStringValue();
         DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverseCanonicalName);
+        int databaseNameIndex = functionEntity.databaseNameIndex();
+        String databaseName;
+        if (databaseNameIndex >= 0) {
+            databaseName = ((AString) functionRecord.getValueByPos(databaseNameIndex)).getStringValue();
+        } else {
+            databaseName = MetadataUtil.databaseFor(dataverseName);
+        }
         String functionName =
                 ((AString) functionRecord.getValueByPos(functionEntity.functionNameIndex())).getStringValue();
         int arity = Integer.parseInt(
@@ -285,6 +293,11 @@ public class FunctionTupleTranslator extends AbstractDatatypeTupleTranslator<Fun
 
         // write the key in the first 2 fields of the tuple
         tupleBuilder.reset();
+        if (functionEntity.databaseNameIndex() >= 0) {
+            aString.setValue(function.getDatabaseName());
+            stringSerde.serialize(aString, tupleBuilder.getDataOutput());
+            tupleBuilder.addFieldEndOffset();
+        }
         aString.setValue(dataverseCanonicalName);
         stringSerde.serialize(aString, tupleBuilder.getDataOutput());
         tupleBuilder.addFieldEndOffset();
@@ -299,6 +312,12 @@ public class FunctionTupleTranslator extends AbstractDatatypeTupleTranslator<Fun
 
         recordBuilder.reset(functionEntity.getRecordType());
 
+        if (functionEntity.databaseNameIndex() >= 0) {
+            fieldValue.reset();
+            aString.setValue(function.getDatabaseName());
+            stringSerde.serialize(aString, fieldValue.getDataOutput());
+            recordBuilder.addField(functionEntity.databaseNameIndex(), fieldValue);
+        }
         // write field 0
         fieldValue.reset();
         aString.setValue(dataverseCanonicalName);

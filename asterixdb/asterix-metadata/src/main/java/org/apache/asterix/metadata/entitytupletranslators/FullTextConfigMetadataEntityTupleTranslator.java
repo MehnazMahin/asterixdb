@@ -25,6 +25,7 @@ import org.apache.asterix.builders.OrderedListBuilder;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.metadata.bootstrap.FullTextConfigEntity;
 import org.apache.asterix.metadata.entities.FullTextConfigMetadataEntity;
+import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.om.base.AOrderedList;
 import org.apache.asterix.om.base.ARecord;
 import org.apache.asterix.om.base.AString;
@@ -63,7 +64,13 @@ public class FullTextConfigMetadataEntityTupleTranslator extends AbstractTupleTr
             throws HyracksDataException, AlgebricksException {
         DataverseName dataverseName = DataverseName.createFromCanonicalForm(
                 ((AString) aRecord.getValueByPos(fullTextConfigEntity.dataverseNameIndex())).getStringValue());
-
+        int databaseNameIndex = fullTextConfigEntity.databaseNameIndex();
+        String databaseName;
+        if (databaseNameIndex >= 0) {
+            databaseName = ((AString) aRecord.getValueByPos(databaseNameIndex)).getStringValue();
+        } else {
+            databaseName = MetadataUtil.databaseFor(dataverseName);
+        }
         String name = ((AString) aRecord.getValueByPos(fullTextConfigEntity.configNameIndex())).getStringValue();
 
         TokenizerCategory tokenizerCategory = EnumUtils.getEnumIgnoreCase(TokenizerCategory.class,
@@ -76,13 +83,18 @@ public class FullTextConfigMetadataEntityTupleTranslator extends AbstractTupleTr
             filterNamesBuilder.add(((AString) filterNamesCursor.get()).getStringValue());
         }
 
-        FullTextConfigDescriptor configDescriptor =
-                new FullTextConfigDescriptor(dataverseName, name, tokenizerCategory, filterNamesBuilder.build());
+        FullTextConfigDescriptor configDescriptor = new FullTextConfigDescriptor(databaseName, dataverseName, name,
+                tokenizerCategory, filterNamesBuilder.build());
         return new FullTextConfigMetadataEntity(configDescriptor);
     }
 
-    private void writeIndex(String dataverseName, String configName, ArrayTupleBuilder tupleBuilder)
-            throws HyracksDataException {
+    private void writeIndex(String databaseName, String dataverseName, String configName,
+            ArrayTupleBuilder tupleBuilder) throws HyracksDataException {
+        if (fullTextConfigEntity.databaseNameIndex() >= 0) {
+            aString.setValue(databaseName);
+            stringSerde.serialize(aString, tupleBuilder.getDataOutput());
+            tupleBuilder.addFieldEndOffset();
+        }
         aString.setValue(dataverseName);
         stringSerde.serialize(aString, tupleBuilder.getDataOutput());
         tupleBuilder.addFieldEndOffset();
@@ -99,10 +111,17 @@ public class FullTextConfigMetadataEntityTupleTranslator extends AbstractTupleTr
 
         FullTextConfigDescriptor configDescriptor = configMetadataEntity.getFullTextConfig();
 
-        writeIndex(configDescriptor.getDataverseName().getCanonicalForm(), configDescriptor.getName(), tupleBuilder);
+        writeIndex(configDescriptor.getDatabaseName(), configDescriptor.getDataverseName().getCanonicalForm(),
+                configDescriptor.getName(), tupleBuilder);
 
         recordBuilder.reset(fullTextConfigEntity.getRecordType());
 
+        if (fullTextConfigEntity.databaseNameIndex() >= 0) {
+            fieldValue.reset();
+            aString.setValue(configDescriptor.getDatabaseName());
+            stringSerde.serialize(aString, fieldValue.getDataOutput());
+            recordBuilder.addField(fullTextConfigEntity.databaseNameIndex(), fieldValue);
+        }
         // write dataverse name
         fieldValue.reset();
         aString.setValue(configDescriptor.getDataverseName().getCanonicalForm());

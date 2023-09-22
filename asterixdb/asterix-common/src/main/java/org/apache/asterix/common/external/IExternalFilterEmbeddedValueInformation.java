@@ -22,7 +22,7 @@ public interface IExternalFilterEmbeddedValueInformation {
 
     String[] getEmbeddedFieldNames();
 
-    boolean IsMissingEmbeddedValues();
+    boolean isMissingEmbeddedValues();
 
     boolean isMissing(String fieldName);
 

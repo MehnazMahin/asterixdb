@@ -47,7 +47,6 @@ import org.apache.asterix.common.transactions.IRecoveryManager.ResourceType;
 import org.apache.asterix.common.utils.JobUtils;
 import org.apache.asterix.common.utils.JobUtils.ProgressState;
 import org.apache.asterix.common.utils.StoragePathUtil;
-import org.apache.asterix.external.feed.management.FeedConnectionId;
 import org.apache.asterix.formats.nontagged.BinaryHashFunctionFactoryProvider;
 import org.apache.asterix.formats.nontagged.SerializerDeserializerProvider;
 import org.apache.asterix.formats.nontagged.TypeTraitProvider;
@@ -87,7 +86,6 @@ import org.apache.asterix.transaction.management.service.transaction.DatasetIdFa
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
-import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalOperator;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalOperatorTag;
@@ -144,7 +142,7 @@ public class Dataset implements IMetadataEntity<Dataset>, IDataset {
      * Members
      */
     private final int datasetId;
-    private final String databaseName = null;
+    private final String databaseName;
     private final DataverseName dataverseName;
     private final String datasetName;
     private final DataverseName recordTypeDataverseName;
@@ -163,38 +161,42 @@ public class Dataset implements IMetadataEntity<Dataset>, IDataset {
     private final DatasetFullyQualifiedName datasetFullyQualifiedName;
     private final DatasetFormatInfo datasetFormatInfo;
 
-    public Dataset(DataverseName dataverseName, String datasetName, DataverseName recordTypeDataverseName,
-            String recordTypeName, String nodeGroupName, String compactionPolicy,
+    public Dataset(String databaseName, DataverseName dataverseName, String datasetName,
+            DataverseName recordTypeDataverseName, String recordTypeName, String nodeGroupName, String compactionPolicy,
             Map<String, String> compactionPolicyProperties, IDatasetDetails datasetDetails, Map<String, String> hints,
             DatasetType datasetType, int datasetId, int pendingOp) {
-        this(dataverseName, datasetName, recordTypeDataverseName, recordTypeName, /*metaTypeDataverseName*/null,
-                /*metaTypeName*/null, nodeGroupName, compactionPolicy, compactionPolicyProperties, datasetDetails,
-                hints, datasetType, datasetId, pendingOp, CompressionManager.NONE, DatasetFormatInfo.SYSTEM_DEFAULT);
+        this(databaseName, dataverseName, datasetName, recordTypeDataverseName, recordTypeName,
+                /*metaTypeDataverseName*/null, /*metaTypeName*/null, nodeGroupName, compactionPolicy,
+                compactionPolicyProperties, datasetDetails, hints, datasetType, datasetId, pendingOp,
+                CompressionManager.NONE, DatasetFormatInfo.SYSTEM_DEFAULT);
     }
 
-    public Dataset(DataverseName dataverseName, String datasetName, DataverseName itemTypeDataverseName,
-            String itemTypeName, DataverseName metaItemTypeDataverseName, String metaItemTypeName, String nodeGroupName,
-            String compactionPolicy, Map<String, String> compactionPolicyProperties, IDatasetDetails datasetDetails,
-            Map<String, String> hints, DatasetType datasetType, int datasetId, int pendingOp, String compressionScheme,
+    public Dataset(String databaseName, DataverseName dataverseName, String datasetName,
+            DataverseName itemTypeDataverseName, String itemTypeName, DataverseName metaItemTypeDataverseName,
+            String metaItemTypeName, String nodeGroupName, String compactionPolicy,
+            Map<String, String> compactionPolicyProperties, IDatasetDetails datasetDetails, Map<String, String> hints,
+            DatasetType datasetType, int datasetId, int pendingOp, String compressionScheme,
             DatasetFormatInfo datasetFormatInfo) {
-        this(dataverseName, datasetName, itemTypeDataverseName, itemTypeName, metaItemTypeDataverseName,
+        this(databaseName, dataverseName, datasetName, itemTypeDataverseName, itemTypeName, metaItemTypeDataverseName,
                 metaItemTypeName, nodeGroupName, compactionPolicy, compactionPolicyProperties, datasetDetails, hints,
                 datasetType, datasetId, pendingOp, 0L, compressionScheme, datasetFormatInfo);
     }
 
     public Dataset(Dataset dataset) {
-        this(dataset.dataverseName, dataset.datasetName, dataset.recordTypeDataverseName, dataset.recordTypeName,
-                dataset.metaTypeDataverseName, dataset.metaTypeName, dataset.nodeGroupName,
+        this(dataset.databaseName, dataset.dataverseName, dataset.datasetName, dataset.recordTypeDataverseName,
+                dataset.recordTypeName, dataset.metaTypeDataverseName, dataset.metaTypeName, dataset.nodeGroupName,
                 dataset.compactionPolicyFactory, dataset.compactionPolicyProperties, dataset.datasetDetails,
                 dataset.hints, dataset.datasetType, dataset.datasetId, dataset.pendingOp, dataset.rebalanceCount,
                 dataset.compressionScheme, dataset.datasetFormatInfo);
     }
 
-    public Dataset(DataverseName dataverseName, String datasetName, DataverseName itemTypeDataverseName,
-            String itemTypeName, DataverseName metaItemTypeDataverseName, String metaItemTypeName, String nodeGroupName,
-            String compactionPolicy, Map<String, String> compactionPolicyProperties, IDatasetDetails datasetDetails,
-            Map<String, String> hints, DatasetType datasetType, int datasetId, int pendingOp, long rebalanceCount,
-            String compressionScheme, DatasetFormatInfo datasetFormatInfo) {
+    public Dataset(String databaseName, DataverseName dataverseName, String datasetName,
+            DataverseName itemTypeDataverseName, String itemTypeName, DataverseName metaItemTypeDataverseName,
+            String metaItemTypeName, String nodeGroupName, String compactionPolicy,
+            Map<String, String> compactionPolicyProperties, IDatasetDetails datasetDetails, Map<String, String> hints,
+            DatasetType datasetType, int datasetId, int pendingOp, long rebalanceCount, String compressionScheme,
+            DatasetFormatInfo datasetFormatInfo) {
+        this.databaseName = Objects.requireNonNull(databaseName);
         this.dataverseName = dataverseName;
         this.datasetName = datasetName;
         this.recordTypeName = itemTypeName;
@@ -355,11 +357,10 @@ public class Dataset implements IMetadataEntity<Dataset>, IDataset {
             List<JobSpecification> jobsToExecute, MutableBoolean bActiveTxn, MutableObject<ProgressState> progress,
             IHyracksClientConnection hcc, boolean dropCorrespondingNodeGroup, SourceLocation sourceLoc,
             Set<DropOption> options, boolean force) throws Exception {
-        Map<FeedConnectionId, Pair<JobSpecification, Boolean>> disconnectJobList = new HashMap<>();
         if (getDatasetType() == DatasetType.INTERNAL) {
             // #. prepare jobs to drop the datatset and the indexes in NC
-            List<Index> indexes =
-                    MetadataManager.INSTANCE.getDatasetIndexes(mdTxnCtx.getValue(), dataverseName, datasetName);
+            List<Index> indexes = MetadataManager.INSTANCE.getDatasetIndexes(mdTxnCtx.getValue(), databaseName,
+                    dataverseName, datasetName);
             for (int j = 0; j < indexes.size(); j++) {
                 if (indexes.get(j).isSecondaryIndex()) {
                     jobsToExecute.add(IndexUtil.buildDropIndexJobSpec(indexes.get(j), metadataProvider, this, options,
@@ -368,9 +369,9 @@ public class Dataset implements IMetadataEntity<Dataset>, IDataset {
             }
             jobsToExecute.add(DatasetUtil.dropDatasetJobSpec(this, metadataProvider, options));
             // #. mark the existing dataset as PendingDropOp
-            MetadataManager.INSTANCE.dropDataset(mdTxnCtx.getValue(), dataverseName, datasetName, force);
+            MetadataManager.INSTANCE.dropDataset(mdTxnCtx.getValue(), databaseName, dataverseName, datasetName, force);
             MetadataManager.INSTANCE.addDataset(mdTxnCtx.getValue(),
-                    new Dataset(dataverseName, datasetName, getItemTypeDataverseName(), getItemTypeName(),
+                    new Dataset(databaseName, dataverseName, datasetName, getItemTypeDataverseName(), getItemTypeName(),
                             getMetaItemTypeDataverseName(), getMetaItemTypeName(), getNodeGroupName(),
                             getCompactionPolicy(), getCompactionPolicyProperties(), getDatasetDetails(), getHints(),
                             getDatasetType(), getDatasetId(), MetadataUtil.PENDING_DROP_OP, getCompressionScheme(),
@@ -379,11 +380,6 @@ public class Dataset implements IMetadataEntity<Dataset>, IDataset {
             MetadataManager.INSTANCE.commitTransaction(mdTxnCtx.getValue());
             bActiveTxn.setValue(false);
             progress.setValue(ProgressState.ADDED_PENDINGOP_RECORD_TO_METADATA);
-
-            // # disconnect the feeds
-            for (Pair<JobSpecification, Boolean> p : disconnectJobList.values()) {
-                JobUtils.runJob(hcc, p.first, true);
-            }
 
             // #. run the jobs
             for (JobSpecification jobSpec : jobsToExecute) {
@@ -397,14 +393,18 @@ public class Dataset implements IMetadataEntity<Dataset>, IDataset {
         }
 
         // #. finally, delete the dataset.
-        MetadataManager.INSTANCE.dropDataset(mdTxnCtx.getValue(), dataverseName, datasetName, force);
+        MetadataManager.INSTANCE.dropDataset(mdTxnCtx.getValue(), databaseName, dataverseName, datasetName, force);
 
         // drop inline types
+        String recordTypeDatabase = MetadataUtil.resolveDatabase(null, recordTypeDataverseName);
         if (TypeUtil.isDatasetInlineTypeName(this, recordTypeDataverseName, recordTypeName)) {
-            MetadataManager.INSTANCE.dropDatatype(mdTxnCtx.getValue(), recordTypeDataverseName, recordTypeName);
+            MetadataManager.INSTANCE.dropDatatype(mdTxnCtx.getValue(), recordTypeDatabase, recordTypeDataverseName,
+                    recordTypeName);
         }
+        String metaTypeDatabase = MetadataUtil.resolveDatabase(null, metaTypeDataverseName);
         if (hasMetaPart() && TypeUtil.isDatasetInlineTypeName(this, metaTypeDataverseName, metaTypeName)) {
-            MetadataManager.INSTANCE.dropDatatype(mdTxnCtx.getValue(), metaTypeDataverseName, metaTypeName);
+            MetadataManager.INSTANCE.dropDatatype(mdTxnCtx.getValue(), metaTypeDatabase, metaTypeDataverseName,
+                    metaTypeName);
         }
 
         // Drops the associated nodegroup if it is no longer used by any other dataset.
@@ -831,11 +831,11 @@ public class Dataset implements IMetadataEntity<Dataset>, IDataset {
 
     // Gets the target dataset for the purpose of rebalance.
     public Dataset getTargetDatasetForRebalance(String targetNodeGroupName) {
-        return new Dataset(this.dataverseName, this.datasetName, this.recordTypeDataverseName, this.recordTypeName,
-                this.metaTypeDataverseName, this.metaTypeName, targetNodeGroupName, this.compactionPolicyFactory,
-                this.compactionPolicyProperties, this.datasetDetails, this.hints, this.datasetType,
-                DatasetIdFactory.generateAlternatingDatasetId(this.datasetId), this.pendingOp, this.rebalanceCount + 1,
-                this.compressionScheme, this.datasetFormatInfo);
+        return new Dataset(this.databaseName, this.dataverseName, this.datasetName, this.recordTypeDataverseName,
+                this.recordTypeName, this.metaTypeDataverseName, this.metaTypeName, targetNodeGroupName,
+                this.compactionPolicyFactory, this.compactionPolicyProperties, this.datasetDetails, this.hints,
+                this.datasetType, DatasetIdFactory.generateAlternatingDatasetId(this.datasetId), this.pendingOp,
+                this.rebalanceCount + 1, this.compressionScheme, this.datasetFormatInfo);
     }
 
     // Gets an array of partition numbers for this dataset.

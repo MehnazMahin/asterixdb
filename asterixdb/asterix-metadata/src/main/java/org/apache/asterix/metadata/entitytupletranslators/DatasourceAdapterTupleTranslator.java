@@ -27,6 +27,7 @@ import org.apache.asterix.external.dataset.adapter.AdapterIdentifier;
 import org.apache.asterix.metadata.bootstrap.DatasourceAdapterEntity;
 import org.apache.asterix.metadata.bootstrap.MetadataRecordTypes;
 import org.apache.asterix.metadata.entities.DatasourceAdapter;
+import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.om.base.ARecord;
 import org.apache.asterix.om.base.AString;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
@@ -47,6 +48,13 @@ public class DatasourceAdapterTupleTranslator extends AbstractTupleTranslator<Da
         String dataverseCanonicalName =
                 ((AString) adapterRecord.getValueByPos(datasourceAdapterEntity.dataverseNameIndex())).getStringValue();
         DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverseCanonicalName);
+        int databaseNameIndex = datasourceAdapterEntity.databaseNameIndex();
+        String databaseName;
+        if (databaseNameIndex >= 0) {
+            databaseName = ((AString) adapterRecord.getValueByPos(databaseNameIndex)).getStringValue();
+        } else {
+            databaseName = MetadataUtil.databaseFor(dataverseName);
+        }
         String adapterName =
                 ((AString) adapterRecord.getValueByPos(datasourceAdapterEntity.adapterNameIndex())).getStringValue();
         String classname =
@@ -54,6 +62,7 @@ public class DatasourceAdapterTupleTranslator extends AbstractTupleTranslator<Da
         IDataSourceAdapter.AdapterType adapterType = IDataSourceAdapter.AdapterType
                 .valueOf(((AString) adapterRecord.getValueByPos(datasourceAdapterEntity.typeIndex())).getStringValue());
 
+        String libraryDatabase = null;
         DataverseName libraryDataverseName = null;
         String libraryName = null;
         int libraryNameIdx = adapterRecord.getType().getFieldIndex(MetadataRecordTypes.FIELD_NAME_LIBRARY_NAME);
@@ -65,10 +74,11 @@ public class DatasourceAdapterTupleTranslator extends AbstractTupleTranslator<Da
                     ? DataverseName.createFromCanonicalForm(
                             ((AString) adapterRecord.getValueByPos(libraryDataverseNameIdx)).getStringValue())
                     : dataverseName;
+            libraryDatabase = MetadataUtil.resolveDatabase(libraryDatabase, libraryDataverseName);
         }
 
-        return new DatasourceAdapter(new AdapterIdentifier(dataverseName, adapterName), adapterType, classname,
-                libraryDataverseName, libraryName);
+        return new DatasourceAdapter(new AdapterIdentifier(databaseName, dataverseName, adapterName), adapterType,
+                classname, libraryDatabase, libraryDataverseName, libraryName);
     }
 
     @Override
@@ -79,6 +89,11 @@ public class DatasourceAdapterTupleTranslator extends AbstractTupleTranslator<Da
         // write the key in the first 2 fields of the tuple
         tupleBuilder.reset();
 
+        if (datasourceAdapterEntity.databaseNameIndex() >= 0) {
+            aString.setValue(adapterIdentifier.getDatabaseName());
+            stringSerde.serialize(aString, tupleBuilder.getDataOutput());
+            tupleBuilder.addFieldEndOffset();
+        }
         aString.setValue(dataverseCanonicalName);
         stringSerde.serialize(aString, tupleBuilder.getDataOutput());
         tupleBuilder.addFieldEndOffset();
@@ -87,9 +102,14 @@ public class DatasourceAdapterTupleTranslator extends AbstractTupleTranslator<Da
         tupleBuilder.addFieldEndOffset();
 
         // write the pay-load in the third field of the tuple
-
         recordBuilder.reset(datasourceAdapterEntity.getRecordType());
 
+        if (datasourceAdapterEntity.databaseNameIndex() >= 0) {
+            fieldValue.reset();
+            aString.setValue(adapterIdentifier.getDatabaseName());
+            stringSerde.serialize(aString, fieldValue.getDataOutput());
+            recordBuilder.addField(datasourceAdapterEntity.databaseNameIndex(), fieldValue);
+        }
         // write field 0
         fieldValue.reset();
         aString.setValue(dataverseCanonicalName);
@@ -140,6 +160,7 @@ public class DatasourceAdapterTupleTranslator extends AbstractTupleTranslator<Da
             return;
         }
 
+        //TODO(DB): write library database name
         fieldName.reset();
         aString.setValue(MetadataRecordTypes.FIELD_NAME_LIBRARY_DATAVERSE_NAME);
         stringSerde.serialize(aString, fieldName.getDataOutput());

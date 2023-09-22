@@ -156,6 +156,7 @@ public class MetadataBootstrap {
                         "Finished enlistment of metadata B-trees in " + (isNewUniverse ? "new" : "old") + " universe");
             }
             if (isNewUniverse) {
+                insertInitialDatabases(mdTxnCtx, mdIndexesProvider);
                 insertInitialDataverses(mdTxnCtx);
                 insertMetadataDatasets(mdTxnCtx, PRIMARY_INDEXES);
                 insertMetadataDatatypes(mdTxnCtx);
@@ -190,6 +191,14 @@ public class MetadataBootstrap {
         }
     }
 
+    private static void insertInitialDatabases(MetadataTransactionContext mdTxnCtx,
+            MetadataIndexesProvider mdIndexesProvider) throws AlgebricksException {
+        if (mdIndexesProvider.isUsingDatabase()) {
+            MetadataManager.INSTANCE.addDatabase(mdTxnCtx, MetadataBuiltinEntities.SYSTEM_DATABASE);
+            MetadataManager.INSTANCE.addDatabase(mdTxnCtx, MetadataBuiltinEntities.DEFAULT_DATABASE);
+        }
+    }
+
     private static void insertInitialDataverses(MetadataTransactionContext mdTxnCtx) throws AlgebricksException {
         MetadataManager.INSTANCE.addDataverse(mdTxnCtx, MetadataBuiltinEntities.METADATA_DATAVERSE);
         MetadataManager.INSTANCE.addDataverse(mdTxnCtx, MetadataBuiltinEntities.DEFAULT_DATAVERSE);
@@ -210,10 +219,11 @@ public class MetadataBootstrap {
                     indexes[i].getPartitioningExpr(), indexes[i].getPartitioningExpr(), null,
                     indexes[i].getPartitioningExprType(), false, null, null);
             MetadataManager.INSTANCE.addDataset(mdTxnCtx,
-                    new Dataset(indexes[i].getDataverseName(), indexes[i].getIndexedDatasetName(),
-                            indexes[i].getDataverseName(), indexes[i].getPayloadRecordType().getTypeName(),
-                            indexes[i].getNodeGroupName(), StorageConstants.DEFAULT_COMPACTION_POLICY_NAME,
-                            StorageConstants.DEFAULT_COMPACTION_POLICY_PROPERTIES, id, new HashMap<String, String>(),
+                    new Dataset(indexes[i].getDatabaseName(), indexes[i].getDataverseName(),
+                            indexes[i].getIndexedDatasetName(), indexes[i].getDataverseName(),
+                            indexes[i].getPayloadRecordType().getTypeName(), indexes[i].getNodeGroupName(),
+                            StorageConstants.DEFAULT_COMPACTION_POLICY_NAME,
+                            StorageConstants.DEFAULT_COMPACTION_POLICY_PROPERTIES, id, new HashMap<>(),
                             DatasetType.INTERNAL, indexes[i].getDatasetId().getId(), MetadataUtil.PENDING_NO_OP));
         }
         if (LOGGER.isInfoEnabled()) {
@@ -236,8 +246,8 @@ public class MetadataBootstrap {
         types.addAll(BuiltinTypeMap.getAllBuiltinTypes());
         getMetadataTypes(types);
         for (int i = 0; i < types.size(); i++) {
-            MetadataManager.INSTANCE.addDatatype(mdTxnCtx, new Datatype(MetadataConstants.METADATA_DATAVERSE_NAME,
-                    types.get(i).getTypeName(), types.get(i), false));
+            MetadataManager.INSTANCE.addDatatype(mdTxnCtx, new Datatype(MetadataConstants.SYSTEM_DATABASE,
+                    MetadataConstants.METADATA_DATAVERSE_NAME, types.get(i).getTypeName(), types.get(i), false));
         }
         MetadataManager.INSTANCE.addDatatype(mdTxnCtx, MetadataBuiltinEntities.ANY_OBJECT_DATATYPE);
         if (LOGGER.isInfoEnabled()) {
@@ -289,8 +299,8 @@ public class MetadataBootstrap {
      */
     private static void insertNewCompactionPoliciesIfNotExist(MetadataTransactionContext mdTxnCtx)
             throws AlgebricksException {
-        if (MetadataManager.INSTANCE.getCompactionPolicy(mdTxnCtx, MetadataConstants.METADATA_DATAVERSE_NAME,
-                ConcurrentMergePolicyFactory.NAME) == null) {
+        if (MetadataManager.INSTANCE.getCompactionPolicy(mdTxnCtx, MetadataConstants.SYSTEM_DATABASE,
+                MetadataConstants.METADATA_DATAVERSE_NAME, ConcurrentMergePolicyFactory.NAME) == null) {
             CompactionPolicy compactionPolicy = getCompactionPolicyEntity(ConcurrentMergePolicyFactory.class.getName());
             MetadataManager.INSTANCE.addCompactionPolicy(mdTxnCtx, compactionPolicy);
         }
@@ -299,13 +309,14 @@ public class MetadataBootstrap {
     private static void insertSynonymEntitiesIfNotExist(MetadataTransactionContext mdTxnCtx,
             MetadataIndexesProvider mdIndexesProvider) throws AlgebricksException {
         IAType synonymDatasetRecordType = mdIndexesProvider.getSynonymEntity().getRecordType();
-        if (MetadataManager.INSTANCE.getDatatype(mdTxnCtx, MetadataConstants.METADATA_DATAVERSE_NAME,
-                synonymDatasetRecordType.getTypeName()) == null) {
-            MetadataManager.INSTANCE.addDatatype(mdTxnCtx, new Datatype(MetadataConstants.METADATA_DATAVERSE_NAME,
-                    synonymDatasetRecordType.getTypeName(), synonymDatasetRecordType, false));
+        if (MetadataManager.INSTANCE.getDatatype(mdTxnCtx, MetadataConstants.SYSTEM_DATABASE,
+                MetadataConstants.METADATA_DATAVERSE_NAME, synonymDatasetRecordType.getTypeName()) == null) {
+            MetadataManager.INSTANCE.addDatatype(mdTxnCtx,
+                    new Datatype(MetadataConstants.SYSTEM_DATABASE, MetadataConstants.METADATA_DATAVERSE_NAME,
+                            synonymDatasetRecordType.getTypeName(), synonymDatasetRecordType, false));
         }
-        if (MetadataManager.INSTANCE.getDataset(mdTxnCtx, MetadataConstants.METADATA_DATAVERSE_NAME,
-                MetadataConstants.SYNONYM_DATASET_NAME) == null) {
+        if (MetadataManager.INSTANCE.getDataset(mdTxnCtx, MetadataConstants.SYSTEM_DATABASE,
+                MetadataConstants.METADATA_DATAVERSE_NAME, MetadataConstants.SYNONYM_DATASET_NAME) == null) {
             insertMetadataDatasets(mdTxnCtx, new IMetadataIndex[] { mdIndexesProvider.getSynonymEntity().getIndex() });
         }
     }
@@ -320,25 +331,27 @@ public class MetadataBootstrap {
         // We need to insert data types first because datasets depend on data types
         // ToDo: create a new function to reduce duplicated code here: addDatatypeIfNotExist()
         IAType fullTextConfigRecordType = metadataIndexesProvider.getFullTextConfigEntity().getRecordType();
-        if (MetadataManager.INSTANCE.getDatatype(mdTxnCtx, MetadataConstants.METADATA_DATAVERSE_NAME,
-                fullTextConfigRecordType.getTypeName()) == null) {
-            MetadataManager.INSTANCE.addDatatype(mdTxnCtx, new Datatype(MetadataConstants.METADATA_DATAVERSE_NAME,
-                    fullTextConfigRecordType.getTypeName(), fullTextConfigRecordType, false));
+        if (MetadataManager.INSTANCE.getDatatype(mdTxnCtx, MetadataConstants.SYSTEM_DATABASE,
+                MetadataConstants.METADATA_DATAVERSE_NAME, fullTextConfigRecordType.getTypeName()) == null) {
+            MetadataManager.INSTANCE.addDatatype(mdTxnCtx,
+                    new Datatype(MetadataConstants.SYSTEM_DATABASE, MetadataConstants.METADATA_DATAVERSE_NAME,
+                            fullTextConfigRecordType.getTypeName(), fullTextConfigRecordType, false));
         }
         IAType fullTextFilterRecordType = metadataIndexesProvider.getFullTextFilterEntity().getRecordType();
-        if (MetadataManager.INSTANCE.getDatatype(mdTxnCtx, MetadataConstants.METADATA_DATAVERSE_NAME,
-                fullTextFilterRecordType.getTypeName()) == null) {
-            MetadataManager.INSTANCE.addDatatype(mdTxnCtx, new Datatype(MetadataConstants.METADATA_DATAVERSE_NAME,
-                    fullTextFilterRecordType.getTypeName(), fullTextFilterRecordType, false));
+        if (MetadataManager.INSTANCE.getDatatype(mdTxnCtx, MetadataConstants.SYSTEM_DATABASE,
+                MetadataConstants.METADATA_DATAVERSE_NAME, fullTextFilterRecordType.getTypeName()) == null) {
+            MetadataManager.INSTANCE.addDatatype(mdTxnCtx,
+                    new Datatype(MetadataConstants.SYSTEM_DATABASE, MetadataConstants.METADATA_DATAVERSE_NAME,
+                            fullTextFilterRecordType.getTypeName(), fullTextFilterRecordType, false));
         }
 
-        if (MetadataManager.INSTANCE.getDataset(mdTxnCtx, MetadataConstants.METADATA_DATAVERSE_NAME,
-                MetadataConstants.FULL_TEXT_CONFIG_DATASET_NAME) == null) {
+        if (MetadataManager.INSTANCE.getDataset(mdTxnCtx, MetadataConstants.SYSTEM_DATABASE,
+                MetadataConstants.METADATA_DATAVERSE_NAME, MetadataConstants.FULL_TEXT_CONFIG_DATASET_NAME) == null) {
             insertMetadataDatasets(mdTxnCtx,
                     new IMetadataIndex[] { metadataIndexesProvider.getFullTextConfigEntity().getIndex() });
         }
-        if (MetadataManager.INSTANCE.getDataset(mdTxnCtx, MetadataConstants.METADATA_DATAVERSE_NAME,
-                MetadataConstants.FULL_TEXT_FILTER_DATASET_NAME) == null) {
+        if (MetadataManager.INSTANCE.getDataset(mdTxnCtx, MetadataConstants.SYSTEM_DATABASE,
+                MetadataConstants.METADATA_DATAVERSE_NAME, MetadataConstants.FULL_TEXT_FILTER_DATASET_NAME) == null) {
             insertMetadataDatasets(mdTxnCtx,
                     new IMetadataIndex[] { metadataIndexesProvider.getFullTextFilterEntity().getIndex() });
         }
@@ -348,8 +361,10 @@ public class MetadataBootstrap {
         try {
             String adapterName =
                     ((ITypedAdapterFactory) (Class.forName(adapterFactoryClassName).newInstance())).getAlias();
-            return new DatasourceAdapter(new AdapterIdentifier(MetadataConstants.METADATA_DATAVERSE_NAME, adapterName),
-                    IDataSourceAdapter.AdapterType.INTERNAL, adapterFactoryClassName, null, null);
+            return new DatasourceAdapter(
+                    new AdapterIdentifier(MetadataConstants.SYSTEM_DATABASE, MetadataConstants.METADATA_DATAVERSE_NAME,
+                            adapterName),
+                    IDataSourceAdapter.AdapterType.INTERNAL, adapterFactoryClassName, null, null, null);
         } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
             throw new MetadataException("Unable to instantiate builtin Adapter", e);
         }
@@ -360,8 +375,8 @@ public class MetadataBootstrap {
         try {
             String policyName =
                     ((ILSMMergePolicyFactory) (Class.forName(compactionPolicyClassName).newInstance())).getName();
-            return new CompactionPolicy(MetadataConstants.METADATA_DATAVERSE_NAME, policyName,
-                    compactionPolicyClassName);
+            return new CompactionPolicy(MetadataConstants.SYSTEM_DATABASE, MetadataConstants.METADATA_DATAVERSE_NAME,
+                    policyName, compactionPolicyClassName);
         } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
             throw new MetadataException("Unable to instantiate builtin Merge Policy Factory", e);
         }
@@ -481,19 +496,19 @@ public class MetadataBootstrap {
             throws AlgebricksException {
         if (dataverse.getPendingOp() != MetadataUtil.PENDING_NO_OP) {
             // drop pending dataverse
-            MetadataManager.INSTANCE.dropDataverse(mdTxnCtx, dataverse.getDataverseName());
+            MetadataManager.INSTANCE.dropDataverse(mdTxnCtx, dataverse.getDatabaseName(), dataverse.getDataverseName());
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info("Dropped a pending dataverse: " + dataverse.getDataverseName());
             }
         } else {
-            List<Dataset> datasets =
-                    MetadataManager.INSTANCE.getDataverseDatasets(mdTxnCtx, dataverse.getDataverseName());
+            List<Dataset> datasets = MetadataManager.INSTANCE.getDataverseDatasets(mdTxnCtx,
+                    dataverse.getDatabaseName(), dataverse.getDataverseName());
             for (Dataset dataset : datasets) {
                 recoverDataset(mdTxnCtx, dataset);
             }
 
-            List<Library> libraries =
-                    MetadataManager.INSTANCE.getDataverseLibraries(mdTxnCtx, dataverse.getDataverseName());
+            List<Library> libraries = MetadataManager.INSTANCE.getDataverseLibraries(mdTxnCtx,
+                    dataverse.getDatabaseName(), dataverse.getDataverseName());
             for (Library library : libraries) {
                 recoverLibrary(mdTxnCtx, library);
             }
@@ -508,19 +523,20 @@ public class MetadataBootstrap {
         }
         if (dataset.getPendingOp() != MetadataUtil.PENDING_NO_OP) {
             // drop pending dataset
-            MetadataManager.INSTANCE.dropDataset(mdTxnCtx, dataset.getDataverseName(), dataset.getDatasetName(), true);
+            MetadataManager.INSTANCE.dropDataset(mdTxnCtx, dataset.getDatabaseName(), dataset.getDataverseName(),
+                    dataset.getDatasetName(), true);
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info(
                         "Dropped a pending dataset: " + dataset.getDataverseName() + "." + dataset.getDatasetName());
             }
         } else {
-            List<Index> indexes = MetadataManager.INSTANCE.getDatasetIndexes(mdTxnCtx, dataset.getDataverseName(),
-                    dataset.getDatasetName());
+            List<Index> indexes = MetadataManager.INSTANCE.getDatasetIndexes(mdTxnCtx, dataset.getDatabaseName(),
+                    dataset.getDataverseName(), dataset.getDatasetName());
             for (Index index : indexes) {
                 if (index.getPendingOp() != MetadataUtil.PENDING_NO_OP) {
                     // drop pending index
-                    MetadataManager.INSTANCE.dropIndex(mdTxnCtx, dataset.getDataverseName(), dataset.getDatasetName(),
-                            index.getIndexName());
+                    MetadataManager.INSTANCE.dropIndex(mdTxnCtx, dataset.getDatabaseName(), dataset.getDataverseName(),
+                            dataset.getDatasetName(), index.getIndexName());
                     if (LOGGER.isInfoEnabled()) {
                         LOGGER.info("Dropped a pending index: " + dataset.getDataverseName() + "."
                                 + dataset.getDatasetName() + "." + index.getIndexName());
@@ -530,8 +546,8 @@ public class MetadataBootstrap {
         }
         if (dataset.getDatasetType() == DatasetType.EXTERNAL) {
             // if the dataset has no indexes, delete all its files
-            List<Index> indexes = MetadataManager.INSTANCE.getDatasetIndexes(mdTxnCtx, dataset.getDataverseName(),
-                    dataset.getDatasetName());
+            List<Index> indexes = MetadataManager.INSTANCE.getDatasetIndexes(mdTxnCtx, dataset.getDatabaseName(),
+                    dataset.getDataverseName(), dataset.getDatasetName());
             if (indexes.isEmpty()) {
                 List<ExternalFile> files = MetadataManager.INSTANCE.getDatasetExternalFiles(mdTxnCtx, dataset);
                 for (ExternalFile file : files) {
@@ -549,7 +565,8 @@ public class MetadataBootstrap {
             throws AlgebricksException {
         if (library.getPendingOp() != MetadataUtil.PENDING_NO_OP) {
             // drop pending library
-            MetadataManager.INSTANCE.dropLibrary(mdTxnCtx, library.getDataverseName(), library.getName());
+            MetadataManager.INSTANCE.dropLibrary(mdTxnCtx, library.getDatabaseName(), library.getDataverseName(),
+                    library.getName());
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info("Dropped a pending library: " + library.getDataverseName() + "." + library.getName());
             }

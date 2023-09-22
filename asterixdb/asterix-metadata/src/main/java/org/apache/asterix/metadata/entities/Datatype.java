@@ -19,6 +19,8 @@
 
 package org.apache.asterix.metadata.entities;
 
+import java.util.Objects;
+
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.common.transactions.TxnId;
 import org.apache.asterix.metadata.MetadataCache;
@@ -33,19 +35,25 @@ import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
  */
 public class Datatype implements IMetadataEntity<Datatype> {
 
-    private static final long serialVersionUID = 2L;
+    private static final long serialVersionUID = 3L;
 
+    private final String databaseName;
     private final DataverseName dataverseName;
-    // Enforced to be unique within a dataverse.
     private final String datatypeName;
     private final IAType datatype;
     private final boolean isAnonymous;
 
-    public Datatype(DataverseName dataverseName, String datatypeName, IAType datatype, boolean isAnonymous) {
+    public Datatype(String databaseName, DataverseName dataverseName, String datatypeName, IAType datatype,
+            boolean isAnonymous) {
+        this.databaseName = Objects.requireNonNull(databaseName);
         this.dataverseName = dataverseName;
         this.datatypeName = datatypeName;
         this.datatype = datatype;
         this.isAnonymous = isAnonymous;
+    }
+
+    public String getDatabaseName() {
+        return databaseName;
     }
 
     public DataverseName getDataverseName() {
@@ -74,11 +82,11 @@ public class Datatype implements IMetadataEntity<Datatype> {
         return cache.dropDatatype(this);
     }
 
-    public static IAType getTypeFromTypeName(MetadataNode metadataNode, TxnId txnId, DataverseName dataverseName,
-            String typeName) throws AlgebricksException {
+    public static IAType getTypeFromTypeName(MetadataNode metadataNode, TxnId txnId, String database,
+            DataverseName dataverseName, String typeName) throws AlgebricksException {
         IAType type = BuiltinTypeMap.getBuiltinType(typeName);
         if (type == null) {
-            Datatype dt = metadataNode.getDatatype(txnId, dataverseName, typeName);
+            Datatype dt = metadataNode.getDatatype(txnId, database, dataverseName, typeName);
             if (dt != null) {
                 type = dt.getDatatype();
             }

@@ -40,6 +40,7 @@ import org.apache.asterix.metadata.entities.Index;
 import org.apache.asterix.metadata.entities.InternalDatasetDetails;
 import org.apache.asterix.metadata.utils.IndexUtil;
 import org.apache.asterix.metadata.utils.KeyFieldTypeUtil;
+import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.runtime.projection.ExternalDatasetProjectionFiltrationInfo;
@@ -125,9 +126,9 @@ public class DatasetDataSource extends DataSource {
             IVariableTypeEnvironment typeEnv, JobGenContext context, JobSpecification jobSpec, Object implConfig,
             IProjectionFiltrationInfo projectionFiltrationInfo) throws AlgebricksException {
         String itemTypeName = dataset.getItemTypeName();
-        IAType itemType = MetadataManager.INSTANCE
-                .getDatatype(metadataProvider.getMetadataTxnContext(), dataset.getItemTypeDataverseName(), itemTypeName)
-                .getDatatype();
+        String itemTypeDatabase = null;
+        IAType itemType = MetadataManager.INSTANCE.getDatatype(metadataProvider.getMetadataTxnContext(),
+                itemTypeDatabase, dataset.getItemTypeDataverseName(), itemTypeName).getDatatype();
         switch (dataset.getDatasetType()) {
             case EXTERNAL:
                 DatasetDataSource externalDataSource = (DatasetDataSource) dataSource;
@@ -139,7 +140,7 @@ public class DatasetDataSource extends DataSource {
                         addExternalProjectionInfo(projectionFiltrationInfo, edd.getProperties());
                 properties = addSubPath(externalDataSource.getProperties(), properties);
                 properties.put(KEY_EXTERNAL_SCAN_BUFFER_SIZE, String.valueOf(externalScanBufferSize));
-                IExternalFilterEvaluatorFactory filterEvaluatorFactory = IndexUtil
+                IExternalFilterEvaluatorFactory filterEvaluatorFactory = metadataProvider
                         .createExternalFilterEvaluatorFactory(context, typeEnv, projectionFiltrationInfo, properties);
                 ITypedAdapterFactory adapterFactory =
                         metadataProvider.getConfiguredAdapterFactory(externalDataset, edd.getAdapter(), properties,
@@ -149,15 +150,17 @@ public class DatasetDataSource extends DataSource {
             case INTERNAL:
                 DataSourceId id = getId();
                 DataverseName dataverseName = id.getDataverseName();
+                String database = MetadataUtil.resolveDatabase(null, dataverseName);
                 String datasetName = id.getDatasourceName();
                 Index primaryIndex = MetadataManager.INSTANCE.getIndex(metadataProvider.getMetadataTxnContext(),
-                        dataverseName, datasetName, datasetName);
+                        database, dataverseName, datasetName, datasetName);
 
                 ARecordType datasetType = (ARecordType) itemType;
                 ARecordType metaItemType = null;
                 if (dataset.hasMetaPart()) {
+                    String metaItemTypeDatabase = null;
                     metaItemType = (ARecordType) MetadataManager.INSTANCE
-                            .getDatatype(metadataProvider.getMetadataTxnContext(),
+                            .getDatatype(metadataProvider.getMetadataTxnContext(), metaItemTypeDatabase,
                                     dataset.getMetaItemTypeDataverseName(), dataset.getMetaItemTypeName())
                             .getDatatype();
                 }
