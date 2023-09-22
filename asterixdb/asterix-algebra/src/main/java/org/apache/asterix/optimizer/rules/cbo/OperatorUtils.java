@@ -74,8 +74,7 @@ public class OperatorUtils {
     }
 
     public static void createDistinctOpsForJoinNodes(ILogicalOperator op, ILogicalOperator grpByDistinctOp,
-            IOptimizationContext context,
-            HashMap<DataSourceScanOperator, Pair<ILogicalOperator, ILogicalOperator>> map) {
+            IOptimizationContext context, HashMap<DataSourceScanOperator, ILogicalOperator> map) {
         if (op == null) {
             return;
         }
@@ -139,7 +138,7 @@ public class OperatorUtils {
                 DistinctOperator distinctOp =
                         createDistinctOp(foundDistinctVars, inputOp, sourceLocation, distinctPair.second, context);
                 if (distinctOp != null) {
-                    map.put(scanOp, new Pair<>(grpByDistinctOp, distinctOp));
+                    map.put(scanOp, distinctOp);
                 }
             }
         } else if (tag == LogicalOperatorTag.INNERJOIN || tag == LogicalOperatorTag.LEFTOUTERJOIN) {
