@@ -19,9 +19,14 @@
 
 package org.apache.asterix.optimizer.cost;
 
+import java.util.Map;
+
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.optimizer.rules.cbo.JoinNode;
+import org.apache.hyracks.algebricks.common.utils.Pair;
+import org.apache.hyracks.algebricks.core.algebra.base.ILogicalOperator;
 import org.apache.hyracks.algebricks.core.algebra.base.IOptimizationContext;
+import org.apache.hyracks.algebricks.core.algebra.base.OperatorAnnotations;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.DistinctOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.GroupByOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.LimitOperator;
@@ -137,22 +142,49 @@ public class CostMethods implements ICostMethods {
     }
 
     public Cost costHashGroupBy(GroupByOperator groupByOperator) {
-        return new Cost(100.0);
-    }
-
-    public Cost costSortGroupBy(GroupByOperator groupByOperator) {
+        Pair<Double, Double> cards = getOpCards(groupByOperator);
+        double inputCard = cards.getFirst();
+        //return new Cost(inputCard);
         return new Cost(200.0);
     }
 
-    public Cost costDistinct(DistinctOperator distinctOperator) {
+    public Cost costSortGroupBy(GroupByOperator groupByOperator) {
+        Pair<Double, Double> cards = getOpCards(groupByOperator);
+        double inputCard = cards.getFirst();
+        //return new Cost(costSort(inputCard));
         return new Cost(100.0);
     }
 
+    public Cost costDistinct(DistinctOperator distinctOperator) {
+        Pair<Double, Double> cards = getOpCards(distinctOperator);
+        double inputCard = cards.getFirst();
+        return new Cost(costSort(inputCard));
+    }
+
     public Cost costOrderBy(OrderOperator orderOp) {
-        return null;
+        Pair<Double, Double> cards = getOpCards(orderOp);
+        double inputCard = cards.getFirst();
+        return new Cost(costSort(inputCard));
     }
 
     public Cost costLimit(LimitOperator limitOp) {
         return null;
+    }
+
+    protected Pair<Double, Double> getOpCards(ILogicalOperator op) {
+        Pair<Double, Double> cardCost = new Pair<>(0.0, 0.0);
+
+        for (Map.Entry<String, Object> anno : op.getAnnotations().entrySet()) {
+            if (anno.getValue() != null && anno.getKey().equals(OperatorAnnotations.OP_INPUT_CARDINALITY)) {
+                cardCost.setFirst((Double) anno.getValue());
+            } else if (anno.getValue() != null && anno.getKey().equals(OperatorAnnotations.OP_OUTPUT_CARDINALITY)) {
+                cardCost.setSecond((Double) anno.getValue());
+            }
+        }
+        return cardCost;
+    }
+
+    protected double costSort(double inputCard) {
+        return inputCard * Math.log(inputCard) / Math.log(2); // log to the base 2
     }
 }

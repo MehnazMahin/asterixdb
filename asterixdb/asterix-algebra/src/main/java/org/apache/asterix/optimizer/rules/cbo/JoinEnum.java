@@ -52,7 +52,6 @@ import org.apache.asterix.optimizer.cost.ICostMethods;
 import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
-import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.algebricks.common.utils.Quadruple;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
@@ -105,8 +104,9 @@ public class JoinEnum {
     protected JoinNode[] jnArray; // array of all join nodes
     protected int jnArraySize;
     protected List<ILogicalOperator> leafInputs;
-    // The Distinct operators for each Select or DataScan operator (if applicable)
-    protected HashMap<DataSourceScanOperator, Pair<ILogicalOperator, ILogicalOperator>> dataScanAndGrpByDistinctOps;
+    // The Distinct operators for each DataScan operator (if applicable)
+    protected HashMap<DataSourceScanOperator, ILogicalOperator> dataScanAndGroupByDistinctOps;
+    protected ILogicalOperator rootGroupByDistinctOp; // The Distinct/GroupBy operator at root of the query tree (if exists)
     protected List<ILogicalExpression> singleDatasetPreds;
     protected List<AssignOperator> assignOps;
     List<Quadruple<Integer, Integer, JoinOperator, Integer>> outerJoinsDependencyList;
@@ -139,7 +139,7 @@ public class JoinEnum {
             List<ILogicalOperator> leafInputs, List<JoinOperator> allJoinOps, List<AssignOperator> assignOps,
             List<Quadruple<Integer, Integer, JoinOperator, Integer>> outerJoinsDependencyList,
             List<Triple<Integer, Integer, Boolean>> buildSets, HashMap<LogicalVariable, Integer> varLeafInputIds,
-            IOptimizationContext context) throws AsterixException {
+            ILogicalOperator grpByDistinctOp, IOptimizationContext context) throws AsterixException {
         this.singleDatasetPreds = new ArrayList<>();
         this.joinConditions = new ArrayList<>();
         this.joinHints = new HashMap<>();
@@ -152,13 +152,14 @@ public class JoinEnum {
         this.connectedJoinGraph = true;
         this.optCtx = context;
         this.leafInputs = leafInputs;
-        this.dataScanAndGrpByDistinctOps = new HashMap<>();
+        this.dataScanAndGroupByDistinctOps = new HashMap<>();
         this.assignOps = assignOps;
         this.outerJoin = false; // assume no outerjoins anywhere in the query at first.
         this.outerJoinsDependencyList = outerJoinsDependencyList;
         this.allJoinOps = allJoinOps;
         this.buildSets = buildSets;
         this.varLeafInputIds = varLeafInputIds;
+        this.rootGroupByDistinctOp = grpByDistinctOp;
         this.op = op;
         this.forceJoinOrderMode = getForceJoinOrderMode(context);
         this.queryPlanShape = getQueryPlanShape(context);
@@ -726,6 +727,15 @@ public class JoinEnum {
         if (LOGGER.isTraceEnabled()) {
             EnumerateJoinsRule.printPlan(pp, op, "Original Whole plan in JN 5");
         }
+
+        // set the root group-by/distinct operator's card/cost annotations (if exists)
+        if (this.rootGroupByDistinctOp != null) {
+            this.rootGroupByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_OUTPUT_CARDINALITY,
+                    jnArray[jnNumber].distinctCardinality);
+            this.rootGroupByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_INPUT_CARDINALITY,
+                    jnArray[jnNumber].getCardinality());
+        }
+
         return jnNumber;
     }
 
@@ -843,7 +853,11 @@ public class JoinEnum {
                 }
 
                 finalDatasetCard = origDatasetCard = idxDetails.getSourceCardinality();
-                updateRootGroupByDistinctOpAnnotations(scanOp);
+
+                ILogicalOperator grpByDistinctOp = this.dataScanAndGroupByDistinctOps.get(scanOp);
+                if (grpByDistinctOp != null) {
+                    jn.distinctCardinality = (double) stats.findDistinctCardinality(grpByDistinctOp);
+                }
 
                 List<List<IAObject>> result;
                 SelectOperator selop = (SelectOperator) findASelectOp(leafInput);
@@ -890,25 +904,6 @@ public class JoinEnum {
             jn.addIndexAccessPlans(leafInput);
         }
         return this.numberOfTerms;
-    }
-
-    private void updateRootGroupByDistinctOpAnnotations(DataSourceScanOperator scanOp) throws AlgebricksException {
-        if (scanOp != null) {
-            Pair<ILogicalOperator, ILogicalOperator> rootAndJoinNodeOpPairs = dataScanAndGrpByDistinctOps.get(scanOp);
-            if (rootAndJoinNodeOpPairs != null) {
-                ILogicalOperator rootGrpByDistinctOp = rootAndJoinNodeOpPairs.first;
-                ILogicalOperator joinNodeGrpByDistinctOp = rootAndJoinNodeOpPairs.second;
-                long distinctCard = stats.findDistinctCardinality(joinNodeGrpByDistinctOp);
-                double rootDistinctCard = 0.0;
-                if (rootGrpByDistinctOp.getAnnotations().get((OperatorAnnotations.OP_OUTPUT_CARDINALITY)) != null) {
-                    rootDistinctCard = (Double) rootGrpByDistinctOp.getAnnotations()
-                            .get(OperatorAnnotations.OP_OUTPUT_CARDINALITY);
-                }
-                double updatedCard = (rootDistinctCard == 0.0) ? distinctCard
-                        : (Math.max(rootDistinctCard, distinctCard) + (rootDistinctCard * distinctCard)) / 2.0;
-                rootGrpByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_OUTPUT_CARDINALITY, updatedCard);
-            }
-        }
     }
 
     private boolean isPredicateCardinalityAnnotationPresent(ILogicalExpression leExpr) {

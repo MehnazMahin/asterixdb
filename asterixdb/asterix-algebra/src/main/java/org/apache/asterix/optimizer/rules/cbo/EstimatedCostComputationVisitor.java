@@ -102,7 +102,7 @@ public class EstimatedCostComputationVisitor implements ILogicalOperatorVisitor<
                 grpByCost = (double) anno.getValue();
             }
         }
-        double totalCost = cardCost.getSecond() + grpByCost;
+        double totalCost = (double) Math.round((cardCost.getSecond() + grpByCost) * 100) / 100;
         op.getAnnotations().put(OperatorAnnotations.OP_COST_TOTAL, totalCost);
         cardCost.setSecond(totalCost);
 
@@ -275,7 +275,7 @@ public class EstimatedCostComputationVisitor implements ILogicalOperatorVisitor<
                 grpByCost = (double) anno.getValue();
             }
         }
-        double totalCost = cardCost.getSecond() + grpByCost;
+        double totalCost = (double) Math.round((cardCost.getSecond() + grpByCost) * 100) / 100;
         op.getAnnotations().put(OperatorAnnotations.OP_COST_TOTAL, totalCost);
         cardCost.setSecond(totalCost);
 
@@ -292,7 +292,8 @@ public class EstimatedCostComputationVisitor implements ILogicalOperatorVisitor<
         Pair<Double, Double> cardCost = op.getInputs().get(0).getValue().accept(this, arg);
         if (exchCost != 0) {
             op.getAnnotations().put(OperatorAnnotations.OP_COST_LOCAL, exchCost);
-            op.getAnnotations().put(OperatorAnnotations.OP_COST_TOTAL, exchCost + cardCost.getSecond());
+            op.getAnnotations().put(OperatorAnnotations.OP_COST_TOTAL,
+                    (double) Math.round((exchCost + cardCost.getSecond()) * 100) / 100);
         } else {
             op.getAnnotations().put(OperatorAnnotations.OP_COST_LOCAL, 0.0);
             op.getAnnotations().put(OperatorAnnotations.OP_COST_TOTAL, cardCost.getSecond());

@@ -80,6 +80,7 @@ public class JoinNode {
     protected double origCardinality; // without any selections
     protected double cardinality;
     protected double size;
+    protected double distinctCardinality; // estimated distinct cardinality for this joinNode
     protected List<Integer> planIndexesArray; // indexes into the PlanNode array in enumerateJoins
     protected int jnIndex;
     protected int level;
@@ -1040,6 +1041,35 @@ public class JoinNode {
         double current_card = this.cardinality;
         if (current_card >= Cost.MAX_CARD) {
             return; // no card available, so do not add this plan
+        }
+
+        if (leftJn.distinctCardinality == 0.0) { // no group-by/distinct attribute(s) from the left node
+            this.distinctCardinality = rightJn.distinctCardinality;
+        } else if (rightJn.distinctCardinality == 0.0) { // no group-by/distinct attributes(s) from the right node
+            this.distinctCardinality = leftJn.distinctCardinality;
+        } else {
+            /*// D_est_jn = (max(D_est_l, D_est_r) + D_est_l * D_est_r)/ 2 ----> the mid of upper and lower bounds
+            double rootJnVal = (Math.max(leftJn.distinctCardinality, rightJn.distinctCardinality)
+                    + leftJn.distinctCardinality * rightJn.distinctCardinality) / 2.0;*/
+
+            /*// Compute heuristically D_est_jn (either lower bound or mid of upper and lower bounds)
+            double minVal = Math.min(leftJn.distinctCardinality, rightJn.distinctCardinality);
+            double maxVal = Math.max(leftJn.distinctCardinality, rightJn.distinctCardinality);
+            double ratio = (double) Math.round(minVal / maxVal * 1000) / 1000;
+            double rootJnVal = (ratio > 0.001) ? maxVal
+                    : ((maxVal + leftJn.distinctCardinality * rightJn.distinctCardinality) / 2.0);*/
+
+            // D_est_jn = (D_est_l > D_est_r) ? (D_est_l * join productivity of leftJn) : (D_est_r * join productivity of rightJn)
+            double leftJnVal, rightJnVal, rootJnVal;
+            leftJnVal = (leftJn.IsBaseLevelJoinNode()) ? leftJn.getOrigCardinality() : leftJn.getCardinality();
+            rightJnVal = (rightJn.IsBaseLevelJoinNode()) ? rightJn.getOrigCardinality() : rightJn.getCardinality();
+            if (leftJn.distinctCardinality > rightJn.distinctCardinality) {
+                rootJnVal = leftJn.distinctCardinality * this.cardinality / leftJnVal;
+            } else {
+                rootJnVal = rightJn.distinctCardinality * this.cardinality / rightJnVal;
+            }
+
+            this.distinctCardinality = (double) Math.round(rootJnVal * 100) / 100;
         }
 
         int hjPlan, commutativeHjPlan, bcastHjPlan, commutativeBcastHjPlan, nljPlan, commutativeNljPlan, cpPlan,
