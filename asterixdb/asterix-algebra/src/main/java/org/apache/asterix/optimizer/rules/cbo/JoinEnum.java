@@ -729,12 +729,23 @@ public class JoinEnum {
             EnumerateJoinsRule.printPlan(pp, op, "Original Whole plan in JN 5");
         }
 
+        double grpInputCard = (double) Math.round(jnArray[jnNumber].getCardinality() * 100) / 100;
+        double grpOutputCard =
+                (double) Math.round(Math.min(grpInputCard, jnArray[jnNumber].distinctCardinality) * 100) / 100;
+
         // set the root group-by/distinct operator's card/cost annotations (if exists)
-        if (this.rootGroupByDistinctOp != null) {
-            this.rootGroupByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_OUTPUT_CARDINALITY,
-                    jnArray[jnNumber].distinctCardinality);
-            this.rootGroupByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_INPUT_CARDINALITY,
-                    jnArray[jnNumber].getCardinality());
+        if (!cboTestMode && this.rootGroupByDistinctOp != null) {
+            Double inputCard =
+                    (Double) this.rootGroupByDistinctOp.getAnnotations().get(OperatorAnnotations.OP_INPUT_CARDINALITY);
+            if (inputCard == null) {
+                this.rootGroupByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_INPUT_CARDINALITY, grpInputCard);
+            }
+            Double outputCard =
+                    (Double) this.rootGroupByDistinctOp.getAnnotations().get(OperatorAnnotations.OP_OUTPUT_CARDINALITY);
+            if (outputCard == null) {
+                this.rootGroupByDistinctOp.getAnnotations().put(OperatorAnnotations.OP_OUTPUT_CARDINALITY,
+                        grpOutputCard);
+            }
         }
 
         return jnNumber;

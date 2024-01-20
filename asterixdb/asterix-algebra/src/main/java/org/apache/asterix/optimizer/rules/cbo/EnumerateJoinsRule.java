@@ -412,21 +412,18 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
                 this.rootGroupByDistinctOp = grpByDistinctOp;
             } else if (tag == LogicalOperatorTag.INNERJOIN || tag == LogicalOperatorTag.LEFTOUTERJOIN) {
                 if (grpByDistinctOp != null) {
+                    Pair<List<LogicalVariable>, List<AbstractFunctionCallExpression>> distinctVarsFuncPair =
+                            OperatorUtils.getGroupByDistinctVarFuncPair(grpByDistinctOp);
                     for (int i = 0; i < op.getInputs().size(); i++) {
                         ILogicalOperator nextOp = op.getInputs().get(i).getValue();
-                        OperatorUtils.createDistinctOpsForJoinNodes(nextOp, grpByDistinctOp, context,
-                                dataScanAndGroupByDistinctOps);
+                        OperatorUtils.createDistinctOpsForJoinNodes(nextOp, distinctVarsFuncPair.first,
+                                distinctVarsFuncPair.second, context, dataScanAndGroupByDistinctOps);
                     }
                 }
                 return;
             } else if (tag == LogicalOperatorTag.DATASOURCESCAN) { // single table queries
                 scanOp = (DataSourceScanOperator) op;
                 // will work for any attributes present in GroupByOp or DistinctOp
-                // Note: add the following condition:
-                //      "!OperatorUtils.containsAllGroupByDistinctVarsInScanOp(scanOp, grpByDistinctOp)"
-                // in the following if-statement if CBO doesn't need to estimate the number of distinct values
-                // when GroupByOp or DistinctOp contains all PK attributes
-                // (in the case of estimated cardinality from samples can be mostly same as original dataset cardinality)
                 if (grpByDistinctOp != null) {
                     dataScanAndGroupByDistinctOps.put(scanOp, grpByDistinctOp);
                 }
