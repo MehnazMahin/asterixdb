@@ -232,7 +232,7 @@ public class SetAsterixPhysicalOperatorsRule extends SetAlgebricksPhysicalOperat
             boolean serializable = aggOp.getExpressions().stream()
                     .allMatch(exprRef -> exprRef.getValue().getExpressionTag() == LogicalExpressionTag.FUNCTION_CALL
                             && BuiltinFunctions.isAggregateFunctionSerializable(
-                            ((AbstractFunctionCallExpression) exprRef.getValue()).getFunctionIdentifier()));
+                                    ((AbstractFunctionCallExpression) exprRef.getValue()).getFunctionIdentifier()));
             if (!serializable) {
                 return null;
             }
