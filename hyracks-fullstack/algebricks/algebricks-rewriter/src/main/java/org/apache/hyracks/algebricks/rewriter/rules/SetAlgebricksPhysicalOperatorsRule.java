@@ -222,7 +222,9 @@ public class SetAlgebricksPhysicalOperatorsRule implements IAlgebraicRewriteRule
                 ExternalGroupByPOperator extGby = createExternalGroupByPOperator(gby);
                 if (extGby != null) {
                     return extGby;
-                } else if (gby.getSourceLocation() != null) {
+                } else if (((gby.getAnnotations().get(OperatorAnnotations.USE_HASH_GROUP_BY) == Boolean.TRUE)
+                        || (gby.getAnnotations().get(OperatorAnnotations.USE_EXTERNAL_GROUP_BY) == Boolean.TRUE))
+                        && gby.getSourceLocation() != null) {
                     IWarningCollector warningCollector = context.getWarningCollector();
                     if (warningCollector.shouldWarn()) {
                         warningCollector.warn(
@@ -239,13 +241,32 @@ public class SetAlgebricksPhysicalOperatorsRule implements IAlgebraicRewriteRule
         }
 
         protected Enum groupByAlgorithm(GroupByOperator gby, Boolean topLevelOp) {
-            if (gby.getNestedPlans().size() == 1 && gby.getNestedPlans().get(0).getRoots().size() == 1) {
-                if (topLevelOp && ((gby.getAnnotations().get(OperatorAnnotations.USE_HASH_GROUP_BY) == Boolean.TRUE)
-                        || (gby.getAnnotations().get(OperatorAnnotations.USE_EXTERNAL_GROUP_BY) == Boolean.TRUE))) {
-                    return GroupByAlgorithm.HASH_GROUP_BY;
-                }
+            if (hashGroupPossible(gby, topLevelOp) && hashGroupHint(gby)) {
+                return GroupByAlgorithm.HASH_GROUP_BY;
             }
             return GroupByAlgorithm.SORT_GROUP_BY;
+        }
+
+        protected boolean hashGroupPossible(GroupByOperator gby, Boolean topLevelOp) {
+            if (topLevelOp && gby.getNestedPlans().size() == 1) {
+                List<Mutable<ILogicalOperator>> gbyRoots = gby.getNestedPlans().get(0).getRoots();
+                if (gbyRoots.size() == 1) {
+                    Mutable<ILogicalOperator> op = gbyRoots.get(0);
+                    if (op.getValue().getInputs().get(0).getValue()
+                            .getOperatorTag() == LogicalOperatorTag.NESTEDTUPLESOURCE) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        protected boolean hashGroupHint(GroupByOperator gby) {
+            if ((gby.getAnnotations().get(OperatorAnnotations.USE_HASH_GROUP_BY) == Boolean.TRUE)
+                    || (gby.getAnnotations().get(OperatorAnnotations.USE_EXTERNAL_GROUP_BY) == Boolean.TRUE)) {
+                return true;
+            }
+            return false;
         }
 
         protected ExternalGroupByPOperator createExternalGroupByPOperator(GroupByOperator gby)
@@ -380,8 +401,14 @@ public class SetAlgebricksPhysicalOperatorsRule implements IAlgebraicRewriteRule
         }
 
         @Override
-        public IPhysicalOperator visitWriteOperator(WriteOperator op, Boolean topLevelOp) {
-            return new SinkWritePOperator();
+        public IPhysicalOperator visitWriteOperator(WriteOperator op, Boolean topLevelOp) throws AlgebricksException {
+            ILogicalExpression sourceExpr = op.getSourceExpression().getValue();
+            if (sourceExpr.getExpressionTag() != LogicalExpressionTag.VARIABLE) {
+                throw AlgebricksException.create(ErrorCode.EXPR_NOT_NORMALIZED, sourceExpr.getSourceLocation());
+            }
+            ensureAllVariables(op.getPartitionExpressions(), v -> v);
+            ensureAllVariables(op.getOrderExpressions(), Pair::getSecond);
+            return new SinkWritePOperator(op.getSourceVariable(), op.getPartitionVariables(), op.getOrderColumns());
         }
 
         @Override

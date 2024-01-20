@@ -22,12 +22,12 @@ package org.apache.asterix.metadata.entitytupletranslators;
 import java.util.Calendar;
 
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.common.metadata.MetadataUtil;
 import org.apache.asterix.common.transactions.TxnId;
 import org.apache.asterix.metadata.MetadataNode;
 import org.apache.asterix.metadata.bootstrap.DatatypeEntity;
 import org.apache.asterix.metadata.bootstrap.MetadataRecordTypes;
 import org.apache.asterix.metadata.entities.Datatype;
-import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.metadata.utils.TypeUtil;
 import org.apache.asterix.om.base.ABoolean;
 import org.apache.asterix.om.base.AOrderedList;
@@ -192,8 +192,8 @@ public class DatatypeTupleTranslator extends AbstractDatatypeTupleTranslator<Dat
         IAType fieldType = dataType.getDatatype();
         if (fieldType.getTypeTag().isDerivedType()) {
             fieldValue.reset();
-            writeDerivedTypeRecord(dataType.getDataverseName(), (AbstractComplexType) fieldType,
-                    fieldValue.getDataOutput(), dataType.getIsAnonymous());
+            writeDerivedTypeRecord(dataType.getDatabaseName(), dataType.getDataverseName(),
+                    (AbstractComplexType) fieldType, fieldValue.getDataOutput(), dataType.getIsAnonymous());
             recordBuilder.addField(datatypeEntity.derivedIndex(), fieldValue);
         }
 

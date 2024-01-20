@@ -25,13 +25,13 @@ import java.util.Map;
 
 import org.apache.asterix.common.config.DatasetConfig.DatasetType;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.common.metadata.MetadataUtil;
 import org.apache.asterix.metadata.bootstrap.DatasetEntity;
 import org.apache.asterix.metadata.dataset.DatasetFormatInfo;
 import org.apache.asterix.metadata.entities.Dataset;
 import org.apache.asterix.metadata.entities.InternalDatasetDetails;
 import org.apache.asterix.metadata.entities.InternalDatasetDetails.FileStructure;
 import org.apache.asterix.metadata.entities.InternalDatasetDetails.PartitioningStrategy;
-import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.om.types.BuiltinType;
 import org.apache.asterix.runtime.compression.CompressionManager;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
@@ -56,11 +56,15 @@ public class DatasetTupleTranslatorTest {
                     Collections.singletonList(BuiltinType.AINT64), false, null, null);
 
             DataverseName dv = DataverseName.createSinglePartName("test");
+            DataverseName itemTypeDv = DataverseName.createSinglePartName("foo");
+            DataverseName metaTypeDv = DataverseName.createSinglePartName("CB");
             String db = MetadataUtil.databaseFor(dv);
-            Dataset dataset = new Dataset(db, dv, "log", DataverseName.createSinglePartName("foo"), "LogType",
-                    DataverseName.createSinglePartName("CB"), "MetaType", "DEFAULT_NG_ALL_NODES", "prefix",
-                    compactionPolicyProperties, details, Collections.emptyMap(), DatasetType.INTERNAL, 115, 0,
-                    CompressionManager.NONE, DatasetFormatInfo.SYSTEM_DEFAULT);
+            String itemTypeDb = MetadataUtil.databaseFor(itemTypeDv);
+            String metaTypeDb = MetadataUtil.databaseFor(metaTypeDv);
+            Dataset dataset = new Dataset(db, dv, "log", itemTypeDb, itemTypeDv, "LogType", metaTypeDb, metaTypeDv,
+                    "MetaType", "DEFAULT_NG_ALL_NODES", "prefix", compactionPolicyProperties, details,
+                    Collections.emptyMap(), DatasetType.INTERNAL, 115, 0, CompressionManager.NONE,
+                    DatasetFormatInfo.SYSTEM_DEFAULT);
             DatasetTupleTranslator dtTranslator = new DatasetTupleTranslator(true, DatasetEntity.of(false));
             ITupleReference tuple = dtTranslator.getTupleFromMetadataEntity(dataset);
             Dataset deserializedDataset = dtTranslator.getMetadataEntityFromTuple(tuple);

@@ -18,6 +18,7 @@
  */
 package org.apache.asterix.external.util;
 
+import static org.apache.asterix.common.metadata.MetadataConstants.DEFAULT_DATABASE;
 import static org.apache.asterix.external.util.ExternalDataConstants.DEFINITION_FIELD_NAME;
 import static org.apache.asterix.external.util.ExternalDataConstants.KEY_DELIMITER;
 import static org.apache.asterix.external.util.ExternalDataConstants.KEY_ESCAPE;
@@ -62,6 +63,7 @@ import org.apache.asterix.common.functions.ExternalFunctionLanguage;
 import org.apache.asterix.common.library.ILibrary;
 import org.apache.asterix.common.library.ILibraryManager;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.common.metadata.Namespace;
 import org.apache.asterix.external.api.IDataParserFactory;
 import org.apache.asterix.external.api.IExternalDataSourceFactory.DataSourceType;
 import org.apache.asterix.external.api.IInputStreamFactory;
@@ -194,11 +196,11 @@ public class ExternalDataUtils {
     }
 
     public static IInputStreamFactory createExternalInputStreamFactory(ILibraryManager libraryManager,
-            DataverseName dataverse, String stream) throws HyracksDataException {
+            Namespace namespace, String stream) throws HyracksDataException {
         try {
             String libraryName = getLibraryName(stream);
             String className = getExternalClassName(stream);
-            ILibrary lib = libraryManager.getLibrary(dataverse, libraryName);
+            ILibrary lib = libraryManager.getLibrary(namespace, libraryName);
             if (lib.getLanguage() != ExternalFunctionLanguage.JAVA) {
                 throw new HyracksDataException("Unexpected library language: " + lib.getLanguage());
             }
@@ -207,6 +209,10 @@ public class ExternalDataUtils {
         } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
             throw new RuntimeDataException(ErrorCode.UTIL_EXTERNAL_DATA_UTILS_FAIL_CREATE_STREAM_FACTORY, e);
         }
+    }
+
+    public static String getDatasetDatabase(Map<String, String> configuration) throws AsterixException {
+        return configuration.get(ExternalDataConstants.KEY_DATABASE_DATAVERSE);
     }
 
     public static DataverseName getDatasetDataverse(Map<String, String> configuration) throws AsterixException {
@@ -283,7 +289,7 @@ public class ExternalDataUtils {
         String libraryName = dataverseAndLibrary[1];
         ILibrary lib;
         try {
-            lib = libraryManager.getLibrary(dataverseName, libraryName);
+            lib = libraryManager.getLibrary(new Namespace(DEFAULT_DATABASE, dataverseName), libraryName);
         } catch (HyracksDataException e) {
             throw new AsterixException("Cannot load library", e);
         }
@@ -306,7 +312,7 @@ public class ExternalDataUtils {
                     parserFactoryName.indexOf(ExternalDataConstants.EXTERNAL_LIBRARY_SEPARATOR));
             ILibrary lib;
             try {
-                lib = libraryManager.getLibrary(dataverse, library);
+                lib = libraryManager.getLibrary(new Namespace(DEFAULT_DATABASE, dataverse), library);
             } catch (HyracksDataException e) {
                 throw new AsterixException("Cannot load library", e);
             }
@@ -342,11 +348,13 @@ public class ExternalDataUtils {
         }
     }
 
-    public static void prepareFeed(Map<String, String> configuration, DataverseName dataverseName, String feedName) {
+    public static void prepareFeed(Map<String, String> configuration, String databaseName, DataverseName dataverseName,
+            String feedName) {
         if (!configuration.containsKey(ExternalDataConstants.KEY_IS_FEED)) {
             configuration.put(ExternalDataConstants.KEY_IS_FEED, ExternalDataConstants.TRUE);
         }
         configuration.computeIfAbsent(ExternalDataConstants.KEY_LOG_INGESTION_EVENTS, k -> ExternalDataConstants.TRUE);
+        configuration.put(ExternalDataConstants.KEY_DATABASE_DATAVERSE, databaseName);
         configuration.put(ExternalDataConstants.KEY_DATASET_DATAVERSE, dataverseName.getCanonicalForm());
         configuration.put(ExternalDataConstants.KEY_FEED_NAME, feedName);
     }
@@ -762,7 +770,7 @@ public class ExternalDataUtils {
         String definition = configuration.get(ExternalDataConstants.DEFINITION_FIELD_NAME);
         String subPath = configuration.get(ExternalDataConstants.SUBPATH);
 
-        boolean hasRoot = root != null && !root.isEmpty();
+        boolean hasRoot = root != null;
         boolean hasDefinition = definition != null && !definition.isEmpty();
         boolean hasSubPath = subPath != null && !subPath.isEmpty();
 
@@ -794,7 +802,7 @@ public class ExternalDataUtils {
     }
 
     public static String appendSlash(String string, boolean appendSlash) {
-        return appendSlash ? string + (!string.endsWith("/") ? "/" : "") : string;
+        return appendSlash && !string.isEmpty() ? string + (!string.endsWith("/") ? "/" : "") : string;
     }
 
     /**
@@ -1041,5 +1049,27 @@ public class ExternalDataUtils {
         }
 
         return protocol + "://" + container + "/";
+    }
+
+    public static void validateType(Map<String, String> properties, ARecordType itemType) throws CompilationException {
+        boolean embedValues = Boolean.parseBoolean(
+                properties.getOrDefault(ExternalDataConstants.KEY_EMBED_FILTER_VALUES, ExternalDataConstants.FALSE));
+        if (ExternalDataPrefix.containsComputedFields(properties) && embedValues && !itemType.isOpen()) {
+            throw new CompilationException(ErrorCode.COMPILATION_ERROR, "A closed type cannot be used when '"
+                    + ExternalDataConstants.KEY_EMBED_FILTER_VALUES + "' is enabled");
+        }
+    }
+
+    public static String getPathKey(String adapter) {
+        String normalizedAdapter = adapter.toUpperCase();
+        switch (normalizedAdapter) {
+            case ExternalDataConstants.KEY_ADAPTER_NAME_AWS_S3:
+            case ExternalDataConstants.KEY_ADAPTER_NAME_AZURE_BLOB:
+            case ExternalDataConstants.KEY_ADAPTER_NAME_AZURE_DATA_LAKE:
+            case ExternalDataConstants.KEY_ADAPTER_NAME_GCS:
+                return ExternalDataConstants.DEFINITION_FIELD_NAME;
+            default:
+                return ExternalDataConstants.KEY_PATH;
+        }
     }
 }

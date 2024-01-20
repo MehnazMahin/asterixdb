@@ -23,6 +23,7 @@ import java.rmi.RemoteException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.asterix.common.config.MetadataProperties;
@@ -39,6 +40,7 @@ import org.apache.asterix.external.indexing.ExternalFile;
 import org.apache.asterix.metadata.api.IAsterixStateProxy;
 import org.apache.asterix.metadata.api.IExtensionMetadataEntity;
 import org.apache.asterix.metadata.api.IExtensionMetadataSearchKey;
+import org.apache.asterix.metadata.api.IMetadataIndex;
 import org.apache.asterix.metadata.api.IMetadataManager;
 import org.apache.asterix.metadata.api.IMetadataNode;
 import org.apache.asterix.metadata.entities.CompactionPolicy;
@@ -65,6 +67,7 @@ import org.apache.hyracks.util.ExitUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Strings;
 
 /**
@@ -170,6 +173,37 @@ public abstract class MetadataManager implements IMetadataManager {
     }
 
     @Override
+    public Database getDatabase(MetadataTransactionContext ctx, String databaseName) throws AlgebricksException {
+        Objects.requireNonNull(databaseName);
+        // first look in the context to see if this transaction created the
+        // requested database itself (but the database is still uncommitted)
+        Database database = ctx.getDatabase(databaseName);
+        if (database != null) {
+            // don't add this database to the cache, since it is still uncommitted
+            return database;
+        }
+        if (ctx.databaseIsDropped(databaseName)) {
+            // database has been dropped by this transaction but could still be in the cache
+            return null;
+        }
+        database = cache.getDatabase(databaseName);
+        if (database != null) {
+            // database is already in the cache, don't add it again
+            return database;
+        }
+        try {
+            database = metadataNode.getDatabase(ctx.getTxnId(), databaseName);
+        } catch (RemoteException e) {
+            throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
+        }
+        // we fetched the database from the MetadataNode. add it to the cache when this transaction commits
+        if (database != null) {
+            ctx.addDatabase(database);
+        }
+        return database;
+    }
+
+    @Override
     public void addDatabase(MetadataTransactionContext ctx, Database database) throws AlgebricksException {
         try {
             metadataNode.addDatabase(ctx.getTxnId(), database);
@@ -182,6 +216,7 @@ public abstract class MetadataManager implements IMetadataManager {
     @Override
     public void dropDatabase(MetadataTransactionContext ctx, String databaseName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(databaseName);
             metadataNode.dropDatabase(ctx.getTxnId(), databaseName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -203,6 +238,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public void dropDataverse(MetadataTransactionContext ctx, String database, DataverseName dataverseName)
             throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             metadataNode.dropDataverse(ctx.getTxnId(), database, dataverseName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -214,7 +250,17 @@ public abstract class MetadataManager implements IMetadataManager {
     public boolean isDataverseNotEmpty(MetadataTransactionContext ctx, String database, DataverseName dataverseName)
             throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             return metadataNode.isDataverseNotEmpty(ctx.getTxnId(), database, dataverseName);
+        } catch (RemoteException e) {
+            throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
+        }
+    }
+
+    @Override
+    public List<Database> getDatabases(MetadataTransactionContext ctx) throws AlgebricksException {
+        try {
+            return metadataNode.getDatabases(ctx.getTxnId());
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
         }
@@ -233,21 +279,21 @@ public abstract class MetadataManager implements IMetadataManager {
     public Dataverse getDataverse(MetadataTransactionContext ctx, String database, DataverseName dataverseName)
             throws AlgebricksException {
         //TODO(DB): change cache to consider database
-
+        Objects.requireNonNull(database);
         // First look in the context to see if this transaction created the
         // requested dataverse itself (but the dataverse is still uncommitted).
-        Dataverse dataverse = ctx.getDataverse(dataverseName);
+        Dataverse dataverse = ctx.getDataverse(database, dataverseName);
         if (dataverse != null) {
             // Don't add this dataverse to the cache, since it is still
             // uncommitted.
             return dataverse;
         }
-        if (ctx.dataverseIsDropped(dataverseName)) {
+        if (ctx.dataverseIsDropped(database, dataverseName)) {
             // Dataverse has been dropped by this transaction but could still be
             // in the cache.
             return null;
         }
-        dataverse = cache.getDataverse(dataverseName);
+        dataverse = cache.getDataverse(database, dataverseName);
         if (dataverse != null) {
             // Dataverse is already in the cache, don't add it again.
             return dataverse;
@@ -266,10 +312,26 @@ public abstract class MetadataManager implements IMetadataManager {
     }
 
     @Override
+    public List<Dataset> getDatabaseDatasets(MetadataTransactionContext ctx, String database)
+            throws AlgebricksException {
+        List<Dataset> databaseDatasets;
+        try {
+            Objects.requireNonNull(database);
+            // assuming that the transaction can read its own writes on the metadata node
+            databaseDatasets = metadataNode.getDatabaseDatasets(ctx.getTxnId(), database);
+        } catch (RemoteException e) {
+            throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
+        }
+        // don't update the cache to avoid checking against the transaction's uncommitted datasets
+        return databaseDatasets;
+    }
+
+    @Override
     public List<Dataset> getDataverseDatasets(MetadataTransactionContext ctx, String database,
             DataverseName dataverseName) throws AlgebricksException {
         List<Dataset> dataverseDatasets;
         try {
+            Objects.requireNonNull(database);
             // Assuming that the transaction can read its own writes on the metadata node.
             dataverseDatasets = metadataNode.getDataverseDatasets(ctx.getTxnId(), database, dataverseName);
         } catch (RemoteException e) {
@@ -296,6 +358,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public void dropDataset(MetadataTransactionContext ctx, String database, DataverseName dataverseName,
             String datasetName, boolean force) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             metadataNode.dropDataset(ctx.getTxnId(), database, dataverseName, datasetName, force);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -307,22 +370,22 @@ public abstract class MetadataManager implements IMetadataManager {
     @Override
     public Dataset getDataset(MetadataTransactionContext ctx, String database, DataverseName dataverseName,
             String datasetName) throws AlgebricksException {
-
+        Objects.requireNonNull(database);
         // First look in the context to see if this transaction created the
         // requested dataset itself (but the dataset is still uncommitted).
-        Dataset dataset = ctx.getDataset(dataverseName, datasetName);
+        Dataset dataset = ctx.getDataset(database, dataverseName, datasetName);
         if (dataset != null) {
             // Don't add this dataverse to the cache, since it is still
             // uncommitted.
             return dataset;
         }
-        if (ctx.datasetIsDropped(dataverseName, datasetName)) {
+        if (ctx.datasetIsDropped(database, dataverseName, datasetName)) {
             // Dataset has been dropped by this transaction but could still be
             // in the cache.
             return null;
         }
 
-        dataset = cache.getDataset(dataverseName, datasetName);
+        dataset = cache.getDataset(database, dataverseName, datasetName);
         if (dataset != null) {
             // Dataset is already in the cache, don't add it again.
             return dataset;
@@ -343,6 +406,7 @@ public abstract class MetadataManager implements IMetadataManager {
     @Override
     public List<Index> getDatasetIndexes(MetadataTransactionContext ctx, String database, DataverseName dataverseName,
             String datasetName) throws AlgebricksException {
+        Objects.requireNonNull(database);
         Dataset dataset = getDataset(ctx, database, dataverseName, datasetName);
         if (dataset == null) {
             return Collections.emptyList();
@@ -372,6 +436,7 @@ public abstract class MetadataManager implements IMetadataManager {
             DataverseName dataverse, String policyName) throws AlgebricksException {
         CompactionPolicy compactionPolicy;
         try {
+            Objects.requireNonNull(database);
             compactionPolicy = metadataNode.getCompactionPolicy(ctx.getTxnId(), database, dataverse, policyName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -398,6 +463,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public void dropDatatype(MetadataTransactionContext ctx, String database, DataverseName dataverseName,
             String datatypeName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             metadataNode.dropDatatype(ctx.getTxnId(), database, dataverseName, datatypeName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -408,21 +474,22 @@ public abstract class MetadataManager implements IMetadataManager {
     @Override
     public Datatype getDatatype(MetadataTransactionContext ctx, String database, DataverseName dataverseName,
             String datatypeName) throws AlgebricksException {
+        Objects.requireNonNull(database);
         // First look in the context to see if this transaction created the
         // requested datatype itself (but the datatype is still uncommitted).
-        Datatype datatype = ctx.getDatatype(dataverseName, datatypeName);
+        Datatype datatype = ctx.getDatatype(database, dataverseName, datatypeName);
         if (datatype != null) {
             // Don't add this dataverse to the cache, since it is still
             // uncommitted.
             return datatype;
         }
-        if (ctx.datatypeIsDropped(dataverseName, datatypeName)) {
+        if (ctx.datatypeIsDropped(database, dataverseName, datatypeName)) {
             // Datatype has been dropped by this transaction but could still be
             // in the cache.
             return null;
         }
 
-        datatype = cache.getDatatype(dataverseName, datatypeName);
+        datatype = cache.getDatatype(database, dataverseName, datatypeName);
         if (datatype != null) {
             // Datatype is already in the cache, don't add it again.
             return datatype;
@@ -464,6 +531,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public void dropIndex(MetadataTransactionContext ctx, String database, DataverseName dataverseName,
             String datasetName, String indexName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             metadataNode.dropIndex(ctx.getTxnId(), database, dataverseName, datasetName, indexName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -474,23 +542,23 @@ public abstract class MetadataManager implements IMetadataManager {
     @Override
     public Index getIndex(MetadataTransactionContext ctx, String database, DataverseName dataverseName,
             String datasetName, String indexName) throws AlgebricksException {
-
+        Objects.requireNonNull(database);
         // First look in the context to see if this transaction created the
         // requested index itself (but the index is still uncommitted).
-        Index index = ctx.getIndex(dataverseName, datasetName, indexName);
+        Index index = ctx.getIndex(database, dataverseName, datasetName, indexName);
         if (index != null) {
             // Don't add this index to the cache, since it is still
             // uncommitted.
             return index;
         }
 
-        if (ctx.indexIsDropped(dataverseName, datasetName, indexName)) {
+        if (ctx.indexIsDropped(database, dataverseName, datasetName, indexName)) {
             // Index has been dropped by this transaction but could still be
             // in the cache.
             return null;
         }
 
-        index = cache.getIndex(dataverseName, datasetName, indexName);
+        index = cache.getIndex(database, dataverseName, datasetName, indexName);
         if (index != null) {
             // Index is already in the cache, don't add it again.
             return index;
@@ -621,7 +689,8 @@ public abstract class MetadataManager implements IMetadataManager {
             // in the cache.
             return null;
         }
-        if (ctx.getDataverse(functionSignature.getDataverseName()) != null) {
+        //TODO(DB): review this and other similar ones
+        if (ctx.getDataverse(functionSignature.getDatabaseName(), functionSignature.getDataverseName()) != null) {
             // This transaction has dropped and subsequently created the same
             // dataverse.
             return null;
@@ -648,6 +717,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public List<Function> getDataverseFunctions(MetadataTransactionContext ctx, String database,
             DataverseName dataverseName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             return metadataNode.getDataverseFunctions(ctx.getTxnId(), database, dataverseName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -669,6 +739,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public void dropFullTextFilter(MetadataTransactionContext mdTxnCtx, String database, DataverseName dataverseName,
             String filterName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             metadataNode.dropFullTextFilter(mdTxnCtx.getTxnId(), database, dataverseName, filterName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -679,28 +750,29 @@ public abstract class MetadataManager implements IMetadataManager {
     @Override
     public FullTextFilterMetadataEntity getFullTextFilter(MetadataTransactionContext ctx, String database,
             DataverseName dataverseName, String filterName) throws AlgebricksException {
+        Objects.requireNonNull(database);
         // First look in the context to see if this transaction created the
         // requested full-text filter itself (but the full-text filter is still uncommitted).
-        FullTextFilterMetadataEntity filter = ctx.getFullTextFilter(dataverseName, filterName);
+        FullTextFilterMetadataEntity filter = ctx.getFullTextFilter(database, dataverseName, filterName);
         if (filter != null) {
             // Don't add this filter to the cache, since it is still
             // uncommitted.
             return filter;
         }
 
-        if (ctx.fullTextFilterIsDropped(dataverseName, filterName)) {
+        if (ctx.fullTextFilterIsDropped(database, dataverseName, filterName)) {
             // Filter has been dropped by this transaction but could still be
             // in the cache.
             return null;
         }
 
-        if (ctx.getDataverse(dataverseName) != null) {
+        if (ctx.getDataverse(database, dataverseName) != null) {
             // This transaction has dropped and subsequently created the same
             // dataverse.
             return null;
         }
 
-        filter = cache.getFullTextFilter(dataverseName, filterName);
+        filter = cache.getFullTextFilter(database, dataverseName, filterName);
         if (filter != null) {
             // filter is already in the cache, don't add it again.
             return filter;
@@ -737,28 +809,29 @@ public abstract class MetadataManager implements IMetadataManager {
     @Override
     public FullTextConfigMetadataEntity getFullTextConfig(MetadataTransactionContext ctx, String database,
             DataverseName dataverseName, String configName) throws AlgebricksException {
+        Objects.requireNonNull(database);
         // First look in the context to see if this transaction created the
         // requested full-text config itself (but the full-text config is still uncommitted).
-        FullTextConfigMetadataEntity configMetadataEntity = ctx.getFullTextConfig(dataverseName, configName);
+        FullTextConfigMetadataEntity configMetadataEntity = ctx.getFullTextConfig(database, dataverseName, configName);
         if (configMetadataEntity != null) {
             // Don't add this config to the cache, since it is still
             // uncommitted.
             return configMetadataEntity;
         }
 
-        if (ctx.fullTextConfigIsDropped(dataverseName, configName)) {
+        if (ctx.fullTextConfigIsDropped(database, dataverseName, configName)) {
             // config has been dropped by this transaction but could still be
             // in the cache.
             return null;
         }
 
-        if (ctx.getDataverse(dataverseName) != null) {
+        if (ctx.getDataverse(database, dataverseName) != null) {
             // This transaction has dropped and subsequently created the same
             // dataverse.
             return null;
         }
 
-        configMetadataEntity = cache.getFullTextConfig(dataverseName, configName);
+        configMetadataEntity = cache.getFullTextConfig(database, dataverseName, configName);
         if (configMetadataEntity != null) {
             // config is already in the cache, don't add it again.
             return configMetadataEntity;
@@ -782,6 +855,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public void dropFullTextConfig(MetadataTransactionContext mdTxnCtx, String database, DataverseName dataverseName,
             String configName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             metadataNode.dropFullTextConfig(mdTxnCtx.getTxnId(), database, dataverseName, configName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -822,6 +896,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public void dropAdapter(MetadataTransactionContext ctx, String database, DataverseName dataverseName, String name)
             throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             metadataNode.dropAdapter(ctx.getTxnId(), database, dataverseName, name);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -834,6 +909,7 @@ public abstract class MetadataManager implements IMetadataManager {
             String name) throws AlgebricksException {
         DatasourceAdapter adapter;
         try {
+            Objects.requireNonNull(database);
             adapter = metadataNode.getAdapter(ctx.getTxnId(), database, dataverseName, name);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -845,11 +921,27 @@ public abstract class MetadataManager implements IMetadataManager {
     public void dropLibrary(MetadataTransactionContext ctx, String database, DataverseName dataverseName,
             String libraryName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             metadataNode.dropLibrary(ctx.getTxnId(), database, dataverseName, libraryName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
         }
         ctx.dropLibrary(database, dataverseName, libraryName);
+    }
+
+    @Override
+    public List<Library> getDatabaseLibraries(MetadataTransactionContext ctx, String database)
+            throws AlgebricksException {
+        List<Library> databaseLibraries;
+        try {
+            // assuming that the transaction can read its own writes on the metadata node
+            Objects.requireNonNull(database);
+            databaseLibraries = metadataNode.getDatabaseLibraries(ctx.getTxnId(), database);
+        } catch (RemoteException e) {
+            throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
+        }
+        // don't update the cache to avoid checking against the transaction's uncommitted functions
+        return databaseLibraries;
     }
 
     @Override
@@ -859,6 +951,7 @@ public abstract class MetadataManager implements IMetadataManager {
         try {
             // Assuming that the transaction can read its own writes on the
             // metadata node.
+            Objects.requireNonNull(database);
             dataverseLibaries = metadataNode.getDataverseLibraries(ctx.getTxnId(), database, dataverseName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -883,6 +976,7 @@ public abstract class MetadataManager implements IMetadataManager {
             String libraryName) throws AlgebricksException {
         Library library;
         try {
+            Objects.requireNonNull(database);
             library = metadataNode.getLibrary(ctx.getTxnId(), database, dataverseName, libraryName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -895,6 +989,7 @@ public abstract class MetadataManager implements IMetadataManager {
             String policyName) throws AlgebricksException {
         FeedPolicyEntity feedPolicy;
         try {
+            Objects.requireNonNull(database);
             feedPolicy = metadataNode.getFeedPolicy(ctx.getTxnId(), database, dataverseName, policyName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -907,6 +1002,7 @@ public abstract class MetadataManager implements IMetadataManager {
             throws AlgebricksException {
         Feed feed;
         try {
+            Objects.requireNonNull(database);
             feed = metadataNode.getFeed(ctx.getTxnId(), database, dataverseName, feedName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -919,6 +1015,7 @@ public abstract class MetadataManager implements IMetadataManager {
             throws AlgebricksException {
         List<Feed> feeds;
         try {
+            Objects.requireNonNull(database);
             feeds = metadataNode.getFeeds(ctx.getTxnId(), database, dataverseName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -932,6 +1029,7 @@ public abstract class MetadataManager implements IMetadataManager {
         Feed feed;
         List<FeedConnection> feedConnections;
         try {
+            Objects.requireNonNull(database);
             feed = metadataNode.getFeed(ctx.getTxnId(), database, dataverseName, feedName);
             feedConnections = metadataNode.getFeedConnections(ctx.getTxnId(), database, dataverseName, feedName);
             metadataNode.dropFeed(ctx.getTxnId(), database, dataverseName, feedName);
@@ -971,6 +1069,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public void dropFeedConnection(MetadataTransactionContext ctx, String database, DataverseName dataverseName,
             String feedName, String datasetName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             metadataNode.dropFeedConnection(ctx.getTxnId(), database, dataverseName, feedName, datasetName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -982,6 +1081,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public FeedConnection getFeedConnection(MetadataTransactionContext ctx, String database,
             DataverseName dataverseName, String feedName, String datasetName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             return metadataNode.getFeedConnection(ctx.getTxnId(), database, dataverseName, feedName, datasetName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -992,6 +1092,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public List<FeedConnection> getFeedConections(MetadataTransactionContext ctx, String database,
             DataverseName dataverseName, String feedName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             return metadataNode.getFeedConnections(ctx.getTxnId(), database, dataverseName, feedName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -1003,6 +1104,7 @@ public abstract class MetadataManager implements IMetadataManager {
             DataverseName dataverseName) throws AlgebricksException {
         List<DatasourceAdapter> dataverseAdapters;
         try {
+            Objects.requireNonNull(database);
             dataverseAdapters = metadataNode.getDataverseAdapters(mdTxnCtx.getTxnId(), database, dataverseName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -1015,6 +1117,7 @@ public abstract class MetadataManager implements IMetadataManager {
             String policyName) throws AlgebricksException {
         FeedPolicyEntity feedPolicy;
         try {
+            Objects.requireNonNull(database);
             feedPolicy = metadataNode.getFeedPolicy(mdTxnCtx.getTxnId(), database, dataverseName, policyName);
             metadataNode.dropFeedPolicy(mdTxnCtx.getTxnId(), database, dataverseName, policyName);
         } catch (RemoteException e) {
@@ -1028,6 +1131,7 @@ public abstract class MetadataManager implements IMetadataManager {
             DataverseName dataverseName) throws AlgebricksException {
         List<FeedPolicyEntity> dataverseFeedPolicies;
         try {
+            Objects.requireNonNull(database);
             dataverseFeedPolicies = metadataNode.getDataverseFeedPolicies(mdTxnCtx.getTxnId(), database, dataverseName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -1071,6 +1175,7 @@ public abstract class MetadataManager implements IMetadataManager {
             String datasetName, Integer fileNumber) throws AlgebricksException {
         ExternalFile file;
         try {
+            Objects.requireNonNull(database);
             file = metadataNode.getExternalFile(ctx.getTxnId(), database, dataverseName, datasetName, fileNumber);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -1091,6 +1196,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public void dropSynonym(MetadataTransactionContext ctx, String database, DataverseName dataverseName,
             String synonymName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             metadataNode.dropSynonym(ctx.getTxnId(), database, dataverseName, synonymName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -1101,6 +1207,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public Synonym getSynonym(MetadataTransactionContext ctx, String database, DataverseName dataverseName,
             String synonymName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             return metadataNode.getSynonym(ctx.getTxnId(), database, dataverseName, synonymName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -1111,6 +1218,7 @@ public abstract class MetadataManager implements IMetadataManager {
     public List<Synonym> getDataverseSynonyms(MetadataTransactionContext ctx, String database,
             DataverseName dataverseName) throws AlgebricksException {
         try {
+            Objects.requireNonNull(database);
             return metadataNode.getDataverseSynonyms(ctx.getTxnId(), database, dataverseName);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
@@ -1211,6 +1319,16 @@ public abstract class MetadataManager implements IMetadataManager {
             IExtensionMetadataSearchKey searchKey) throws AlgebricksException {
         try {
             return metadataNode.getEntities(mdTxnCtx.getTxnId(), searchKey);
+        } catch (RemoteException e) {
+            throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
+        }
+    }
+
+    @Override
+    public JsonNode getEntitiesAsJson(MetadataTransactionContext mdTxnCtx, IMetadataIndex metadataIndex,
+            int payloadPosition) throws AlgebricksException {
+        try {
+            return metadataNode.getEntitiesAsJson(mdTxnCtx.getTxnId(), metadataIndex, payloadPosition);
         } catch (RemoteException e) {
             throw new MetadataException(ErrorCode.REMOTE_EXCEPTION_WHEN_CALLING_METADATA_NODE, e);
         }

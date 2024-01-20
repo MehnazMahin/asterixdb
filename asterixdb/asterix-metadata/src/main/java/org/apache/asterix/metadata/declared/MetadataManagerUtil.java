@@ -29,6 +29,7 @@ import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.common.metadata.MetadataConstants;
 import org.apache.asterix.metadata.MetadataManager;
 import org.apache.asterix.metadata.MetadataTransactionContext;
 import org.apache.asterix.metadata.entities.Dataset;
@@ -43,7 +44,6 @@ import org.apache.asterix.metadata.entities.Index;
 import org.apache.asterix.metadata.entities.InternalDatasetDetails;
 import org.apache.asterix.metadata.entities.NodeGroup;
 import org.apache.asterix.metadata.entities.Synonym;
-import org.apache.asterix.metadata.utils.MetadataConstants;
 import org.apache.asterix.om.types.ARecordType;
 import org.apache.asterix.om.types.IAType;
 import org.apache.asterix.om.utils.ProjectionFiltrationTypeUtil;
@@ -59,9 +59,9 @@ public class MetadataManagerUtil {
         throw new AssertionError("This util class should not be initialized.");
     }
 
-    public static IAType findType(MetadataTransactionContext mdTxnCtx, DataverseName dataverseName, String typeName)
-            throws AlgebricksException {
-        Datatype type = findTypeEntity(mdTxnCtx, null, dataverseName, typeName);
+    public static IAType findType(MetadataTransactionContext mdTxnCtx, String database, DataverseName dataverseName,
+            String typeName) throws AlgebricksException {
+        Datatype type = findTypeEntity(mdTxnCtx, database, dataverseName, typeName);
         return type != null ? type.getDatatype() : null;
     }
 
@@ -94,7 +94,7 @@ public class MetadataManagerUtil {
 
     public static Datatype findTypeEntity(MetadataTransactionContext mdTxnCtx, String database,
             DataverseName dataverseName, String typeName) throws AlgebricksException {
-        if (dataverseName == null || typeName == null) {
+        if (database == null || dataverseName == null || typeName == null) {
             return null;
         }
         Datatype type = MetadataManager.INSTANCE.getDatatype(mdTxnCtx, database, dataverseName, typeName);
@@ -104,16 +104,20 @@ public class MetadataManagerUtil {
         return type;
     }
 
-    public static ARecordType findOutputRecordType(MetadataTransactionContext mdTxnCtx, DataverseName dataverseName,
-            String outputRecordType) throws AlgebricksException {
+    public static ARecordType findOutputRecordType(MetadataTransactionContext mdTxnCtx, String database,
+            DataverseName dataverseName, String outputRecordType) throws AlgebricksException {
         if (outputRecordType == null) {
             return null;
+        }
+        if (database == null) {
+            throw new CompilationException(ErrorCode.COMPILATION_ERROR,
+                    "Cannot declare output-record-type with no database");
         }
         if (dataverseName == null) {
             throw new CompilationException(ErrorCode.COMPILATION_ERROR,
                     "Cannot declare output-record-type with no " + dataverse());
         }
-        IAType type = findType(mdTxnCtx, dataverseName, outputRecordType);
+        IAType type = findType(mdTxnCtx, database, dataverseName, outputRecordType);
         if (!(type instanceof ARecordType)) {
             throw new CompilationException(ErrorCode.COMPILATION_ERROR,
                     "Type " + outputRecordType + " is not a record type!");
@@ -125,8 +129,8 @@ public class MetadataManagerUtil {
             DataverseName dataverseName, String adapterName) throws AlgebricksException {
         DatasourceAdapter adapter;
         // search in default namespace (built-in adapter)
-        adapter = MetadataManager.INSTANCE.getAdapter(mdTxnCtx, null, MetadataConstants.METADATA_DATAVERSE_NAME,
-                adapterName);
+        adapter = MetadataManager.INSTANCE.getAdapter(mdTxnCtx, MetadataConstants.SYSTEM_DATABASE,
+                MetadataConstants.METADATA_DATAVERSE_NAME, adapterName);
 
         // search in dataverse (user-defined adapter)
         if (adapter == null) {
@@ -144,15 +148,16 @@ public class MetadataManagerUtil {
         return dataset;
     }
 
-    public static Dataset findDataset(MetadataTransactionContext mdTxnCtx, DataverseName dataverseName,
+    public static Dataset findDataset(MetadataTransactionContext mdTxnCtx, String database, DataverseName dataverseName,
             String datasetName) throws AlgebricksException {
-        return findDataset(mdTxnCtx, null, dataverseName, datasetName, false);
+        return findDataset(mdTxnCtx, database, dataverseName, datasetName, false);
     }
 
-    public static Dataset findExistingDataset(MetadataTransactionContext mdTxnCtx, DataverseName dataverseName,
-            String datasetName) throws AlgebricksException {
-        Dataset dataset = findDataset(mdTxnCtx, dataverseName, datasetName);
+    public static Dataset findExistingDataset(MetadataTransactionContext mdTxnCtx, String database,
+            DataverseName dataverseName, String datasetName) throws AlgebricksException {
+        Dataset dataset = findDataset(mdTxnCtx, database, dataverseName, datasetName);
         if (dataset == null) {
+            //TODO(DB): include database
             throw new AsterixException(ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE, datasetName, dataverseName);
         }
         return dataset;
@@ -223,8 +228,9 @@ public class MetadataManagerUtil {
 
     public static DataSource lookupSourceInMetadata(IClusterStateManager clusterStateManager,
             MetadataTransactionContext mdTxnCtx, DataSourceId id) throws AlgebricksException {
-        Dataset dataset = findDataset(mdTxnCtx, id.getDataverseName(), id.getDatasourceName());
+        Dataset dataset = findDataset(mdTxnCtx, id.getDatabaseName(), id.getDataverseName(), id.getDatasourceName());
         if (dataset == null) {
+            //TODO(DB): include database
             throw new AsterixException(ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE, id.getDatasourceName(),
                     id.getDataverseName());
         }
@@ -237,12 +243,15 @@ public class MetadataManagerUtil {
                 datasourceType = DataSource.Type.EXTERNAL_DATASET;
                 break;
             default:
+                //TODO(DB): include database
                 throw new AsterixException(ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE, id.getDatasourceName(),
                         id.getDataverseName());
         }
 
-        IAType itemType = findType(mdTxnCtx, dataset.getItemTypeDataverseName(), dataset.getItemTypeName());
-        IAType metaItemType = findType(mdTxnCtx, dataset.getMetaItemTypeDataverseName(), dataset.getMetaItemTypeName());
+        IAType itemType = findType(mdTxnCtx, dataset.getItemTypeDatabaseName(), dataset.getItemTypeDataverseName(),
+                dataset.getItemTypeName());
+        IAType metaItemType = findType(mdTxnCtx, dataset.getMetaItemTypeDatabaseName(),
+                dataset.getMetaItemTypeDataverseName(), dataset.getMetaItemTypeName());
         itemType = findTypeForDatasetWithoutType(itemType, metaItemType, dataset);
 
         INodeDomain domain = findNodeDomain(clusterStateManager, mdTxnCtx, dataset.getNodeGroupName());

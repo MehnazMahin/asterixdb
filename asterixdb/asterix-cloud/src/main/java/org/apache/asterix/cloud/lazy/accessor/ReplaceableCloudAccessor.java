@@ -19,17 +19,14 @@
 package org.apache.asterix.cloud.lazy.accessor;
 
 import java.io.FilenameFilter;
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import org.apache.asterix.cloud.CloudFileHandle;
-import org.apache.asterix.cloud.WriteBufferProvider;
 import org.apache.asterix.cloud.bulk.IBulkOperationCallBack;
 import org.apache.asterix.cloud.clients.ICloudClient;
-import org.apache.asterix.cloud.util.CloudFileUtil;
+import org.apache.asterix.cloud.lazy.IParallelCacher;
+import org.apache.asterix.common.utils.StorageConstants;
 import org.apache.asterix.common.utils.StoragePathUtil;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.api.io.FileReference;
@@ -45,22 +42,20 @@ import org.apache.logging.log4j.Logger;
 public class ReplaceableCloudAccessor extends AbstractLazyAccessor {
     private static final Logger LOGGER = LogManager.getLogger();
     private final Set<Integer> partitions;
-    private final AtomicInteger numberOfUncachedFiles;
-    private final WriteBufferProvider writeBufferProvider;
     private final ILazyAccessorReplacer replacer;
-    private final IBulkOperationCallBack callBack;
+    private final IParallelCacher cacher;
+    private final IBulkOperationCallBack deleteCallBack;
 
     public ReplaceableCloudAccessor(ICloudClient cloudClient, String bucket, IOManager localIoManager,
-            Set<Integer> partitions, int numberOfUncachedFiles, WriteBufferProvider writeBufferProvider,
-            ILazyAccessorReplacer replacer) {
+            Set<Integer> partitions, ILazyAccessorReplacer replacer, IParallelCacher cacher) {
         super(cloudClient, bucket, localIoManager);
         this.partitions = partitions;
-        this.numberOfUncachedFiles = new AtomicInteger(numberOfUncachedFiles);
-        this.writeBufferProvider = writeBufferProvider;
         this.replacer = replacer;
-        this.callBack = (numberOfAffectedLocalFiles, paths) -> {
-            int totalUncached = paths.size() - numberOfAffectedLocalFiles;
-            replaceAccessor(this.numberOfUncachedFiles.addAndGet(-totalUncached));
+        this.cacher = cacher;
+        deleteCallBack = deletedFiles -> {
+            if (cacher.remove(deletedFiles)) {
+                replace();
+            }
         };
     }
 
@@ -71,7 +66,7 @@ public class ReplaceableCloudAccessor extends AbstractLazyAccessor {
 
     @Override
     public IBulkOperationCallBack getBulkOperationCallBack() {
-        return callBack;
+        return deleteCallBack;
     }
 
     @Override
@@ -79,25 +74,74 @@ public class ReplaceableCloudAccessor extends AbstractLazyAccessor {
             IIOManager.FileSyncMode syncMode) throws HyracksDataException {
         FileReference fileRef = fileHandle.getFileReference();
         if (!localIoManager.exists(fileRef) && cloudClient.exists(bucket, fileRef.getRelativePath())) {
-            // File doesn't exist locally, download it.
-            ByteBuffer writeBuffer = writeBufferProvider.getBuffer();
-            try {
-                // TODO download for all partitions at once
-                LOGGER.info("Downloading {} ..", fileRef.getRelativePath());
-                CloudFileUtil.downloadFile(localIoManager, cloudClient, bucket, fileHandle, rwMode, syncMode,
-                        writeBuffer);
-                localIoManager.close(fileHandle);
-                LOGGER.info("Finished downloading {}..", fileRef.getRelativePath());
-            } finally {
-                writeBufferProvider.recycle(writeBuffer);
+            if (cacher.downloadData(fileRef)) {
+                replace();
             }
-            // TODO decrement by the number of downloaded files in all partitions (once the above TODO is fixed)
-            decrementNumberOfUncachedFiles();
         }
     }
 
     @Override
     public Set<FileReference> doList(FileReference dir, FilenameFilter filter) throws HyracksDataException {
+        if (isTxnDir(dir)) {
+            return cloudBackedList(dir, filter);
+        }
+        Set<FileReference> localList = localIoManager.list(dir, filter);
+        Set<FileReference> uncachedFiles = cacher.getUncachedFiles(dir, filter);
+        localList.addAll(uncachedFiles);
+        return localList;
+    }
+
+    private static boolean isTxnDir(FileReference dir) {
+        return dir.getRelativePath().startsWith(StorageConstants.METADATA_TXN_NOWAL_DIR_NAME)
+                || dir.getName().equals(StorageConstants.GLOBAL_TXN_DIR_NAME);
+    }
+
+    @Override
+    public boolean doExists(FileReference fileRef) throws HyracksDataException {
+        return localIoManager.exists(fileRef) || cloudClient.exists(bucket, fileRef.getRelativePath());
+    }
+
+    @Override
+    public long doGetSize(FileReference fileReference) throws HyracksDataException {
+        if (localIoManager.exists(fileReference)) {
+            return localIoManager.getSize(fileReference);
+        }
+        return cloudClient.getObjectSize(bucket, fileReference.getRelativePath());
+    }
+
+    @Override
+    public byte[] doReadAllBytes(FileReference fileRef) throws HyracksDataException {
+        if (!localIoManager.exists(fileRef) && isInNodePartition(fileRef.getRelativePath())) {
+            if (cacher.downloadMetadata(fileRef)) {
+                replace();
+            }
+        }
+        return localIoManager.readAllBytes(fileRef);
+    }
+
+    @Override
+    public void doDelete(FileReference fileReference) throws HyracksDataException {
+        // Never delete the storage dir in cloud storage
+        Set<FileReference> deletedFiles = doCloudDelete(fileReference);
+        if (cacher.remove(deletedFiles)) {
+            replace();
+        }
+        // Finally, delete locally
+        localIoManager.delete(fileReference);
+    }
+
+    @Override
+    public void doOverwrite(FileReference fileReference, byte[] bytes) throws HyracksDataException {
+        boolean existsLocally = localIoManager.exists(fileReference);
+        cloudClient.write(bucket, fileReference.getRelativePath(), bytes);
+        localIoManager.overwrite(fileReference, bytes);
+        if (!existsLocally && cacher.remove(fileReference)) {
+            replace();
+        }
+    }
+
+    private Set<FileReference> cloudBackedList(FileReference dir, FilenameFilter filter) throws HyracksDataException {
+        LOGGER.debug("CLOUD LIST: {}", dir);
         Set<String> cloudFiles = cloudClient.listObjects(bucket, dir.getRelativePath(), filter);
         if (cloudFiles.isEmpty()) {
             return Collections.emptySet();
@@ -120,100 +164,19 @@ public class ReplaceableCloudAccessor extends AbstractLazyAccessor {
         // Add the remaining files that are not stored locally in their designated partitions (if any)
         for (String cloudFile : cloudFiles) {
             FileReference localFile = localIoManager.resolve(cloudFile);
-            if (isInNodePartition(cloudFile) && dir.getDeviceHandle().equals(localFile.getDeviceHandle())) {
+            if (isInNodePartition(cloudFile) && StoragePathUtil.hasSameStorageRoot(dir, localFile)) {
                 localFiles.add(localFile);
             }
         }
         return localFiles;
     }
 
-    @Override
-    public boolean doExists(FileReference fileRef) throws HyracksDataException {
-        return localIoManager.exists(fileRef) || cloudClient.exists(bucket, fileRef.getRelativePath());
-    }
-
-    @Override
-    public long doGetSize(FileReference fileReference) throws HyracksDataException {
-        if (localIoManager.exists(fileReference)) {
-            return localIoManager.getSize(fileReference);
-        }
-        return cloudClient.getObjectSize(bucket, fileReference.getRelativePath());
-    }
-
-    @Override
-    public byte[] doReadAllBytes(FileReference fileRef) throws HyracksDataException {
-        if (!localIoManager.exists(fileRef) && isInNodePartition(fileRef.getRelativePath())) {
-            byte[] bytes = cloudClient.readAllBytes(bucket, fileRef.getRelativePath());
-            if (bytes != null && !partitions.isEmpty()) {
-                // Download the missing file for subsequent reads
-                LOGGER.info("Downloading {} ..", fileRef.getRelativePath());
-                localIoManager.overwrite(fileRef, bytes);
-                decrementNumberOfUncachedFiles();
-            }
-            return bytes;
-        }
-        return localIoManager.readAllBytes(fileRef);
-    }
-
-    @Override
-    public void doDelete(FileReference fileReference) throws HyracksDataException {
-        // Never delete the storage dir in cloud storage
-        int numberOfCloudDeletes = doCloudDelete(fileReference);
-        // check local
-        if (numberOfCloudDeletes > 0) {
-            int numberOfLocalDeletes;
-            if (numberOfCloudDeletes == 1) {
-                // file delete
-                numberOfLocalDeletes = localIoManager.exists(fileReference) ? 1 : 0;
-            } else {
-                // directory delete
-                Set<String> localToBeDeleted = localIoManager.list(fileReference).stream()
-                        .map(FileReference::getRelativePath).collect(Collectors.toSet());
-                numberOfLocalDeletes = localToBeDeleted.size();
-            }
-            // Decrement by number of cloud deletes that have no counterparts locally
-            decrementNumberOfUncachedFiles(numberOfCloudDeletes - numberOfLocalDeletes);
-        }
-
-        // Finally, delete locally
-        localIoManager.delete(fileReference);
-    }
-
-    @Override
-    public void doOverwrite(FileReference fileReference, byte[] bytes) throws HyracksDataException {
-        boolean existsLocally = localIoManager.exists(fileReference);
-        cloudClient.write(bucket, fileReference.getRelativePath(), bytes);
-        localIoManager.overwrite(fileReference, bytes);
-        if (!existsLocally) {
-            decrementNumberOfUncachedFiles();
-        }
-    }
-
-    protected void decrementNumberOfUncachedFiles() {
-        replaceAccessor(numberOfUncachedFiles.decrementAndGet());
-    }
-
-    protected void decrementNumberOfUncachedFiles(int count) {
-        if (count > 0) {
-            replaceAccessor(numberOfUncachedFiles.addAndGet(-count));
-        }
-    }
-
     private boolean isInNodePartition(String path) {
         return partitions.contains(StoragePathUtil.getPartitionNumFromRelativePath(path));
     }
 
-    void replaceAccessor(int remainingUncached) {
-        if (remainingUncached > 0) {
-            // Some files still not cached yet
-            return;
-        }
-
-        if (remainingUncached < 0) {
-            // This should not happen, log in case that happen
-            LOGGER.warn("Some files were downloaded multiple times. Reported remaining uncached files = {}",
-                    remainingUncached);
-        }
+    private void replace() {
+        cacher.close();
         replacer.replace();
     }
 }

@@ -39,6 +39,7 @@ import org.apache.hyracks.algebricks.common.constraints.AlgebricksPartitionConst
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.algebricks.common.utils.ListSet;
 import org.apache.hyracks.algebricks.common.utils.Pair;
+import org.apache.hyracks.algebricks.core.algebra.base.DefaultProjectionFiltrationInfo;
 import org.apache.hyracks.algebricks.core.algebra.base.IHyracksJobBuilder;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalOperator;
@@ -126,33 +127,27 @@ public class BTreeSearchPOperator extends IndexSearchPOperator {
         int[] maxFilterFieldIndexes = getKeyIndexes(unnestMap.getMaxFilterVars(), inputSchemas);
 
         MetadataProvider metadataProvider = (MetadataProvider) context.getMetadataProvider();
-        Dataset dataset = metadataProvider.findDataset(jobGenParams.getDataverseName(), jobGenParams.getDatasetName());
+        Dataset dataset = metadataProvider.findDataset(jobGenParams.getDatabaseName(), jobGenParams.getDataverseName(),
+                jobGenParams.getDatasetName());
         IVariableTypeEnvironment typeEnv = context.getTypeEnvironment(op);
         ITupleFilterFactory tupleFilterFactory = null;
         long outputLimit = -1;
         boolean retainMissing = false;
         IMissingWriterFactory nonMatchWriterFactory = null;
-        ITupleProjectorFactory tupleProjectorFactory = DefaultTupleProjectorFactory.INSTANCE;
+        IProjectionFiltrationInfo projectionFiltrationInfo = DefaultProjectionFiltrationInfo.INSTANCE;
         switch (unnestMap.getOperatorTag()) {
             case UNNEST_MAP:
                 UnnestMapOperator unnestMapOp = (UnnestMapOperator) unnestMap;
+                projectionFiltrationInfo = unnestMapOp.getProjectionFiltrationInfo();
                 outputLimit = unnestMapOp.getOutputLimit();
                 if (unnestMapOp.getSelectCondition() != null) {
                     tupleFilterFactory = metadataProvider.createTupleFilterFactory(new IOperatorSchema[] { opSchema },
                             typeEnv, unnestMapOp.getSelectCondition().getValue(), context);
                 }
-                DatasetFormatInfo formatInfo = dataset.getDatasetFormatInfo();
-                if (isPrimaryIndex && formatInfo.getFormat() == DatasetConfig.DatasetFormat.COLUMN) {
-                    IProjectionFiltrationInfo projectionFiltrationInfo = unnestMapOp.getProjectionFiltrationInfo();
-                    ARecordType datasetType = (ARecordType) metadataProvider.findType(dataset);
-                    ARecordType metaItemType = (ARecordType) metadataProvider.findMetaType(dataset);
-                    datasetType = (ARecordType) metadataProvider.findTypeForDatasetWithoutType(datasetType,
-                            metaItemType, dataset);
-                    tupleProjectorFactory = IndexUtil.createTupleProjectorFactory(context, typeEnv, formatInfo,
-                            projectionFiltrationInfo, datasetType, metaItemType, dataset.getPrimaryKeys().size());
-                }
                 break;
             case LEFT_OUTER_UNNEST_MAP:
+                LeftOuterUnnestMapOperator outerUnnestMapOperator = (LeftOuterUnnestMapOperator) unnestMap;
+                projectionFiltrationInfo = outerUnnestMapOperator.getProjectionFiltrationInfo();
                 // By nature, LEFT_OUTER_UNNEST_MAP should generate missing (or null) values for non-matching tuples.
                 retainMissing = true;
                 nonMatchWriterFactory =
@@ -162,6 +157,17 @@ public class BTreeSearchPOperator extends IndexSearchPOperator {
             default:
                 throw new CompilationException(ErrorCode.COMPILATION_ILLEGAL_STATE, unnestMap.getSourceLocation(),
                         String.valueOf(unnestMap.getOperatorTag()));
+        }
+
+        ITupleProjectorFactory tupleProjectorFactory = DefaultTupleProjectorFactory.INSTANCE;
+        DatasetFormatInfo formatInfo = dataset.getDatasetFormatInfo();
+        if (isPrimaryIndex && formatInfo.getFormat() == DatasetConfig.DatasetFormat.COLUMN) {
+            ARecordType datasetType = (ARecordType) metadataProvider.findType(dataset);
+            ARecordType metaItemType = (ARecordType) metadataProvider.findMetaType(dataset);
+            datasetType =
+                    (ARecordType) metadataProvider.findTypeForDatasetWithoutType(datasetType, metaItemType, dataset);
+            tupleProjectorFactory = IndexUtil.createTupleProjectorFactory(context, typeEnv, formatInfo,
+                    projectionFiltrationInfo, datasetType, metaItemType, dataset.getPrimaryKeys().size());
         }
 
         Pair<IOperatorDescriptor, AlgebricksPartitionConstraint> btreeSearch = metadataProvider.getBtreeSearchRuntime(
@@ -240,7 +246,8 @@ public class BTreeSearchPOperator extends IndexSearchPOperator {
                     }
                     propsLocal.add(new LocalOrderProperty(orderColumns));
                     MetadataProvider mp = (MetadataProvider) context.getMetadataProvider();
-                    Dataset dataset = mp.findDataset(searchIndex.getDataverseName(), searchIndex.getDatasetName());
+                    Dataset dataset = mp.findDataset(searchIndex.getDatabaseName(), searchIndex.getDataverseName(),
+                            searchIndex.getDatasetName());
                     PartitioningProperties partitioningProperties = mp.getPartitioningProperties(dataset);
                     pv[0] = new StructuralPropertiesVector(UnorderedPartitionedProperty.ofPartitionsMap(searchKeyVars,
                             domain, partitioningProperties.getComputeStorageMap()), propsLocal);

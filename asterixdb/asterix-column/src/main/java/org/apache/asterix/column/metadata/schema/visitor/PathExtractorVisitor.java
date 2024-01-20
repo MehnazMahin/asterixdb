@@ -58,9 +58,7 @@ public class PathExtractorVisitor implements ISchemaNodeVisitor<AbstractSchemaNo
         delimiters.clear();
         AbstractSchemaNode node = path.accept(this, null);
         ATypeTag typeTag = node.getTypeTag();
-        if (typeTag == ATypeTag.MISSING) {
-            return Collections.emptyList();
-        } else if (typeTag == ATypeTag.UNION) {
+        if (typeTag == ATypeTag.UNION) {
             UnionSchemaNode unionNode = (UnionSchemaNode) node;
             Collection<AbstractSchemaNode> children = unionNode.getChildren().values();
             List<IColumnValuesReader> unionReaders = new ArrayList<>();
@@ -115,7 +113,6 @@ public class PathExtractorVisitor implements ISchemaNodeVisitor<AbstractSchemaNo
 
     @Override
     public AbstractSchemaNode visit(PrimitiveSchemaNode primitiveNode, Void arg) throws HyracksDataException {
-        //Missing column index is -1
         return primitiveNode;
     }
 
@@ -128,8 +125,9 @@ public class PathExtractorVisitor implements ISchemaNodeVisitor<AbstractSchemaNo
     private IColumnValuesReader createReader(PrimitiveSchemaNode primitiveNode, List<IColumnValuesReader> readers) {
         IColumnValuesReader reader;
         if (delimiters.isEmpty()) {
-            reader = readerFactory.createValueReader(primitiveNode.getTypeTag(), primitiveNode.getColumnIndex(), level,
-                    primitiveNode.isPrimaryKey());
+            int nodeLevel = primitiveNode.isPrimaryKey() ? 1 : level;
+            reader = readerFactory.createValueReader(primitiveNode.getTypeTag(), primitiveNode.getColumnIndex(),
+                    nodeLevel, primitiveNode.isPrimaryKey());
         } else {
             // array
             reader = readerFactory.createValueReader(primitiveNode.getTypeTag(), primitiveNode.getColumnIndex(), level,

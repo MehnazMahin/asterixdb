@@ -31,8 +31,9 @@ import org.apache.asterix.optimizer.rules.pushdown.PushdownProcessorsExecutor;
 import org.apache.asterix.optimizer.rules.pushdown.processor.ColumnFilterPushdownProcessor;
 import org.apache.asterix.optimizer.rules.pushdown.processor.ColumnRangeFilterPushdownProcessor;
 import org.apache.asterix.optimizer.rules.pushdown.processor.ColumnValueAccessPushdownProcessor;
+import org.apache.asterix.optimizer.rules.pushdown.processor.ConsolidateProjectionAndFilterExpressionsProcessor;
 import org.apache.asterix.optimizer.rules.pushdown.processor.ExternalDatasetFilterPushdownProcessor;
-import org.apache.asterix.optimizer.rules.pushdown.processor.InlineFilterExpressionsProcessor;
+import org.apache.asterix.optimizer.rules.pushdown.processor.InlineAndNormalizeFilterExpressionsProcessor;
 import org.apache.asterix.optimizer.rules.pushdown.visitor.PushdownOperatorVisitor;
 import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
@@ -88,20 +89,21 @@ public class PushValueAccessAndFilterDownRule implements IAlgebraicRewriteRule {
          * supports value-access, filter, and/or range-filter.
          */
         run = shouldRun(context);
+        boolean changed = false;
         if (run) {
             // Context holds all the necessary information to perform pushdowns
-            PushdownContext pushdownContext = new PushdownContext();
+            PushdownContext pushdownContext = new PushdownContext(context);
             // Compute all the necessary pushdown information and performs inter-operator pushdown optimizations
             PushdownOperatorVisitor pushdownInfoComputer = new PushdownOperatorVisitor(pushdownContext, context);
             opRef.getValue().accept(pushdownInfoComputer, null);
             // Execute several optimization passes to perform the pushdown
             PushdownProcessorsExecutor pushdownProcessorsExecutor = new PushdownProcessorsExecutor();
             addProcessors(pushdownProcessorsExecutor, pushdownContext, context);
-            pushdownProcessorsExecutor.execute();
+            changed = pushdownProcessorsExecutor.execute();
             pushdownProcessorsExecutor.finalizePushdown(pushdownContext, context);
             run = false;
         }
-        return false;
+        return changed;
     }
 
     private void addProcessors(PushdownProcessorsExecutor pushdownProcessorsExecutor, PushdownContext pushdownContext,
@@ -116,8 +118,10 @@ public class PushValueAccessAndFilterDownRule implements IAlgebraicRewriteRule {
         }
         // Performs prefix pushdowns
         pushdownProcessorsExecutor.add(new ExternalDatasetFilterPushdownProcessor(pushdownContext, context));
+        pushdownProcessorsExecutor
+                .add(new ConsolidateProjectionAndFilterExpressionsProcessor(pushdownContext, context));
         // Inlines AND/OR expression (must be last to run)
-        pushdownProcessorsExecutor.add(new InlineFilterExpressionsProcessor(pushdownContext, context));
+        pushdownProcessorsExecutor.add(new InlineAndNormalizeFilterExpressionsProcessor(pushdownContext, context));
     }
 
     /**
@@ -144,7 +148,8 @@ public class PushValueAccessAndFilterDownRule implements IAlgebraicRewriteRule {
             throws AlgebricksException {
         DataverseName dataverse = dataSource.getId().getDataverseName();
         String datasetName = dataSource.getId().getDatasourceName();
-        Dataset dataset = metadataProvider.findDataset(dataverse, datasetName);
+        String database = dataSource.getId().getDatabaseName();
+        Dataset dataset = metadataProvider.findDataset(database, dataverse, datasetName);
 
         return dataset != null && (DatasetUtil.isFieldAccessPushdownSupported(dataset)
                 || DatasetUtil.isFilterPushdownSupported(dataset)

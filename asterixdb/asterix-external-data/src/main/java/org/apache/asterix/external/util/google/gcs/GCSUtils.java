@@ -53,6 +53,7 @@ import org.apache.asterix.external.util.ExternalDataPrefix;
 import org.apache.asterix.external.util.ExternalDataUtils;
 import org.apache.asterix.external.util.HDFSUtils;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.api.exceptions.IWarningCollector;
 import org.apache.hyracks.api.exceptions.SourceLocation;
@@ -103,13 +104,13 @@ public class GCSUtils {
             try {
                 builder.setCredentials(GoogleCredentials.getApplicationDefault());
             } catch (IOException ex) {
-                throw CompilationException.create(EXTERNAL_SOURCE_ERROR, getMessageOrToString(ex));
+                throw CompilationException.create(EXTERNAL_SOURCE_ERROR, ex, getMessageOrToString(ex));
             }
         } else if (jsonCredentials != null) {
             try (InputStream credentialsStream = new ByteArrayInputStream(jsonCredentials.getBytes())) {
                 builder.setCredentials(GoogleCredentials.fromStream(credentialsStream));
             } catch (IOException ex) {
-                throw new CompilationException(EXTERNAL_SOURCE_ERROR, getMessageOrToString(ex));
+                throw new CompilationException(EXTERNAL_SOURCE_ERROR, ex, getMessageOrToString(ex));
             }
         } else {
             builder.setCredentials(NoCredentials.getInstance());
@@ -137,6 +138,13 @@ public class GCSUtils {
         }
 
         validateIncludeExclude(configuration);
+        try {
+            // TODO(htowaileb): maybe something better, this will check to ensure type is supported before creation
+            new ExternalDataPrefix(configuration);
+        } catch (AlgebricksException ex) {
+            throw new CompilationException(ErrorCode.FAILED_TO_CALCULATE_COMPUTED_FIELDS, ex);
+        }
+
         String container = configuration.get(ExternalDataConstants.CONTAINER_NAME_FIELD_NAME);
 
         try {
@@ -152,7 +160,7 @@ public class GCSUtils {
         } catch (CompilationException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new CompilationException(ErrorCode.EXTERNAL_SOURCE_ERROR, getMessageOrToString(ex));
+            throw new CompilationException(ErrorCode.EXTERNAL_SOURCE_ERROR, ex, getMessageOrToString(ex));
         }
     }
 
@@ -169,7 +177,7 @@ public class GCSUtils {
         try {
             items = gcs.list(container, options);
         } catch (BaseServiceException ex) {
-            throw new CompilationException(ErrorCode.EXTERNAL_SOURCE_ERROR, getMessageOrToString(ex));
+            throw new CompilationException(ErrorCode.EXTERNAL_SOURCE_ERROR, ex, getMessageOrToString(ex));
         }
 
         // Collect the paths to files only

@@ -218,8 +218,8 @@
               <noticeUrl>https://raw.githubusercontent.com/aws/aws-sdk-java-v2/2.10.83/NOTICE.txt</noticeUrl>
             </override>
             <override>
-              <gav>software.amazon.awssdk.crt:aws-crt:0.21.10</gav>
-              <noticeUrl>https://raw.githubusercontent.com/awslabs/aws-crt-java/v0.21.10/NOTICE</noticeUrl>
+              <gav>software.amazon.awssdk.crt:aws-crt:0.27.1</gav>
+              <noticeUrl>https://raw.githubusercontent.com/awslabs/aws-crt-java/v0.27.1/NOTICE</noticeUrl>
             </override>
             <!-- Hadoop AWS SDK -->
             <override>
@@ -288,8 +288,8 @@
               <noticeUrl>https://bitbucket.org/connect2id/nimbus-content-type/raw/18f43920bc8e88873f0c1e42723640536866d3df/COPYRIGHT.txt</noticeUrl>
             </override>
             <override>
-              <gav>io.projectreactor:reactor-core:3.4.27</gav>
-              <url>https://raw.githubusercontent.com/reactor/reactor-core/v3.4.27/LICENSE</url>
+              <gav>io.projectreactor:reactor-core:3.4.34</gav>
+              <url>https://raw.githubusercontent.com/reactor/reactor-core/v3.4.34/LICENSE</url>
             </override>
             <override>
               <gavs>
@@ -546,13 +546,6 @@
             </override>
             <override>
               <gavs>
-                <gav>org.bouncycastle:bcprov-jdk15on:1.60</gav>
-                <gav>org.bouncycastle:bcpkix-jdk15on:1.60</gav>
-              </gavs>
-              <url>https://raw.githubusercontent.com/bcgit/bc-java/r1rv60/LICENSE.html</url>
-            </override>
-            <override>
-              <gavs>
                 <gav>org.jetbrains:annotations:17.0.0</gav>
               </gavs>
               <url>https://raw.githubusercontent.com/JetBrains/java-annotations/master/LICENSE.txt</url>
@@ -594,8 +587,8 @@
           <licenses>
             <license>
                 <displayName>Various 3rd party</displayName>
-                <url>file://${basedir}}/../asterix-dashboard/src/main/resources/dashboard/static/3rdpartylicenses.txt</url>
-                <contentFile>${basedir}}/../asterix-dashboard/src/main/resources/dashboard/static/3rdpartylicenses.txt</contentFile>
+                <url>file://${basedir}/../asterix-dashboard/src/main/resources/dashboard/static/3rdpartylicenses.txt</url>
+                <contentFile>${basedir}/../asterix-dashboard/src/main/resources/dashboard/static/3rdpartylicenses.txt</contentFile>
             </license>
             <license>
               <displayName>a BSD 3-clause license</displayName>
@@ -625,8 +618,9 @@
                 <aliasUrl>http://www.apache.org/licenses/LICENSE-2.0.html</aliasUrl>
                 <aliasUrl>https://www.apache.org/licenses/LICENSE-2.0.html</aliasUrl>
                 <aliasUrl>https://aws.amazon.com/apache2.0</aliasUrl>
+                <aliasUrl>https://opensource.org/licenses/Apache-2.0</aliasUrl>
                 <aliasUrl>https://raw.githubusercontent.com/jorabin/KeePassJava2/KeePassJava2-2.1.4/LICENSE</aliasUrl>
-                <aliasUrl>https://raw.githubusercontent.com/reactor/reactor-core/v3.4.27/LICENSE</aliasUrl>
+                <aliasUrl>https://raw.githubusercontent.com/reactor/reactor-core/v3.4.34/LICENSE</aliasUrl>
                 <aliasUrl>https://raw.githubusercontent.com/codehaus/stax/master/dev/ASF2.0.txt</aliasUrl>
                 <aliasUrl>https://bitbucket.org/connect2id/oauth-2.0-sdk-with-openid-connect-extensions/raw/c8f09b035b7e93858a39ad4a46ba4d0e17a0aefe/LICENSE.txt</aliasUrl>
                 <aliasUrl>https://raw.githubusercontent.com/google/auto/auto-value-1.10.1/LICENSE</aliasUrl>
@@ -666,7 +660,7 @@
                 <aliasUrl>https://raw.githubusercontent.com/apache/orc/v1.8.0/LICENSE</aliasUrl>
                 <aliasUrl>https://raw.githubusercontent.com/RoaringBitmap/RoaringBitmap/0.9.39/LICENSE</aliasUrl>
                 <aliasUrl>https://raw.githubusercontent.com/JetBrains/java-annotations/master/LICENSE.txt</aliasUrl>
-                <aliasUrl>https://raw.githubusercontent.com/awslabs/aws-crt-java/v0.21.10/LICENSE</aliasUrl>
+                <aliasUrl>https://raw.githubusercontent.com/awslabs/aws-crt-java/v0.27.1/LICENSE</aliasUrl>
               </aliasUrls>
               <metric>1</metric>
             </license>
@@ -1202,7 +1196,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.hyracks</groupId>
-      <artifactId>hyracks-server</artifactId>
+      <artifactId>hyracks-server-test</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>

@@ -43,6 +43,8 @@ import org.apache.asterix.common.exceptions.ACIDException;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.common.metadata.MetadataConstants;
+import org.apache.asterix.common.metadata.MetadataUtil;
 import org.apache.asterix.common.transactions.IRecoveryManager;
 import org.apache.asterix.external.util.ExternalDataUtils;
 import org.apache.asterix.formats.base.IDataFormat;
@@ -250,8 +252,8 @@ public class DatasetUtil {
     public static Pair<ILSMMergePolicyFactory, Map<String, String>> getMergePolicyFactory(Dataset dataset,
             MetadataTransactionContext mdTxnCtx) throws AlgebricksException {
         String policyName = dataset.getCompactionPolicy();
-        CompactionPolicy compactionPolicy = MetadataManager.INSTANCE.getCompactionPolicy(mdTxnCtx, null,
-                MetadataConstants.METADATA_DATAVERSE_NAME, policyName);
+        CompactionPolicy compactionPolicy = MetadataManager.INSTANCE.getCompactionPolicy(mdTxnCtx,
+                MetadataConstants.SYSTEM_DATABASE, MetadataConstants.METADATA_DATAVERSE_NAME, policyName);
         String compactionPolicyFactoryClassName = compactionPolicy.getClassName();
         ILSMMergePolicyFactory mergePolicyFactory;
         Map<String, String> properties = dataset.getCompactionPolicyProperties();
@@ -294,8 +296,8 @@ public class DatasetUtil {
     public static ARecordType getMetaType(MetadataProvider metadataProvider, Dataset dataset)
             throws AlgebricksException {
         if (dataset.hasMetaPart()) {
-            return (ARecordType) metadataProvider.findType(dataset.getMetaItemTypeDataverseName(),
-                    dataset.getMetaItemTypeName());
+            return (ARecordType) metadataProvider.findType(dataset.getMetaItemTypeDatabaseName(),
+                    dataset.getMetaItemTypeDataverseName(), dataset.getMetaItemTypeName());
         }
         return null;
     }
@@ -337,7 +339,8 @@ public class DatasetUtil {
 
         JobSpecification spec = RuntimeUtils.createJobSpecification(metadataProvider.getApplicationContext());
         PartitioningProperties partitioningProperties = metadataProvider.getPartitioningProperties(dataset);
-        FileSplit[] fs = partitioningProperties.getSplitsProvider().getFileSplits();
+        IFileSplitProvider splitsProvider = partitioningProperties.getSplitsProvider();
+        FileSplit[] fs = splitsProvider.getFileSplits();
         StringBuilder sb = new StringBuilder();
         for (FileSplit f : fs) {
             sb.append(f).append(" ");
@@ -347,25 +350,44 @@ public class DatasetUtil {
                 DatasetUtil.getMergePolicyFactory(dataset, metadataProvider.getMetadataTxnContext());
         // prepare a LocalResourceMetadata which will be stored in NC's local resource
         // repository
-        IResourceFactory resourceFactory = dataset.getResourceFactory(metadataProvider, index, itemType, metaItemType,
-                compactionInfo.first, compactionInfo.second);
-        IndexBuilderFactory indexBuilderFactory =
-                new IndexBuilderFactory(metadataProvider.getStorageComponentProvider().getStorageManager(),
-                        partitioningProperties.getSplitsProvider(), resourceFactory, true);
-        IndexCreateOperatorDescriptor indexCreateOp = new IndexCreateOperatorDescriptor(spec, indexBuilderFactory,
-                partitioningProperties.getComputeStorageMap());
+        int[][] computeStorageMap = partitioningProperties.getComputeStorageMap();
+        IndexBuilderFactory[][] indexBuilderFactories = getIndexBuilderFactories(dataset, metadataProvider, index,
+                itemType, metaItemType, splitsProvider, compactionInfo.first, compactionInfo.second, computeStorageMap);
+        IndexCreateOperatorDescriptor indexCreateOp =
+                new IndexCreateOperatorDescriptor(spec, indexBuilderFactories, computeStorageMap);
         AlgebricksPartitionConstraintHelper.setPartitionConstraintInJobSpec(spec, indexCreateOp,
                 partitioningProperties.getConstraints());
         spec.addRoot(indexCreateOp);
         return spec;
     }
 
+    public static IndexBuilderFactory[][] getIndexBuilderFactories(Dataset dataset, MetadataProvider metadataProvider,
+            Index index, ARecordType itemType, ARecordType metaItemType, IFileSplitProvider fileSplitProvider,
+            ILSMMergePolicyFactory mergePolicyFactory, Map<String, String> mergePolicyProperties,
+            int[][] computeStorageMap) throws AlgebricksException {
+        IndexBuilderFactory[][] indexBuilderFactories = new IndexBuilderFactory[computeStorageMap.length][];
+        for (int i = 0; i < computeStorageMap.length; i++) {
+            int len = computeStorageMap[i].length;
+            indexBuilderFactories[i] = new IndexBuilderFactory[len];
+            for (int k = 0; k < len; k++) {
+                IResourceFactory resourceFactory = dataset.getResourceFactory(metadataProvider, index, itemType,
+                        metaItemType, mergePolicyFactory, mergePolicyProperties);
+                IndexBuilderFactory indexBuilderFactory =
+                        new IndexBuilderFactory(metadataProvider.getStorageComponentProvider().getStorageManager(),
+                                fileSplitProvider, resourceFactory, true);
+                indexBuilderFactories[i][k] = indexBuilderFactory;
+            }
+        }
+        return indexBuilderFactories;
+    }
+
     public static JobSpecification compactDatasetJobSpec(Dataverse dataverse, String datasetName,
             MetadataProvider metadataProvider) throws AlgebricksException {
         DataverseName dataverseName = dataverse.getDataverseName();
-        Dataset dataset = metadataProvider.findDataset(dataverseName, datasetName);
+        Dataset dataset = metadataProvider.findDataset(dataverse.getDatabaseName(), dataverseName, datasetName);
         if (dataset == null) {
-            throw new AsterixException(ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE, datasetName, dataverseName);
+            throw new AsterixException(ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE, datasetName, MetadataUtil
+                    .dataverseName(dataverse.getDatabaseName(), dataverseName, metadataProvider.isUsingDatabase()));
         }
         JobSpecification spec = RuntimeUtils.createJobSpecification(metadataProvider.getApplicationContext());
         PartitioningProperties partitioningProperties = metadataProvider.getPartitioningProperties(dataset);
@@ -439,8 +461,8 @@ public class DatasetUtil {
         ARecordType metaItemType = (ARecordType) metadataProvider.findMetaType(dataset);
         itemType = (ARecordType) metadataProvider.findTypeForDatasetWithoutType(itemType, metaItemType, dataset);
 
-        Index primaryIndex = metadataProvider.getIndex(dataset.getDataverseName(), dataset.getDatasetName(),
-                dataset.getDatasetName());
+        Index primaryIndex = metadataProvider.getIndex(dataset.getDatabaseName(), dataset.getDataverseName(),
+                dataset.getDatasetName(), dataset.getDatasetName());
         PartitioningProperties partitioningProperties = metadataProvider.getPartitioningProperties(dataset);
 
         // prepare callback
@@ -450,8 +472,9 @@ public class DatasetUtil {
             primaryKeyFields[i] = i;
             pkFields[i] = fieldPermutation[i];
         }
-        boolean hasSecondaries =
-                metadataProvider.getDatasetIndexes(dataset.getDataverseName(), dataset.getDatasetName()).size() > 1;
+        boolean hasSecondaries = metadataProvider
+                .getDatasetIndexes(dataset.getDatabaseName(), dataset.getDataverseName(), dataset.getDatasetName())
+                .size() > 1;
         IStorageComponentProvider storageComponentProvider = metadataProvider.getStorageComponentProvider();
         IModificationOperationCallbackFactory modificationCallbackFactory = dataset.getModificationCallbackFactory(
                 storageComponentProvider, primaryIndex, IndexOperation.UPSERT, primaryKeyFields);
@@ -541,8 +564,8 @@ public class DatasetUtil {
         }
 
         // Column
-        List<Index> secondaryIndexes =
-                metadataProvider.getDatasetIndexes(dataset.getDataverseName(), dataset.getDatasetName());
+        List<Index> secondaryIndexes = metadataProvider.getDatasetIndexes(dataset.getDatabaseName(),
+                dataset.getDataverseName(), dataset.getDatasetName());
         List<ARecordType> indexPaths = new ArrayList<>();
 
         for (Index index : secondaryIndexes) {
@@ -625,9 +648,16 @@ public class DatasetUtil {
         return MetadataUtil.getFullyQualifiedDisplayName(dataverseName, datasetName);
     }
 
+    public static String getFullyQualifiedDisplayName(String databaseName, DataverseName dataverseName,
+            String datasetName) {
+        return MetadataUtil.getFullyQualifiedDisplayName(databaseName, dataverseName, datasetName);
+    }
+
     /***
      * Creates a node group that is associated with a new dataset.
      *
+     * @param databaseName,
+     *            the database name of the dataset.
      * @param dataverseName,
      *            the dataverse name of the dataset.
      * @param datasetName,
@@ -639,14 +669,16 @@ public class DatasetUtil {
      * @return the name of the created node group.
      * @throws Exception
      */
-    public static String createNodeGroupForNewDataset(DataverseName dataverseName, String datasetName,
-            Set<String> ncNames, MetadataProvider metadataProvider) throws Exception {
-        return createNodeGroupForNewDataset(dataverseName, datasetName, 0L, ncNames, metadataProvider);
+    public static String createNodeGroupForNewDataset(String databaseName, DataverseName dataverseName,
+            String datasetName, Set<String> ncNames, MetadataProvider metadataProvider) throws Exception {
+        return createNodeGroupForNewDataset(databaseName, dataverseName, datasetName, 0L, ncNames, metadataProvider);
     }
 
     /***
      * Creates a node group that is associated with a new dataset.
      *
+     * @param databaseName,
+     *            the database name of the dataset.
      * @param dataverseName,
      *            the dataverse name of the dataset.
      * @param datasetName,
@@ -660,10 +692,12 @@ public class DatasetUtil {
      * @return the name of the created node group.
      * @throws Exception
      */
-    public static String createNodeGroupForNewDataset(DataverseName dataverseName, String datasetName,
-            long rebalanceCount, Set<String> ncNames, MetadataProvider metadataProvider) throws Exception {
+    public static String createNodeGroupForNewDataset(String databaseName, DataverseName dataverseName,
+            String datasetName, long rebalanceCount, Set<String> ncNames, MetadataProvider metadataProvider)
+            throws Exception {
         ICcApplicationContext appCtx = metadataProvider.getApplicationContext();
-        String nodeGroup = dataverseName.getCanonicalForm() + "." + datasetName
+        boolean useDb = metadataProvider.getNamespaceResolver().isUsingDatabase();
+        String nodeGroup = (useDb ? databaseName + "." : "") + dataverseName.getCanonicalForm() + "." + datasetName
                 + (rebalanceCount == 0L ? "" : "_" + rebalanceCount);
         MetadataTransactionContext mdTxnCtx = metadataProvider.getMetadataTxnContext();
         appCtx.getMetadataLockManager().acquireNodeGroupWriteLock(metadataProvider.getLocks(), nodeGroup);

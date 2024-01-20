@@ -65,7 +65,7 @@ public class DataSourcePartitioningProvider implements IDataSourcePropertiesProv
             case DataSource.Type.FEED:
                 String dsName = ((FeedDataSource) ds).getTargetDataset();
                 Dataset feedDs = ((MetadataProvider) ctx.getMetadataProvider())
-                        .findDataset(ds.getId().getDataverseName(), dsName);
+                        .findDataset(ds.getId().getDatabaseName(), ds.getId().getDataverseName(), dsName);
                 PartitioningProperties partitioningProperties =
                         ((MetadataProvider) ctx.getMetadataProvider()).getPartitioningProperties(feedDs);
                 pp = getFeedDatasetPartitioningProperty(ds, domain, scanVariables,

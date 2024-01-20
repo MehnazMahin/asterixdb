@@ -31,10 +31,11 @@ import org.apache.asterix.app.active.ActiveNotificationHandler;
 import org.apache.asterix.common.api.IMetadataLockManager;
 import org.apache.asterix.common.dataflow.ICcApplicationContext;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.common.metadata.MetadataConstants;
+import org.apache.asterix.common.metadata.NamespacePathResolver;
 import org.apache.asterix.common.utils.Servlets;
 import org.apache.asterix.metadata.MetadataManager;
 import org.apache.asterix.metadata.MetadataTransactionContext;
-import org.apache.asterix.metadata.bootstrap.MetadataBuiltinEntities;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.metadata.entities.Dataset;
 import org.apache.asterix.metadata.utils.SplitsAndConstraintsUtil;
@@ -186,21 +187,22 @@ public class TestDataUtil {
      * @param targetNodes
      * @throws Exception
      */
-    public static void rebalanceDataset(AsterixHyracksIntegrationUtil integrationUtil, DataverseName dataverseName,
-            String datasetName, String[] targetNodes) throws Exception {
+    public static void rebalanceDataset(AsterixHyracksIntegrationUtil integrationUtil, String database,
+            DataverseName dataverseName, String datasetName, String[] targetNodes) throws Exception {
         ICcApplicationContext ccAppCtx =
                 (ICcApplicationContext) integrationUtil.getClusterControllerService().getApplicationContext();
-        MetadataProvider metadataProvider = MetadataProvider.create(ccAppCtx, null);
+        MetadataProvider metadataProvider = MetadataProvider.createWithDefaultNamespace(ccAppCtx);
         try {
             ActiveNotificationHandler activeNotificationHandler =
                     (ActiveNotificationHandler) ccAppCtx.getActiveNotificationHandler();
-            activeNotificationHandler.suspend(metadataProvider);
+            activeNotificationHandler.suspend(metadataProvider, "");
             try {
                 IMetadataLockManager lockManager = ccAppCtx.getMetadataLockManager();
-                lockManager.acquireDatasetExclusiveModificationLock(metadataProvider.getLocks(), dataverseName,
-                        datasetName);
-                RebalanceUtil.rebalance(dataverseName, datasetName, new LinkedHashSet<>(Arrays.asList(targetNodes)),
-                        metadataProvider, ccAppCtx.getHcc(), NoOpDatasetRebalanceCallback.INSTANCE, false);
+                lockManager.acquireDatasetExclusiveModificationLock(metadataProvider.getLocks(), database,
+                        dataverseName, datasetName);
+                RebalanceUtil.rebalance(database, dataverseName, datasetName,
+                        new LinkedHashSet<>(Arrays.asList(targetNodes)), metadataProvider, ccAppCtx.getHcc(),
+                        NoOpDatasetRebalanceCallback.INSTANCE, false);
             } finally {
                 activeNotificationHandler.resume(metadataProvider);
             }
@@ -222,12 +224,13 @@ public class TestDataUtil {
             throws AlgebricksException, RemoteException {
         final ICcApplicationContext appCtx =
                 (ICcApplicationContext) integrationUtil.getClusterControllerService().getApplicationContext();
-        final MetadataProvider metadataProvider = MetadataProvider.create(appCtx, null);
+        final MetadataProvider metadataProvider = MetadataProvider.createWithDefaultNamespace(appCtx);
         final MetadataTransactionContext mdTxnCtx = MetadataManager.INSTANCE.beginTransaction();
         metadataProvider.setMetadataTxnContext(mdTxnCtx);
         Dataset dataset;
         try {
-            dataset = metadataProvider.findDataset(MetadataBuiltinEntities.DEFAULT_DATAVERSE_NAME, datasetName);
+            dataset = metadataProvider.findDataset(MetadataConstants.DEFAULT_DATABASE,
+                    MetadataConstants.DEFAULT_DATAVERSE_NAME, datasetName);
         } finally {
             MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);
             metadataProvider.getLocks().unlock();
@@ -250,8 +253,10 @@ public class TestDataUtil {
                 (ICcApplicationContext) integrationUtil.getClusterControllerService().getApplicationContext();
         final MetadataTransactionContext mdTxnCtx = MetadataManager.INSTANCE.beginTransaction();
         try {
+            String dvPath =
+                    new NamespacePathResolver(false).resolve(dataset.getDatabaseName(), dataset.getDataverseName());
             return SplitsAndConstraintsUtil.getIndexSplits(dataset, dataset.getDatasetName(), mdTxnCtx,
-                    ccAppCtx.getClusterStateManager());
+                    ccAppCtx.getClusterStateManager(), dvPath);
         } finally {
             MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);
         }

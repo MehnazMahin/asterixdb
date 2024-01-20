@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import org.apache.asterix.common.cluster.PartitioningProperties;
+import org.apache.asterix.common.config.DatasetConfig;
 import org.apache.asterix.common.config.DatasetConfig.DatasetType;
 import org.apache.asterix.common.config.OptimizationConfUtil;
 import org.apache.asterix.common.exceptions.CompilationException;
@@ -134,8 +135,8 @@ public abstract class SecondaryIndexOperationsHelper implements ISecondaryIndexO
         this.dataset = dataset;
         this.index = index;
         this.metadataProvider = metadataProvider;
-        ARecordType recordType =
-                (ARecordType) metadataProvider.findType(dataset.getItemTypeDataverseName(), dataset.getItemTypeName());
+        ARecordType recordType = (ARecordType) metadataProvider.findType(dataset.getItemTypeDatabaseName(),
+                dataset.getItemTypeDataverseName(), dataset.getItemTypeName());
         this.metaType = DatasetUtil.getMetaType(metadataProvider, dataset);
         this.itemType = (ARecordType) metadataProvider.findTypeForDatasetWithoutType(recordType, metaType, dataset);
 
@@ -163,7 +164,8 @@ public abstract class SecondaryIndexOperationsHelper implements ISecondaryIndexO
             MetadataProvider metadataProvider, SourceLocation sourceLoc) throws AlgebricksException {
 
         ISecondaryIndexOperationsHelper indexOperationsHelper;
-        switch (index.getIndexType()) {
+        DatasetConfig.IndexType indexType = index.getIndexType();
+        switch (indexType) {
             case ARRAY:
                 indexOperationsHelper =
                         new SecondaryArrayIndexBTreeOperationsHelper(dataset, index, metadataProvider, sourceLoc);
@@ -172,12 +174,14 @@ public abstract class SecondaryIndexOperationsHelper implements ISecondaryIndexO
                 indexOperationsHelper = new SecondaryBTreeOperationsHelper(dataset, index, metadataProvider, sourceLoc);
                 break;
             case RTREE:
+                ensureNotColumnar(dataset, indexType, sourceLoc);
                 indexOperationsHelper = new SecondaryRTreeOperationsHelper(dataset, index, metadataProvider, sourceLoc);
                 break;
             case SINGLE_PARTITION_WORD_INVIX:
             case SINGLE_PARTITION_NGRAM_INVIX:
             case LENGTH_PARTITIONED_WORD_INVIX:
             case LENGTH_PARTITIONED_NGRAM_INVIX:
+                ensureNotColumnar(dataset, indexType, sourceLoc);
                 indexOperationsHelper =
                         new SecondaryInvertedIndexOperationsHelper(dataset, index, metadataProvider, sourceLoc);
                 break;
@@ -190,6 +194,21 @@ public abstract class SecondaryIndexOperationsHelper implements ISecondaryIndexO
         }
         indexOperationsHelper.init();
         return indexOperationsHelper;
+    }
+
+    /**
+     * Ensure only supported secondary indexes can be created against dataset
+     * in {@link DatasetConfig.DatasetFormat#COLUMN} format
+     *
+     * @param dataset   primary index
+     * @param indexType secondary index type
+     * @param sourceLoc source location
+     */
+    private static void ensureNotColumnar(Dataset dataset, DatasetConfig.IndexType indexType, SourceLocation sourceLoc)
+            throws AlgebricksException {
+        if (dataset.getDatasetFormatInfo().getFormat() == DatasetConfig.DatasetFormat.COLUMN) {
+            throw CompilationException.create(ErrorCode.UNSUPPORTED_INDEX_IN_COLUMNAR_FORMAT, indexType, sourceLoc);
+        }
     }
 
     @Override
@@ -475,9 +494,22 @@ public abstract class SecondaryIndexOperationsHelper implements ISecondaryIndexO
         return createFilterSelectOp(spec, numSecondaryKeyFields, secondaryRecDesc, AndDescriptor::new);
     }
 
+    public AlgebricksMetaOperatorDescriptor createCastFilterAnyUnknownSelectOp(JobSpecification spec,
+            int numSecondaryKeyFields, RecordDescriptor secondaryRecDesc, List<IAType> castFieldTypes)
+            throws AlgebricksException {
+        return createFilterSelectOp(spec, numSecondaryKeyFields, secondaryRecDesc, AndDescriptor::new, castFieldTypes);
+    }
+
     private AlgebricksMetaOperatorDescriptor createFilterSelectOp(JobSpecification spec, int numSecondaryKeyFields,
             RecordDescriptor secondaryRecDesc, Supplier<AbstractFunctionDescriptor> predicatesCombinerFuncSupplier)
             throws AlgebricksException {
+        return createFilterSelectOp(spec, numSecondaryKeyFields, secondaryRecDesc, predicatesCombinerFuncSupplier,
+                Collections.emptyList());
+    }
+
+    private AlgebricksMetaOperatorDescriptor createFilterSelectOp(JobSpecification spec, int numSecondaryKeyFields,
+            RecordDescriptor secondaryRecDesc, Supplier<AbstractFunctionDescriptor> predicatesCombinerFuncSupplier,
+            List<IAType> castFieldTypes) throws AlgebricksException {
         IScalarEvaluatorFactory[] predicateArgsEvalFactories = new IScalarEvaluatorFactory[numSecondaryKeyFields];
         NotDescriptor notDesc = new NotDescriptor();
         notDesc.setSourceLocation(sourceLoc);
@@ -486,8 +518,14 @@ public abstract class SecondaryIndexOperationsHelper implements ISecondaryIndexO
         for (int i = 0; i < numSecondaryKeyFields; i++) {
             // Access column i, and apply 'is not null'.
             ColumnAccessEvalFactory columnAccessEvalFactory = new ColumnAccessEvalFactory(i);
+            IScalarEvaluatorFactory evalFactory = columnAccessEvalFactory;
+            if (castFieldTypes != null && !castFieldTypes.isEmpty()) {
+                IScalarEvaluatorFactory[] castArg = new IScalarEvaluatorFactory[] { columnAccessEvalFactory };
+                evalFactory = createCastFunction(castFieldTypes.get(i), BuiltinType.ANY, index.isEnforced(), sourceLoc)
+                        .createEvaluatorFactory(castArg);
+            }
             IScalarEvaluatorFactory isUnknownEvalFactory =
-                    isUnknownDesc.createEvaluatorFactory(new IScalarEvaluatorFactory[] { columnAccessEvalFactory });
+                    isUnknownDesc.createEvaluatorFactory(new IScalarEvaluatorFactory[] { evalFactory });
             IScalarEvaluatorFactory notEvalFactory =
                     notDesc.createEvaluatorFactory(new IScalarEvaluatorFactory[] { isUnknownEvalFactory });
             predicateArgsEvalFactories[i] = notEvalFactory;

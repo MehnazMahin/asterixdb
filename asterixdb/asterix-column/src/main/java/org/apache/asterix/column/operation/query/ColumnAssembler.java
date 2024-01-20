@@ -101,11 +101,19 @@ public final class ColumnAssembler {
         return rootAssembler.getValue();
     }
 
+    public IValueReference getPreviousValue() {
+        return rootAssembler.getValue();
+    }
+
     public int getNumberOfColumns() {
         return assemblers.length;
     }
 
     public int skip(int count) throws HyracksDataException {
+        if (numberOfTuples == 0) {
+            // Avoid advancing tupleIndex and numberOfSkips if a mega leaf node is filtered out
+            return 0;
+        }
         numberOfSkips += count;
         tupleIndex += count;
         for (int i = 0; i < assemblers.length; i++) {

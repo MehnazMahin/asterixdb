@@ -18,7 +18,9 @@
  */
 package org.apache.asterix.cloud.bulk;
 
-import java.util.Collection;
+import java.util.List;
+
+import org.apache.hyracks.api.io.FileReference;
 
 public class NoOpDeleteBulkCallBack implements IBulkOperationCallBack {
     public static final IBulkOperationCallBack INSTANCE = new NoOpDeleteBulkCallBack();
@@ -27,7 +29,7 @@ public class NoOpDeleteBulkCallBack implements IBulkOperationCallBack {
     }
 
     @Override
-    public void call(int numberOfAffectedLocalFiles, Collection<String> paths) {
+    public void call(List<FileReference> fileReferences) {
         // NoOp
     }
 }

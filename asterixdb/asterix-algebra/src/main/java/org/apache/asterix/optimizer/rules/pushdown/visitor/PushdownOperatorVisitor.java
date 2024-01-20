@@ -18,6 +18,11 @@
  */
 package org.apache.asterix.optimizer.rules.pushdown.visitor;
 
+import static org.apache.asterix.optimizer.rules.am.AccessMethodJobGenParams.DATABASE_NAME_POS;
+import static org.apache.asterix.optimizer.rules.am.AccessMethodJobGenParams.DATASET_NAME_POS;
+import static org.apache.asterix.optimizer.rules.am.AccessMethodJobGenParams.DATAVERSE_NAME_POS;
+import static org.apache.asterix.optimizer.rules.am.AccessMethodJobGenParams.INDEX_NAME_POS;
+
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +43,7 @@ import org.apache.asterix.optimizer.rules.pushdown.descriptor.ScanDefineDescript
 import org.apache.asterix.optimizer.rules.pushdown.schema.RootExpectedSchemaNode;
 import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
+import org.apache.hyracks.algebricks.common.utils.Triple;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalExpression;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalOperator;
 import org.apache.hyracks.algebricks.core.algebra.base.ILogicalPlan;
@@ -46,8 +52,10 @@ import org.apache.hyracks.algebricks.core.algebra.base.LogicalExpressionTag;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalOperatorTag;
 import org.apache.hyracks.algebricks.core.algebra.base.LogicalVariable;
 import org.apache.hyracks.algebricks.core.algebra.expressions.AbstractFunctionCallExpression;
+import org.apache.hyracks.algebricks.core.algebra.expressions.VariableReferenceExpression;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.AbstractScanOperator;
+import org.apache.hyracks.algebricks.core.algebra.operators.logical.AbstractUnnestMapOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.AggregateOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.AssignOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.DataSourceScanOperator;
@@ -121,7 +129,18 @@ public class PushdownOperatorVisitor implements ILogicalOperatorVisitor<Void, Vo
         // Enter scope for (new stage) for operators like GROUP and JOIN
         pushdownContext.enterScope(op);
         defUseComputer.init(op, producedVariables);
+
         op.acceptExpressionTransform(defUseComputer);
+        if (op.getOperatorTag() == LogicalOperatorTag.UNIONALL) {
+            // UnionAll is a special case
+            UnionAllOperator unionOp = (UnionAllOperator) op;
+            for (Triple<LogicalVariable, LogicalVariable, LogicalVariable> vars : unionOp.getVariableMappings()) {
+                VariableReferenceExpression left = new VariableReferenceExpression(vars.first);
+                pushdownContext.use(op, left, -1, null);
+                VariableReferenceExpression right = new VariableReferenceExpression(vars.second);
+                pushdownContext.use(op, right, -1, null);
+            }
+        }
     }
 
     /*
@@ -162,6 +181,18 @@ public class PushdownOperatorVisitor implements ILogicalOperatorVisitor<Void, Vo
         return null;
     }
 
+    /**
+     * From the {@link LeftOuterUnnestMapOperator}, we need to register the payload variable (record variable) to check
+     * which expression in the plan is using it.
+     */
+    @Override
+    public Void visitLeftOuterUnnestMapOperator(LeftOuterUnnestMapOperator op, Void arg) throws AlgebricksException {
+        visitInputs(op);
+        DatasetDataSource datasetDataSource = getDatasetDataSourceIfApplicable(getDataSourceFromUnnestMapOperator(op));
+        registerDatasetIfApplicable(datasetDataSource, op);
+        return null;
+    }
+
     @Override
     public Void visitAggregateOperator(AggregateOperator op, Void arg) throws AlgebricksException {
         visitInputs(op, op.getVariables());
@@ -194,7 +225,8 @@ public class PushdownOperatorVisitor implements ILogicalOperatorVisitor<Void, Vo
      * 2- return the actual DatasetDataSource
      */
     private DatasetDataSource getDatasetDataSourceIfApplicable(DataSource dataSource) throws AlgebricksException {
-        if (dataSource == null || dataSource.getDatasourceType() == DataSource.Type.SAMPLE) {
+        if (dataSource == null || dataSource.getDatasourceType() == DataSource.Type.SAMPLE
+                || !(dataSource instanceof DatasetDataSource)) {
             return null;
         }
 
@@ -212,7 +244,8 @@ public class PushdownOperatorVisitor implements ILogicalOperatorVisitor<Void, Vo
         MetadataProvider mp = (MetadataProvider) context.getMetadataProvider();
         DataverseName dataverse = dataSource.getId().getDataverseName();
         String datasetName = dataSource.getId().getDatasourceName();
-        return mp.findDataset(dataverse, datasetName);
+        String database = dataSource.getId().getDatabaseName();
+        return mp.findDataset(database, dataverse, datasetName);
     }
 
     /**
@@ -221,15 +254,17 @@ public class PushdownOperatorVisitor implements ILogicalOperatorVisitor<Void, Vo
      * @param unnest unnest map operator
      * @return datasource
      */
-    private DataSource getDataSourceFromUnnestMapOperator(UnnestMapOperator unnest) throws AlgebricksException {
+    private DataSource getDataSourceFromUnnestMapOperator(AbstractUnnestMapOperator unnest) throws AlgebricksException {
         AbstractFunctionCallExpression funcExpr = (AbstractFunctionCallExpression) unnest.getExpressionRef().getValue();
-        String dataverse = ConstantExpressionUtil.getStringArgument(funcExpr, 2);
-        String dataset = ConstantExpressionUtil.getStringArgument(funcExpr, 3);
-        if (!ConstantExpressionUtil.getStringArgument(funcExpr, 0).equals(dataset)) {
+        String dataverse = ConstantExpressionUtil.getStringArgument(funcExpr, DATAVERSE_NAME_POS);
+        String dataset = ConstantExpressionUtil.getStringArgument(funcExpr, DATASET_NAME_POS);
+        if (!ConstantExpressionUtil.getStringArgument(funcExpr, INDEX_NAME_POS).equals(dataset)) {
             return null;
         }
 
-        DataSourceId dsid = new DataSourceId(DataverseName.createFromCanonicalForm(dataverse), dataset);
+        DataverseName dataverseName = DataverseName.createFromCanonicalForm(dataverse);
+        String database = ConstantExpressionUtil.getStringArgument(funcExpr, DATABASE_NAME_POS);
+        DataSourceId dsid = new DataSourceId(database, dataverseName, dataset);
         MetadataProvider metadataProvider = (MetadataProvider) context.getMetadataProvider();
         return metadataProvider.findDataSource(dsid);
     }
@@ -328,12 +363,14 @@ public class PushdownOperatorVisitor implements ILogicalOperatorVisitor<Void, Vo
                 && funcExpr.getArguments().get(0).getValue().getExpressionTag() == LogicalExpressionTag.CONSTANT;
     }
 
-    private void visitSubplans(List<ILogicalPlan> nestedPlans) throws AlgebricksException {
+    private void visitNestedPlans(ILogicalOperator op, List<ILogicalPlan> nestedPlans) throws AlgebricksException {
+        ILogicalOperator previousSubplanOp = pushdownContext.enterSubplan(op);
         for (ILogicalPlan plan : nestedPlans) {
             for (Mutable<ILogicalOperator> root : plan.getRoots()) {
                 root.getValue().accept(this, null);
             }
         }
+        pushdownContext.exitSubplan(previousSubplanOp);
     }
 
     /*
@@ -351,7 +388,7 @@ public class PushdownOperatorVisitor implements ILogicalOperatorVisitor<Void, Vo
     @Override
     public Void visitSubplanOperator(SubplanOperator op, Void arg) throws AlgebricksException {
         visitInputs(op);
-        visitSubplans(op.getNestedPlans());
+        visitNestedPlans(op, op.getNestedPlans());
         return null;
     }
 
@@ -375,7 +412,7 @@ public class PushdownOperatorVisitor implements ILogicalOperatorVisitor<Void, Vo
     @Override
     public Void visitGroupByOperator(GroupByOperator op, Void arg) throws AlgebricksException {
         visitInputs(op, op.getVariables());
-        visitSubplans(op.getNestedPlans());
+        visitNestedPlans(op, op.getNestedPlans());
         return null;
     }
 
@@ -470,12 +507,6 @@ public class PushdownOperatorVisitor implements ILogicalOperatorVisitor<Void, Vo
     }
 
     @Override
-    public Void visitLeftOuterUnnestMapOperator(LeftOuterUnnestMapOperator op, Void arg) throws AlgebricksException {
-        visitInputs(op);
-        return null;
-    }
-
-    @Override
     public Void visitDistinctOperator(DistinctOperator op, Void arg) throws AlgebricksException {
         visitInputs(op);
         return null;
@@ -527,7 +558,7 @@ public class PushdownOperatorVisitor implements ILogicalOperatorVisitor<Void, Vo
     @Override
     public Void visitWindowOperator(WindowOperator op, Void arg) throws AlgebricksException {
         visitInputs(op);
-        visitSubplans(op.getNestedPlans());
+        visitNestedPlans(op, op.getNestedPlans());
         return null;
     }
 
