@@ -89,11 +89,12 @@ public class RTreeSearchPOperator extends IndexSearchPOperator {
         int[] maxFilterFieldIndexes = getKeyIndexes(unnestMap.getMaxFilterVars(), inputSchemas);
 
         MetadataProvider mp = (MetadataProvider) context.getMetadataProvider();
-        Dataset dataset = mp.findDataset(jobGenParams.getDataverseName(), jobGenParams.getDatasetName());
+        Dataset dataset = mp.findDataset(jobGenParams.getDatabaseName(), jobGenParams.getDataverseName(),
+                jobGenParams.getDatasetName());
         IVariableTypeEnvironment typeEnv = context.getTypeEnvironment(unnestMap);
         List<LogicalVariable> outputVars = unnestMap.getVariables();
         if (jobGenParams.getRetainInput()) {
-            outputVars = new ArrayList<LogicalVariable>();
+            outputVars = new ArrayList<>();
             VariableUtilities.getLiveVariables(unnestMap, outputVars);
         }
         boolean retainMissing = false;

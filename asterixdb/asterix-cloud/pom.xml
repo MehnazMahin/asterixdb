@@ -70,6 +70,11 @@
       <artifactId>asterix-common</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.asterix</groupId>
+      <artifactId>asterix-external-data</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <!-- aws s3 start -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -94,7 +99,6 @@
     <dependency>
       <groupId>software.amazon.awssdk.crt</groupId>
       <artifactId>aws-crt</artifactId>
-      <version>0.21.10</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>

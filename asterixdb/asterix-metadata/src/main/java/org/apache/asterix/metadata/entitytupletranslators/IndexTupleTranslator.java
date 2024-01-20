@@ -37,6 +37,7 @@ import org.apache.asterix.common.config.DatasetConfig.IndexType;
 import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.common.metadata.MetadataUtil;
 import org.apache.asterix.common.transactions.TxnId;
 import org.apache.asterix.formats.nontagged.SerializerDeserializerProvider;
 import org.apache.asterix.metadata.MetadataNode;
@@ -46,7 +47,6 @@ import org.apache.asterix.metadata.entities.Dataset;
 import org.apache.asterix.metadata.entities.Datatype;
 import org.apache.asterix.metadata.entities.Index;
 import org.apache.asterix.metadata.utils.KeyFieldTypeUtil;
-import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.om.base.ABoolean;
 import org.apache.asterix.om.base.ACollectionCursor;
 import org.apache.asterix.om.base.AInt32;
@@ -323,14 +323,13 @@ public class IndexTupleTranslator extends AbstractTupleTranslator<Index> {
             // from the record metadata
             Dataset dataset = metadataNode.getDataset(txnId, databaseName, dataverseName, datasetName);
             String datatypeName = dataset.getItemTypeName();
-            //TODO(DB): get 'database' of item type and meta type
             DataverseName datatypeDataverseName = dataset.getItemTypeDataverseName();
-            String datatypeDatabase = MetadataUtil.databaseFor(datatypeDataverseName);
+            String datatypeDatabase = dataset.getItemTypeDatabaseName();
             ARecordType recordDt = (ARecordType) metadataNode
                     .getDatatype(txnId, datatypeDatabase, datatypeDataverseName, datatypeName).getDatatype();
             String metatypeName = dataset.getMetaItemTypeName();
             DataverseName metatypeDataverseName = dataset.getMetaItemTypeDataverseName();
-            String metaTypeDatabase = MetadataUtil.databaseFor(metatypeDataverseName);
+            String metaTypeDatabase = dataset.getMetaItemTypeDatabaseName();
             ARecordType metaDt = null;
             if (metatypeName != null && metatypeDataverseName != null) {
                 metaDt = (ARecordType) metadataNode

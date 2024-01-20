@@ -39,10 +39,12 @@ public class Feed implements IMetadataEntity<Feed>, IFeed {
     /** A string representation of the instance **/
     private final String displayName;
     /** Feed configurations */
+    //TODO(DB): check for keys in the map that are using dataverse and need to include database
     private final Map<String, String> feedConfiguration;
 
-    public Feed(DataverseName dataverseName, String feedName, Map<String, String> feedConfiguration) {
-        this.feedId = new EntityId(EXTENSION_NAME, dataverseName, feedName);
+    public Feed(String databaseName, DataverseName dataverseName, String feedName,
+            Map<String, String> feedConfiguration) {
+        this.feedId = new EntityId(EXTENSION_NAME, databaseName, dataverseName, feedName);
         this.displayName = "(" + feedId + ")";
         this.feedConfiguration = feedConfiguration;
     }
@@ -50,6 +52,11 @@ public class Feed implements IMetadataEntity<Feed>, IFeed {
     @Override
     public EntityId getFeedId() {
         return feedId;
+    }
+
+    @Override
+    public String getDatabaseName() {
+        return feedId.getDatabaseName();
     }
 
     @Override

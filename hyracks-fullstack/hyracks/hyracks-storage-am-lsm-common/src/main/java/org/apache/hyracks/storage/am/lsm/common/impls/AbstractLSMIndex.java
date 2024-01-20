@@ -218,7 +218,8 @@ public abstract class AbstractLSMIndex implements ILSMIndex {
     @Override
     public synchronized void deactivate(boolean flush) throws HyracksDataException {
         if (!isActive) {
-            throw HyracksDataException.create(ErrorCode.CANNOT_DEACTIVATE_INACTIVE_INDEX);
+            LOGGER.warn("not deactivating already inactive index {}, flush requested:{}", this, flush);
+            return;
         }
         // The following member is used to prevent scheduling of new merges as memory components
         // get flushed. This now works only if the caller of deactivate waited for all IO
@@ -714,7 +715,8 @@ public abstract class AbstractLSMIndex implements ILSMIndex {
         return "{\"class\" : \"" + getClass().getSimpleName() + "\", \"dir\" : \"" + fileManager.getBaseDir()
                 + "\", \"memory\" : " + (memoryComponents == null ? 0 : memoryComponents) + ", \"disk\" : "
                 + diskComponents.size() + ", \"num-scheduled-flushes\":" + numScheduledFlushes
-                + ", \"current-memory-component\":" + currentMutableComponentId.get() + "}";
+                + ", \"current-memory-component\":"
+                + (currentMutableComponentId == null ? "" : currentMutableComponentId.get()) + "}";
     }
 
     @Override
@@ -896,11 +898,8 @@ public abstract class AbstractLSMIndex implements ILSMIndex {
         if (!memoryComponent.isModified() || opCtx.getOperation() == IndexOperation.DELETE_COMPONENTS) {
             return EmptyComponent.INSTANCE;
         }
-        if (LOGGER.isInfoEnabled()) {
-            FlushOperation flushOp = (FlushOperation) operation;
-            LOGGER.log(Level.INFO,
-                    "Flushing component with id: " + flushOp.getFlushingComponent().getId() + " in the index " + this);
-        }
+        LOGGER.debug("flushing component with id {} in the index {}",
+                ((FlushOperation) operation).getFlushingComponent().getId(), this);
         return doFlush(operation);
     }
 

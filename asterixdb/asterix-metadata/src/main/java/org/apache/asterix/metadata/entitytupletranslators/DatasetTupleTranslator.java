@@ -40,6 +40,8 @@ import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.common.metadata.DatasetFullyQualifiedName;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.common.metadata.DependencyFullyQualifiedName;
+import org.apache.asterix.common.metadata.MetadataUtil;
 import org.apache.asterix.metadata.IDatasetDetails;
 import org.apache.asterix.metadata.bootstrap.DatasetEntity;
 import org.apache.asterix.metadata.bootstrap.MetadataRecordTypes;
@@ -51,7 +53,6 @@ import org.apache.asterix.metadata.entities.InternalDatasetDetails.FileStructure
 import org.apache.asterix.metadata.entities.InternalDatasetDetails.PartitioningStrategy;
 import org.apache.asterix.metadata.entities.ViewDetails;
 import org.apache.asterix.metadata.utils.DatasetUtil;
-import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.om.base.ABoolean;
 import org.apache.asterix.om.base.ADateTime;
 import org.apache.asterix.om.base.ADouble;
@@ -122,6 +123,13 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
         String typeDataverseCanonicalName =
                 ((AString) datasetRecord.getValueByPos(datasetEntity.datatypeDataverseNameIndex())).getStringValue();
         DataverseName typeDataverseName = DataverseName.createFromCanonicalForm(typeDataverseCanonicalName);
+        String itemTypeDatabaseName;
+        int typeDatabaseIdx = recType.getFieldIndex(MetadataRecordTypes.FIELD_NAME_DATATYPE_DATABASE_NAME);
+        if (typeDatabaseIdx >= 0) {
+            itemTypeDatabaseName = ((AString) datasetRecord.getValueByPos(typeDatabaseIdx)).getStringValue();
+        } else {
+            itemTypeDatabaseName = MetadataUtil.databaseFor(typeDataverseName);
+        }
         DatasetType datasetType = DatasetType
                 .valueOf(((AString) datasetRecord.getValueByPos(datasetEntity.datasetTypeIndex())).getStringValue());
         IDatasetDetails datasetDetails = null;
@@ -264,7 +272,7 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
                 String definition = ((AString) datasetDetailsRecord.getValueByPos(definitionFieldPos)).getStringValue();
 
                 // Dependencies
-                List<List<Triple<DataverseName, String, String>>> dependencies = Collections.emptyList();
+                List<List<DependencyFullyQualifiedName>> dependencies = Collections.emptyList();
                 int dependenciesFieldPos =
                         datasetDetailsRecord.getType().getFieldIndex(MetadataRecordTypes.FIELD_NAME_DEPENDENCIES);
                 if (dependenciesFieldPos >= 0) {
@@ -272,10 +280,10 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
                     IACursor dependenciesCursor =
                             ((AOrderedList) datasetDetailsRecord.getValueByPos(dependenciesFieldPos)).getCursor();
                     while (dependenciesCursor.next()) {
-                        List<Triple<DataverseName, String, String>> dependencyList = new ArrayList<>();
+                        List<DependencyFullyQualifiedName> dependencyList = new ArrayList<>();
                         IACursor qualifiedDependencyCursor = ((AOrderedList) dependenciesCursor.get()).getCursor();
                         while (qualifiedDependencyCursor.next()) {
-                            Triple<DataverseName, String, String> dependency =
+                            DependencyFullyQualifiedName dependency =
                                     getDependency((AOrderedList) qualifiedDependencyCursor.get());
                             dependencyList.add(dependency);
                         }
@@ -346,6 +354,17 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
                         DataverseName refDataverseName =
                                 DataverseName.createFromCanonicalForm(refDataverseCanonicalName);
 
+                        // 'RefDatabaseName'
+                        String refDatabase;
+                        int refDatabaseNameFieldPos = foreignKeyRecord.getType()
+                                .getFieldIndex(MetadataRecordTypes.FIELD_NAME_REF_DATABASE_NAME);
+                        if (refDatabaseNameFieldPos >= 0) {
+                            refDatabase = ((AString) foreignKeyRecord.getValueByPos(refDatabaseNameFieldPos))
+                                    .getStringValue();
+                        } else {
+                            refDatabase = MetadataUtil.databaseFor(refDataverseName);
+                        }
+
                         // 'RefDatasetName'
                         int refDatasetNameFieldPos = foreignKeyRecord.getType()
                                 .getFieldIndex(MetadataRecordTypes.FIELD_NAME_REF_DATASET_NAME);
@@ -353,7 +372,7 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
                                 ((AString) foreignKeyRecord.getValueByPos(refDatasetNameFieldPos)).getStringValue();
 
                         foreignKeys.add(new ViewDetails.ForeignKey(foreignKeyFields,
-                                new DatasetFullyQualifiedName(refDataverseName, refDatasetName)));
+                                new DatasetFullyQualifiedName(refDatabase, refDataverseName, refDatasetName)));
                     }
                 }
 
@@ -370,6 +389,7 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
 
         Map<String, String> hints = getDatasetHints(datasetRecord);
 
+        String metaItemTypeDatabaseName = null;
         DataverseName metaTypeDataverseName = null;
         String metaTypeName = null;
         int metaTypeDataverseNameIndex = recType.getFieldIndex(MetadataRecordTypes.FIELD_NAME_METATYPE_DATAVERSE_NAME);
@@ -379,15 +399,24 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
             metaTypeDataverseName = DataverseName.createFromCanonicalForm(metaTypeDataverseCanonicalName);
             int metaTypeNameIndex = recType.getFieldIndex(MetadataRecordTypes.FIELD_NAME_METATYPE_NAME);
             metaTypeName = ((AString) datasetRecord.getValueByPos(metaTypeNameIndex)).getStringValue();
+
+            int metaTypeDatabaseIdx = recType.getFieldIndex(MetadataRecordTypes.FIELD_NAME_METATYPE_DATABASE_NAME);
+            if (metaTypeDatabaseIdx >= 0) {
+                metaItemTypeDatabaseName =
+                        ((AString) datasetRecord.getValueByPos(metaTypeDatabaseIdx)).getStringValue();
+            } else {
+                metaItemTypeDatabaseName = MetadataUtil.databaseFor(metaTypeDataverseName);
+            }
         }
 
         long rebalanceCount = getRebalanceCount(datasetRecord);
         String compressionScheme = getCompressionScheme(datasetRecord);
         DatasetFormatInfo datasetFormatInfo = getDatasetFormatInfo(datasetRecord);
 
-        return new Dataset(databaseName, dataverseName, datasetName, typeDataverseName, typeName, metaTypeDataverseName,
-                metaTypeName, nodeGroupName, compactionPolicy.first, compactionPolicy.second, datasetDetails, hints,
-                datasetType, datasetId, pendingOp, rebalanceCount, compressionScheme, datasetFormatInfo);
+        return new Dataset(databaseName, dataverseName, datasetName, itemTypeDatabaseName, typeDataverseName, typeName,
+                metaItemTypeDatabaseName, metaTypeDataverseName, metaTypeName, nodeGroupName, compactionPolicy.first,
+                compactionPolicy.second, datasetDetails, hints, datasetType, datasetId, pendingOp, rebalanceCount,
+                compressionScheme, datasetFormatInfo);
     }
 
     protected Pair<String, Map<String, String>> readCompactionPolicy(DatasetType datasetType, ARecord datasetRecord) {
@@ -471,8 +500,14 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
         ADouble freeSpaceToleranceDouble = (ADouble) datasetFormatRecord.getValueByPos(freeSpaceToleranceIndex);
         double freeSpaceTolerance = freeSpaceToleranceDouble.getDoubleValue();
 
+        // MaxTupleCount
+        int maxLeafNodeSizeIndex = datasetFormatType
+                .getFieldIndex(MetadataRecordTypes.DATASET_ARECORD_DATASET_MAX_LEAF_NODE_SIZE_FIELD_NAME);
+        AInt64 maxLeafNodeSizeInt = (AInt64) datasetFormatRecord.getValueByPos(maxLeafNodeSizeIndex);
+        int maxLeafNodeSize = (int) maxLeafNodeSizeInt.getLongValue();
+
         // Columnar
-        return new DatasetFormatInfo(format, maxTupleCount, freeSpaceTolerance);
+        return new DatasetFormatInfo(format, maxTupleCount, freeSpaceTolerance, maxLeafNodeSize);
     }
 
     @Override
@@ -519,6 +554,8 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
         stringSerde.serialize(aString, fieldValue.getDataOutput());
         recordBuilder.addField(datasetEntity.datasetNameIndex(), fieldValue);
 
+        // itemTypeDatabaseName is written later by {@code writeOpenFields()}
+
         // write field 2
         fieldValue.reset();
         aString.setValue(dataset.getItemTypeDataverseName().getCanonicalForm());
@@ -551,12 +588,12 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
         switch (dataset.getDatasetType()) {
             case INTERNAL:
                 fieldValue.reset();
-                dataset.getDatasetDetails().writeDatasetDetailsRecordType(fieldValue.getDataOutput());
+                dataset.getDatasetDetails().writeDatasetDetailsRecordType(fieldValue.getDataOutput(), datasetEntity);
                 recordBuilder.addField(datasetEntity.internalDetailsIndex(), fieldValue);
                 break;
             case EXTERNAL:
                 fieldValue.reset();
-                dataset.getDatasetDetails().writeDatasetDetailsRecordType(fieldValue.getDataOutput());
+                dataset.getDatasetDetails().writeDatasetDetailsRecordType(fieldValue.getDataOutput(), datasetEntity);
                 recordBuilder.addField(datasetEntity.externalDetailsIndex(), fieldValue);
                 break;
             // VIEW details are written later by {@code writeOpenFields()}
@@ -637,6 +674,7 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
      * Keep protected to allow other extensions to add additional fields
      */
     protected void writeOpenFields(Dataset dataset) throws HyracksDataException {
+        writeItemTypeDatabase(dataset);
         writeMetaPart(dataset);
         writeRebalanceCount(dataset);
         writeBlockLevelStorageCompression(dataset);
@@ -651,13 +689,37 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
             aString.setValue(MetadataRecordTypes.FIELD_NAME_VIEW_DETAILS);
             stringSerde.serialize(aString, fieldName.getDataOutput());
             fieldValue.reset();
-            dataset.getDatasetDetails().writeDatasetDetailsRecordType(fieldValue.getDataOutput());
+            dataset.getDatasetDetails().writeDatasetDetailsRecordType(fieldValue.getDataOutput(), datasetEntity);
+            recordBuilder.addField(fieldName, fieldValue);
+        }
+    }
+
+    private void writeItemTypeDatabase(Dataset dataset) throws HyracksDataException {
+        //TODO(DB): should use something better
+        if (datasetEntity.databaseNameIndex() >= 0) {
+            fieldName.reset();
+            aString.setValue(MetadataRecordTypes.FIELD_NAME_DATATYPE_DATABASE_NAME);
+            stringSerde.serialize(aString, fieldName.getDataOutput());
+            fieldValue.reset();
+            aString.setValue(dataset.getItemTypeDatabaseName());
+            stringSerde.serialize(aString, fieldValue.getDataOutput());
             recordBuilder.addField(fieldName, fieldValue);
         }
     }
 
     private void writeMetaPart(Dataset dataset) throws HyracksDataException {
         if (dataset.hasMetaPart()) {
+            if (datasetEntity.databaseNameIndex() >= 0) {
+                fieldName.reset();
+                aString.setValue(MetadataRecordTypes.FIELD_NAME_METATYPE_DATABASE_NAME);
+                stringSerde.serialize(aString, fieldName.getDataOutput());
+                fieldValue.reset();
+                //TODO(DB): can dataset.getMetaItemTypeDatabaseName() be null?
+                aString.setValue(dataset.getMetaItemTypeDatabaseName());
+                stringSerde.serialize(aString, fieldValue.getDataOutput());
+                recordBuilder.addField(fieldName, fieldValue);
+            }
+
             // write open field 1, the meta item type Dataverse name.
             fieldName.reset();
             aString.setValue(MetadataRecordTypes.FIELD_NAME_METATYPE_DATAVERSE_NAME);
@@ -716,6 +778,7 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
 
         // Columnar settings
         if (info.getFormat() == DatasetConfig.DatasetFormat.COLUMN) {
+            // Max tuple count
             fieldName.reset();
             aString.setValue(MetadataRecordTypes.DATASET_ARECORD_DATASET_MAX_TUPLE_COUNT_FIELD_NAME);
             stringSerde.serialize(aString, fieldName.getDataOutput());
@@ -724,6 +787,7 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
             int64Serde.serialize(aInt64, fieldValue.getDataOutput());
             datasetFormatObject.addField(fieldName, fieldValue);
 
+            // free space tolerance
             fieldName.reset();
             aString.setValue(MetadataRecordTypes.DATASET_ARECORD_DATASET_FREE_SPACE_TOLERANCE_FIELD_NAME);
             stringSerde.serialize(aString, fieldName.getDataOutput());
@@ -731,6 +795,16 @@ public class DatasetTupleTranslator extends AbstractTupleTranslator<Dataset> {
             aDouble.setValue(info.getFreeSpaceTolerance());
             doubleSerde.serialize(aDouble, fieldValue.getDataOutput());
             datasetFormatObject.addField(fieldName, fieldValue);
+
+            // max leaf node size
+            fieldName.reset();
+            aString.setValue(MetadataRecordTypes.DATASET_ARECORD_DATASET_MAX_LEAF_NODE_SIZE_FIELD_NAME);
+            stringSerde.serialize(aString, fieldName.getDataOutput());
+            fieldValue.reset();
+            aInt64.setValue(info.getMaxLeafNodeSize());
+            int64Serde.serialize(aInt64, fieldValue.getDataOutput());
+            datasetFormatObject.addField(fieldName, fieldValue);
+
         }
 
         fieldName.reset();

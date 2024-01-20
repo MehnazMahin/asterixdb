@@ -29,7 +29,6 @@ import org.apache.hyracks.algebricks.core.algebra.base.IOptimizationContext;
 import org.apache.hyracks.algebricks.core.algebra.base.OperatorAnnotations;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.DistinctOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.GroupByOperator;
-import org.apache.hyracks.algebricks.core.algebra.operators.logical.LimitOperator;
 import org.apache.hyracks.algebricks.core.algebra.operators.logical.OrderOperator;
 import org.apache.hyracks.algebricks.core.rewriter.base.PhysicalOptimizationConfig;
 
@@ -39,18 +38,23 @@ public class CostMethods implements ICostMethods {
     protected PhysicalOptimizationConfig physOptConfig;
     protected long blockSize;
     protected long DOP;
+    protected static double selectivityForSecondaryIndexSelection = 0.1;
     protected double maxMemorySizeForJoin;
     protected double maxMemorySizeForGroup;
     protected double maxMemorySizeForSort;
 
     public CostMethods(IOptimizationContext context) {
+        setContext(context);
+    }
+
+    public void setContext(IOptimizationContext context) {
         optCtx = context;
         physOptConfig = context.getPhysicalOptimizationConfig();
         blockSize = getBufferCachePageSize();
         DOP = getDOP();
         maxMemorySizeForJoin = getMaxMemorySizeForJoin();
         maxMemorySizeForGroup = getMaxMemorySizeForGroup();
-        maxMemorySizeForJoin = getMaxMemorySizeForSort();
+        maxMemorySizeForSort = getMaxMemorySizeForSort();
     }
 
     private long getBufferCacheSize() {
@@ -58,7 +62,7 @@ public class CostMethods implements ICostMethods {
         return metadataProvider.getStorageProperties().getBufferCacheSize();
     }
 
-    private long getBufferCachePageSize() {
+    public long getBufferCachePageSize() {
         MetadataProvider metadataProvider = (MetadataProvider) optCtx.getMetadataProvider();
         return metadataProvider.getStorageProperties().getBufferCachePageSize();
     }
@@ -79,80 +83,88 @@ public class CostMethods implements ICostMethods {
         return physOptConfig.getMaxFramesExternalSort() * physOptConfig.getFrameSize();
     }
 
-    // These cost methods are very simple and rudimentary for now. These can be improved by asterixdb developers as needed.
+    // These cost methods are very simple and rudimentary for now.
+    // These can be improved by asterixdb developers as needed.
     public Cost costFullScan(JoinNode jn) {
-        return new Cost(jn.computeJoinCardinality());
+        return new Cost(jn.getOrigCardinality());
     }
 
     public Cost costIndexScan(JoinNode jn, double indexSel) {
-        return new Cost(jn.computeJoinCardinality());
+        return new Cost(indexSel * jn.getOrigCardinality());
     }
 
     public Cost costIndexDataScan(JoinNode jn, double indexSel) {
-        return new Cost(jn.computeJoinCardinality());
+        if (indexSel < selectivityForSecondaryIndexSelection) {
+            return new Cost(indexSel * jn.getOrigCardinality());
+        }
+
+        // If index selectivity is not very selective, make index scan more expensive than full scan.
+        return new Cost(jn.getOrigCardinality());
     }
 
     public Cost costHashJoin(JoinNode jn) {
         JoinNode leftJn = jn.getLeftJn();
         JoinNode rightJn = jn.getRightJn();
-        return new Cost(leftJn.computeJoinCardinality() + rightJn.computeJoinCardinality());
+        return new Cost(leftJn.getCardinality() + rightJn.getCardinality());
     }
 
     public Cost computeHJProbeExchangeCost(JoinNode jn) {
         JoinNode leftJn = jn.getLeftJn();
-        return new Cost(leftJn.computeJoinCardinality());
+        return new Cost(leftJn.getCardinality());
     }
 
     public Cost computeHJBuildExchangeCost(JoinNode jn) {
         JoinNode rightJn = jn.getRightJn();
-        return new Cost(rightJn.computeJoinCardinality());
+        return new Cost(rightJn.getCardinality());
     }
 
     public Cost costBroadcastHashJoin(JoinNode jn) {
         JoinNode leftJn = jn.getLeftJn();
         JoinNode rightJn = jn.getRightJn();
-        return new Cost(leftJn.computeJoinCardinality() + DOP * rightJn.computeJoinCardinality());
+        return new Cost(leftJn.getCardinality() + DOP * rightJn.getCardinality());
     }
 
     public Cost computeBHJBuildExchangeCost(JoinNode jn) {
         JoinNode rightJn = jn.getRightJn();
-        return new Cost(DOP * rightJn.computeJoinCardinality());
+        return new Cost(DOP * rightJn.getCardinality());
     }
 
     public Cost costIndexNLJoin(JoinNode jn) {
         JoinNode leftJn = jn.getLeftJn();
         JoinNode rightJn = jn.getRightJn();
-        return new Cost(leftJn.computeJoinCardinality());
+        double origRightCard = rightJn.getOrigCardinality();
+        double innerCard = rightJn.getCardinality();
+        double joinCard = jn.getCardinality();
+
+        return new Cost(4 * leftJn.getCardinality() + joinCard * origRightCard / innerCard);
     }
 
     public Cost computeNLJOuterExchangeCost(JoinNode jn) {
         JoinNode leftJn = jn.getLeftJn();
-        return new Cost(DOP * leftJn.computeJoinCardinality());
+        return new Cost(DOP * leftJn.getCardinality());
     }
 
     public Cost costCartesianProductJoin(JoinNode jn) {
         JoinNode leftJn = jn.getLeftJn();
         JoinNode rightJn = jn.getRightJn();
-        return new Cost(leftJn.computeJoinCardinality() * rightJn.computeJoinCardinality());
+        return new Cost(leftJn.getCardinality() * rightJn.getCardinality());
     }
 
     public Cost computeCPRightExchangeCost(JoinNode jn) {
         JoinNode rightJn = jn.getRightJn();
-        return new Cost(DOP * rightJn.computeJoinCardinality());
+        return new Cost(DOP * rightJn.getCardinality());
     }
 
     public Cost costHashGroupBy(GroupByOperator groupByOperator) {
         Pair<Double, Double> cards = getOpCards(groupByOperator);
         double inputCard = cards.getFirst();
-        //return new Cost(inputCard);
-        return new Cost(200.0);
+        return new Cost(inputCard);
     }
 
     public Cost costSortGroupBy(GroupByOperator groupByOperator) {
         Pair<Double, Double> cards = getOpCards(groupByOperator);
         double inputCard = cards.getFirst();
-        //return new Cost(costSort(inputCard));
-        return new Cost(100.0);
+        return new Cost(costSort(inputCard));
     }
 
     public Cost costDistinct(DistinctOperator distinctOperator) {
@@ -165,10 +177,6 @@ public class CostMethods implements ICostMethods {
         Pair<Double, Double> cards = getOpCards(orderOp);
         double inputCard = cards.getFirst();
         return new Cost(costSort(inputCard));
-    }
-
-    public Cost costLimit(LimitOperator limitOp) {
-        return null;
     }
 
     protected Pair<Double, Double> getOpCards(ILogicalOperator op) {
@@ -185,6 +193,6 @@ public class CostMethods implements ICostMethods {
     }
 
     protected double costSort(double inputCard) {
-        return inputCard * Math.log(inputCard) / Math.log(2); // log to the base 2
+        return (inputCard <= 1 ? 0 : inputCard * Math.log(inputCard) / Math.log(2)); // log to the base 2
     }
 }

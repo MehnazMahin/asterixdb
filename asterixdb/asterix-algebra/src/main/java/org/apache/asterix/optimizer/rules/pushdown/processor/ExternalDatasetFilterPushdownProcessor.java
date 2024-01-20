@@ -61,14 +61,15 @@ public class ExternalDatasetFilterPushdownProcessor extends ColumnFilterPushdown
     }
 
     @Override
-    protected void preparePushdown(UseDescriptor useDescriptor) throws AlgebricksException {
-        super.preparePushdown(useDescriptor);
+    protected void preparePushdown(UseDescriptor useDescriptor, ScanDefineDescriptor scanDescriptor)
+            throws AlgebricksException {
+        super.preparePushdown(useDescriptor, scanDescriptor);
     }
 
     @Override
-    protected boolean isPushable(AbstractFunctionCallExpression expression) {
+    protected boolean isNotPushable(AbstractFunctionCallExpression expression) {
         FunctionIdentifier fid = expression.getFunctionIdentifier();
-        return !ARRAY_FUNCTIONS.contains(fid) && super.isPushable(expression);
+        return ARRAY_FUNCTIONS.contains(fid) || super.isNotPushable(expression);
     }
 
     @Override

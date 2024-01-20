@@ -20,8 +20,44 @@
 package org.apache.asterix.metadata;
 
 import static org.apache.asterix.common.api.IIdentifierMapper.Modifier.PLURAL;
+import static org.apache.asterix.common.exceptions.ErrorCode.ADAPTER_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_DATABASE_DEPENDENT_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.COMPACTION_POLICY_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.DATABASE_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.DATASET_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.DATAVERSE_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.EXTERNAL_FILE_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.FEED_CONNECTION_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.FEED_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.FEED_POLICY_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.FULL_TEXT_DEFAULT_CONFIG_CANNOT_BE_DELETED_OR_CREATED;
+import static org.apache.asterix.common.exceptions.ErrorCode.FUNCTION_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.INDEX_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.LIBRARY_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.METADATA_ERROR;
+import static org.apache.asterix.common.exceptions.ErrorCode.NODEGROUP_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.NODE_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.SYNONYM_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.TYPE_EXISTS;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_ADAPTER;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_DATABASE;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_DATAVERSE;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_EXTERNAL_FILE;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_FEED;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_FEED_CONNECTION;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_FEED_POLICY;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_FUNCTION;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_INDEX;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_LIBRARY;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_NODEGROUP;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_SYNONYM;
+import static org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_TYPE;
 import static org.apache.asterix.common.utils.IdentifierUtil.dataset;
 
+import java.io.PrintStream;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,7 +75,10 @@ import org.apache.asterix.common.exceptions.AsterixException;
 import org.apache.asterix.common.exceptions.MetadataException;
 import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.common.metadata.DependencyFullyQualifiedName;
+import org.apache.asterix.common.metadata.MetadataConstants;
 import org.apache.asterix.common.metadata.MetadataIndexImmutableProperties;
+import org.apache.asterix.common.metadata.MetadataUtil;
 import org.apache.asterix.common.transactions.IRecoveryManager.ResourceType;
 import org.apache.asterix.common.transactions.ITransactionContext;
 import org.apache.asterix.common.transactions.ITransactionManager.AtomicityLevel;
@@ -49,6 +88,7 @@ import org.apache.asterix.common.transactions.TransactionOptions;
 import org.apache.asterix.common.transactions.TxnId;
 import org.apache.asterix.common.utils.StoragePathUtil;
 import org.apache.asterix.external.indexing.ExternalFile;
+import org.apache.asterix.formats.nontagged.CleanJSONPrinterFactoryProvider;
 import org.apache.asterix.formats.nontagged.NullIntrospector;
 import org.apache.asterix.formats.nontagged.SerializerDeserializerProvider;
 import org.apache.asterix.formats.nontagged.TypeTraitProvider;
@@ -61,6 +101,7 @@ import org.apache.asterix.metadata.api.IMetadataExtension;
 import org.apache.asterix.metadata.api.IMetadataIndex;
 import org.apache.asterix.metadata.api.IMetadataNode;
 import org.apache.asterix.metadata.api.IValueExtractor;
+import org.apache.asterix.metadata.bootstrap.MetadataBuiltinEntities;
 import org.apache.asterix.metadata.bootstrap.MetadataIndexesProvider;
 import org.apache.asterix.metadata.entities.CompactionPolicy;
 import org.apache.asterix.metadata.entities.Database;
@@ -102,7 +143,6 @@ import org.apache.asterix.metadata.entitytupletranslators.NodeGroupTupleTranslat
 import org.apache.asterix.metadata.entitytupletranslators.NodeTupleTranslator;
 import org.apache.asterix.metadata.entitytupletranslators.SynonymTupleTranslator;
 import org.apache.asterix.metadata.utils.DatasetUtil;
-import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.metadata.utils.TypeUtil;
 import org.apache.asterix.metadata.valueextractors.MetadataEntityValueExtractor;
 import org.apache.asterix.metadata.valueextractors.TupleCopyValueExtractor;
@@ -124,13 +164,15 @@ import org.apache.asterix.transaction.management.opcallbacks.SecondaryIndexModif
 import org.apache.asterix.transaction.management.opcallbacks.UpsertOperationCallback;
 import org.apache.asterix.transaction.management.service.transaction.DatasetIdFactory;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
-import org.apache.hyracks.algebricks.common.utils.Triple;
+import org.apache.hyracks.algebricks.data.IPrinter;
+import org.apache.hyracks.algebricks.data.IPrinterFactory;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparator;
 import org.apache.hyracks.api.dataflow.value.IBinaryComparatorFactory;
 import org.apache.hyracks.api.dataflow.value.ISerializerDeserializer;
 import org.apache.hyracks.api.exceptions.ErrorCode;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.api.util.HyracksConstants;
+import org.apache.hyracks.data.std.util.ByteArrayAccessibleOutputStream;
 import org.apache.hyracks.dataflow.common.comm.io.ArrayTupleBuilder;
 import org.apache.hyracks.dataflow.common.comm.io.ArrayTupleReference;
 import org.apache.hyracks.dataflow.common.data.accessors.ITupleReference;
@@ -149,9 +191,12 @@ import org.apache.hyracks.storage.common.IIndexCursor;
 import org.apache.hyracks.storage.common.IModificationOperationCallback;
 import org.apache.hyracks.storage.common.MultiComparator;
 import org.apache.hyracks.util.ExitUtil;
+import org.apache.hyracks.util.JSONUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Strings;
 
 public class MetadataNode implements IMetadataNode {
@@ -338,15 +383,24 @@ public class MetadataNode implements IMetadataNode {
             throws AlgebricksException {
         ExtensionMetadataDataset<T> index = getExtensionMetadataDataset(searchKey.getDatasetId());
         IMetadataEntityTupleTranslator<T> tupleTranslator = index.getTupleTranslator(false);
-        return getEntities(txnId, searchKey.getSearchKey(), tupleTranslator, index);
+        return getEntities(txnId, searchKey.getSearchKey(mdIndexesProvider), tupleTranslator, index);
+    }
+
+    @Override
+    public JsonNode getEntitiesAsJson(TxnId txnId, IMetadataIndex metadataIndex, int payloadPosition)
+            throws AlgebricksException, RemoteException {
+        try {
+            return getJsonNodes(txnId, metadataIndex, payloadPosition);
+        } catch (HyracksDataException e) {
+            throw new AlgebricksException(e);
+        }
     }
 
     private <T extends IExtensionMetadataEntity> ExtensionMetadataDataset<T> getExtensionMetadataDataset(
             ExtensionMetadataDatasetId datasetId) throws AlgebricksException {
         ExtensionMetadataDataset<T> index = (ExtensionMetadataDataset<T>) extensionDatasets.get(datasetId);
         if (index == null) {
-            throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.METADATA_ERROR,
-                    "Metadata Extension Index: " + datasetId + " was not found");
+            throw new AsterixException(METADATA_ERROR, "Metadata Extension Index: " + datasetId + " was not found");
         }
         return index;
     }
@@ -354,23 +408,19 @@ public class MetadataNode implements IMetadataNode {
     @Override
     public void addDatabase(TxnId txnId, Database database) throws AlgebricksException, RemoteException {
         try {
+            if (!mdIndexesProvider.isUsingDatabase()) {
+                return;
+            }
             DatabaseTupleTranslator tupleReaderWriter = tupleTranslatorProvider.getDatabaseTupleTranslator(true);
             ITupleReference tuple = tupleReaderWriter.getTupleFromMetadataEntity(database);
             insertTupleIntoIndex(txnId, mdIndexesProvider.getDatabaseEntity().getIndex(), tuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                //TODO(DB): change to database
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.DATAVERSE_EXISTS, e,
-                        database.getDatabaseName());
+                throw new AsterixException(DATABASE_EXISTS, e, database.getDatabaseName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
-    }
-
-    @Override
-    public void dropDatabase(TxnId txnId, String databaseName) throws AlgebricksException, RemoteException {
-        //TODO(DB): implement
     }
 
     @Override
@@ -381,10 +431,10 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getDataverseEntity().getIndex(), tuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.DATAVERSE_EXISTS, e,
-                        dataverse.getDataverseName());
+                //TODO(DB): consider adding the database name to the error message?
+                throw new AsterixException(DATAVERSE_EXISTS, e, dataverse.getDataverseName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -407,10 +457,9 @@ public class MetadataNode implements IMetadataNode {
             }
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.DATASET_EXISTS, e,
-                        dataset.getDatasetName(), dataset.getDataverseName());
+                throw new AsterixException(DATASET_EXISTS, e, dataset.getDatasetName(), dataset.getDataverseName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -423,10 +472,9 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getIndexEntity().getIndex(), tuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.INDEX_EXISTS, e,
-                        index.getIndexName());
+                throw new AsterixException(INDEX_EXISTS, e, index.getIndexName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -439,10 +487,9 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getNodeEntity().getIndex(), tuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.NODE_EXISTS, e,
-                        node.getNodeName());
+                throw new AsterixException(NODE_EXISTS, e, node.getNodeName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -455,10 +502,9 @@ public class MetadataNode implements IMetadataNode {
             modifyMetadataIndex(modificationOp, txnId, mdIndexesProvider.getNodeGroupEntity().getIndex(), tuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.NODEGROUP_EXISTS, e,
-                        nodeGroup.getNodeGroupName());
+                throw new AsterixException(NODEGROUP_EXISTS, e, nodeGroup.getNodeGroupName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -472,10 +518,9 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getDatatypeEntity().getIndex(), tuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.TYPE_EXISTS, e,
-                        datatype.getDatatypeName());
+                throw new AsterixException(TYPE_EXISTS, e, datatype.getDatatypeName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -490,10 +535,9 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getFunctionEntity().getIndex(), functionTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.FUNCTION_EXISTS, e,
-                        function.getName());
+                throw new AsterixException(FUNCTION_EXISTS, e, function.getName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -521,7 +565,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return results.get(0);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -540,7 +584,7 @@ public class MetadataNode implements IMetadataNode {
             ITupleReference key = createTuple(database, dataverseName, filterName);
             deleteTupleFromIndex(txnId, mdIndexesProvider.getFullTextFilterEntity().getIndex(), key);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -552,7 +596,7 @@ public class MetadataNode implements IMetadataNode {
             ITupleReference configTuple = tupleReaderWriter.getTupleFromMetadataEntity(config);
             insertTupleIntoIndex(txnId, mdIndexesProvider.getFullTextConfigEntity().getIndex(), configTuple);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -564,18 +608,14 @@ public class MetadataNode implements IMetadataNode {
             ITupleReference filterTuple = tupleReaderWriter.getTupleFromMetadataEntity(filter);
             insertTupleIntoIndex(txnId, mdIndexesProvider.getFullTextFilterEntity().getIndex(), filterTuple);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
     @Override
     public void addFullTextConfig(TxnId txnId, FullTextConfigMetadataEntity config)
             throws AlgebricksException, RemoteException {
-        try {
-            insertFullTextConfigMetadataEntityToCatalog(txnId, config);
-        } catch (AlgebricksException e) {
-            throw new AlgebricksException(e, ErrorCode.ERROR_PROCESSING_TUPLE);
-        }
+        insertFullTextConfigMetadataEntityToCatalog(txnId, config);
     }
 
     @Override
@@ -593,7 +633,7 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getFullTextConfigEntity().getIndex(), searchKey, valueExtractor,
                     results);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
 
         if (results.isEmpty()) {
@@ -619,7 +659,7 @@ public class MetadataNode implements IMetadataNode {
             ITupleReference key = createTuple(database, dataverseName, configName);
             deleteTupleFromIndex(txnId, mdIndexesProvider.getFullTextConfigEntity().getIndex(), key);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -631,6 +671,11 @@ public class MetadataNode implements IMetadataNode {
     private void upsertTupleIntoIndex(TxnId txnId, IMetadataIndex metadataIndex, ITupleReference tuple)
             throws HyracksDataException {
         modifyMetadataIndex(Operation.UPSERT, txnId, metadataIndex, tuple);
+    }
+
+    private void deleteTupleFromIndex(TxnId txnId, IMetadataIndex metadataIndex, ITupleReference tuple)
+            throws HyracksDataException {
+        modifyMetadataIndex(Operation.DELETE, txnId, metadataIndex, tuple);
     }
 
     private void modifyMetadataIndex(Operation op, TxnId txnId, IMetadataIndex metadataIndex, ITupleReference tuple)
@@ -702,6 +747,121 @@ public class MetadataNode implements IMetadataNode {
     }
 
     @Override
+    public void dropDatabase(TxnId txnId, String databaseName) throws AlgebricksException, RemoteException {
+        try {
+            if (!mdIndexesProvider.isUsingDatabase()) {
+                return;
+            }
+            //TODO(DB): review
+            confirmDatabaseCanBeDeleted(txnId, databaseName);
+
+            // Drop all feeds and connections in this database.
+            // Feeds may depend on datatypes and adapters
+            dropDatabaseFeeds(txnId, databaseName);
+
+            // Drop all feed ingestion policies in this database.
+            List<FeedPolicyEntity> feedPolicies = getDatabaseFeedPolicies(txnId, databaseName);
+            for (FeedPolicyEntity feedPolicy : feedPolicies) {
+                dropFeedPolicy(txnId, databaseName, feedPolicy.getDataverseName(), feedPolicy.getPolicyName());
+            }
+
+            // Drop all functions in this database.
+            // Functions may depend on libraries, datasets, functions, datatypes, synonyms
+            // As a side effect, acquires an S lock on the 'Function' dataset on behalf of txnId.
+            List<Function> databaseFunctions = getDatabaseFunctions(txnId, databaseName);
+            for (Function function : databaseFunctions) {
+                dropFunction(txnId, function.getSignature(), true);
+            }
+
+            // Drop all adapters in this database.
+            // Adapters depend on libraries.
+            // As a side effect, acquires an S lock on the 'Adapter' dataset on behalf of txnId.
+            List<DatasourceAdapter> databaseAdapters = getDatabaseAdapters(txnId, databaseName);
+            for (DatasourceAdapter adapter : databaseAdapters) {
+                dropAdapter(txnId, databaseName, adapter.getAdapterIdentifier().getDataverseName(),
+                        adapter.getAdapterIdentifier().getName());
+            }
+
+            // Drop all libraries in this database.
+            List<Library> databaseLibraries = getDatabaseLibraries(txnId, databaseName);
+            for (Library lib : databaseLibraries) {
+                dropLibrary(txnId, lib.getDatabaseName(), lib.getDataverseName(), lib.getName(), true);
+            }
+
+            // Drop all synonyms in this database.
+            List<Synonym> databaseSynonyms = getDatabaseSynonyms(txnId, databaseName);
+            for (Synonym synonym : databaseSynonyms) {
+                dropSynonym(txnId, databaseName, synonym.getDataverseName(), synonym.getSynonymName(), true);
+            }
+
+            // Drop all datasets and indexes in this database.
+            // Datasets depend on datatypes
+            List<Dataset> databaseDatasets = getDatabaseDatasets(txnId, databaseName);
+            for (Dataset ds : databaseDatasets) {
+                dropDataset(txnId, databaseName, ds.getDataverseName(), ds.getDatasetName(), true);
+            }
+
+            // Drop full-text configs in this database.
+            // Note that full-text configs are utilized by the index, and we need to always drop index first
+            // and then full-text config
+            List<FullTextConfigMetadataEntity> configMetadataEntities = getDatabaseFullTextConfigs(txnId, databaseName);
+            for (FullTextConfigMetadataEntity configMetadataEntity : configMetadataEntities) {
+                dropFullTextConfigDescriptor(txnId, databaseName,
+                        configMetadataEntity.getFullTextConfig().getDataverseName(),
+                        configMetadataEntity.getFullTextConfig().getName(), true);
+            }
+
+            // Drop full-text filters in this database.
+            // Note that full-text filters are utilized by the full-text configs,
+            // and we need to always drop full-text configs first
+            // and then full-text filter
+            List<FullTextFilterMetadataEntity> filters = getDatabaseFullTextFilters(txnId, databaseName);
+            for (FullTextFilterMetadataEntity filter : filters) {
+                dropFullTextFilterDescriptor(txnId, databaseName, filter.getFullTextFilter().getDataverseName(),
+                        filter.getFullTextFilter().getName(), true);
+            }
+
+            // Drop all types in this database.
+            // As a side effect, acquires an S lock on the 'datatype' dataset on behalf of txnId.
+            List<Datatype> databaseDatatypes = getDatabaseDatatypes(txnId, databaseName);
+            for (Datatype dataType : databaseDatatypes) {
+                forceDropDatatype(txnId, databaseName, dataType.getDataverseName(), dataType.getDatatypeName());
+            }
+
+            List<Dataverse> databaseDataverses = getDatabaseDataverses(txnId, databaseName);
+            for (Dataverse dataverse : databaseDataverses) {
+                forceDropDataverse(txnId, databaseName, dataverse.getDataverseName());
+            }
+
+            // delete the database entry from the 'Database' collection
+            // as a side effect, acquires an S lock on the 'Database' collection on behalf of txnId
+            ITupleReference searchKey = createTuple(databaseName);
+            ITupleReference tuple =
+                    getTupleToBeDeleted(txnId, mdIndexesProvider.getDatabaseEntity().getIndex(), searchKey);
+            deleteTupleFromIndex(txnId, mdIndexesProvider.getDatabaseEntity().getIndex(), tuple);
+        } catch (HyracksDataException e) {
+            if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
+                throw new AsterixException(UNKNOWN_DATABASE, e, databaseName);
+            } else {
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+            }
+        }
+    }
+
+    private void dropDatabaseFeeds(TxnId txnId, String databaseName) throws AlgebricksException {
+        List<Feed> databaseFeeds = getDatabaseFeeds(txnId, databaseName);
+        for (Feed feed : databaseFeeds) {
+            List<FeedConnection> feedConnections =
+                    getFeedConnections(txnId, databaseName, feed.getDataverseName(), feed.getFeedName());
+            for (FeedConnection feedConnection : feedConnections) {
+                dropFeedConnection(txnId, databaseName, feedConnection.getDataverseName(), feed.getFeedName(),
+                        feedConnection.getDatasetName());
+            }
+            dropFeed(txnId, databaseName, feed.getDataverseName(), feed.getFeedName());
+        }
+    }
+
+    @Override
     public void dropDataverse(TxnId txnId, String database, DataverseName dataverseName) throws AlgebricksException {
         try {
             confirmDataverseCanBeDeleted(txnId, database, dataverseName);
@@ -742,6 +902,7 @@ public class MetadataNode implements IMetadataNode {
             }
 
             // Drop all libraries in this dataverse.
+            //TODO(DB): should may be check the library dependency above
             List<Library> dataverseLibraries = getDataverseLibraries(txnId, database, dataverseName);
             for (Library lib : dataverseLibraries) {
                 dropLibrary(txnId, lib.getDatabaseName(), lib.getDataverseName(), lib.getName());
@@ -789,18 +950,23 @@ public class MetadataNode implements IMetadataNode {
 
             // Delete the dataverse entry from the 'dataverse' dataset.
             // As a side effect, acquires an S lock on the 'dataverse' dataset on behalf of txnId.
-            ITupleReference searchKey = createTuple(database, dataverseName);
-            ITupleReference tuple =
-                    getTupleToBeDeleted(txnId, mdIndexesProvider.getDataverseEntity().getIndex(), searchKey);
-            deleteTupleFromIndex(txnId, mdIndexesProvider.getDataverseEntity().getIndex(), tuple);
+            forceDropDataverse(txnId, database, dataverseName);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_DATAVERSE, e,
-                        dataverseName);
+                throw new AsterixException(UNKNOWN_DATAVERSE, e,
+                        MetadataUtil.dataverseName(database, dataverseName, mdIndexesProvider.isUsingDatabase()));
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
+    }
+
+    private void forceDropDataverse(TxnId txnId, String database, DataverseName dataverseName)
+            throws AlgebricksException, HyracksDataException {
+        ITupleReference searchKey = createTuple(database, dataverseName);
+        ITupleReference tuple =
+                getTupleToBeDeleted(txnId, mdIndexesProvider.getDataverseEntity().getIndex(), searchKey);
+        deleteTupleFromIndex(txnId, mdIndexesProvider.getDataverseEntity().getIndex(), tuple);
     }
 
     @Override
@@ -823,8 +989,8 @@ public class MetadataNode implements IMetadataNode {
             boolean force) throws AlgebricksException {
         Dataset dataset = getDataset(txnId, database, dataverseName, datasetName);
         if (dataset == null) {
-            throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE,
-                    datasetName, dataverseName);
+            throw new AsterixException(UNKNOWN_DATASET_IN_DATAVERSE, datasetName,
+                    MetadataUtil.dataverseName(database, dataverseName, mdIndexesProvider.isUsingDatabase()));
         }
         if (!force) {
             String datasetTypeDisplayName = DatasetUtil.getDatasetTypeDisplayName(dataset.getDatasetType());
@@ -874,16 +1040,15 @@ public class MetadataNode implements IMetadataNode {
                         break;
                 }
             } catch (HyracksDataException hde) {
-                // ignore this exception and continue deleting all relevant
-                // artifacts.
+                // ignore this exception and continue deleting all relevant artifacts
                 if (!hde.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                    throw new AlgebricksException(hde);
+                    throw new AsterixException(METADATA_ERROR, hde, hde.getMessage());
                 }
             } finally {
                 deleteTupleFromIndex(txnId, mdIndexesProvider.getDatasetEntity().getIndex(), datasetTuple);
             }
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -899,9 +1064,9 @@ public class MetadataNode implements IMetadataNode {
             deleteTupleFromIndex(txnId, mdIndexesProvider.getIndexEntity().getIndex(), tuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_INDEX, e, indexName);
+                throw new AsterixException(UNKNOWN_INDEX, e, indexName);
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -913,9 +1078,8 @@ public class MetadataNode implements IMetadataNode {
             if (failSilently) {
                 return false;
             }
-            throw new AsterixException(
-                    org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "node group",
-                    nodeGroupName, dataset(PLURAL),
+            throw new AsterixException(CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "node group", nodeGroupName,
+                    dataset(PLURAL),
                     datasets.stream().map(DatasetUtil::getFullyQualifiedDisplayName).collect(Collectors.joining(", ")));
         }
         try {
@@ -928,10 +1092,9 @@ public class MetadataNode implements IMetadataNode {
             return true;
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_NODEGROUP, e,
-                        nodeGroupName);
+                throw new AsterixException(UNKNOWN_NODEGROUP, e, nodeGroupName);
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -966,10 +1129,9 @@ public class MetadataNode implements IMetadataNode {
             }
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_TYPE, e,
-                        datatypeName);
+                throw new AsterixException(UNKNOWN_TYPE, e, datatypeName);
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -985,17 +1147,24 @@ public class MetadataNode implements IMetadataNode {
             deleteTupleFromIndex(txnId, mdIndexesProvider.getDatatypeEntity().getIndex(), tuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_TYPE, e,
-                        datatypeName);
+                throw new AsterixException(UNKNOWN_TYPE, e, datatypeName);
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
 
-    private void deleteTupleFromIndex(TxnId txnId, IMetadataIndex metadataIndex, ITupleReference tuple)
-            throws HyracksDataException {
-        modifyMetadataIndex(Operation.DELETE, txnId, metadataIndex, tuple);
+    @Override
+    public List<Database> getDatabases(TxnId txnId) throws AlgebricksException, RemoteException {
+        try {
+            DatabaseTupleTranslator tupleReaderWriter = tupleTranslatorProvider.getDatabaseTupleTranslator(false);
+            IValueExtractor<Database> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            List<Database> results = new ArrayList<>();
+            searchIndex(txnId, mdIndexesProvider.getDatabaseEntity().getIndex(), null, valueExtractor, results);
+            return results;
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
     }
 
     @Override
@@ -1007,7 +1176,27 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getDataverseEntity().getIndex(), null, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+    }
+
+    @Override
+    public Database getDatabase(TxnId txnId, String databaseName) throws AlgebricksException {
+        try {
+            if (!mdIndexesProvider.isUsingDatabase()) {
+                return defaultDatabase(databaseName);
+            }
+            ITupleReference searchKey = createTuple(databaseName);
+            DatabaseTupleTranslator tupleReaderWriter = tupleTranslatorProvider.getDatabaseTupleTranslator(false);
+            IValueExtractor<Database> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            List<Database> results = new ArrayList<>();
+            searchIndex(txnId, mdIndexesProvider.getDatabaseEntity().getIndex(), searchKey, valueExtractor, results);
+            if (results.isEmpty()) {
+                return null;
+            }
+            return results.get(0);
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1025,7 +1214,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return results.get(0);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1040,7 +1229,34 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getDatasetEntity().getIndex(), searchKey, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+    }
+
+    private List<Dataverse> getDatabaseDataverses(TxnId txnId, String database) throws AlgebricksException {
+        try {
+            ITupleReference searchKey = createTuple(database);
+            DataverseTupleTranslator tupleReaderWriter = tupleTranslatorProvider.getDataverseTupleTranslator(false);
+            IValueExtractor<Dataverse> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            List<Dataverse> results = new ArrayList<>();
+            searchIndex(txnId, mdIndexesProvider.getDataverseEntity().getIndex(), searchKey, valueExtractor, results);
+            return results;
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+    }
+
+    @Override
+    public List<Dataset> getDatabaseDatasets(TxnId txnId, String database) throws AlgebricksException {
+        try {
+            ITupleReference searchKey = createTuple(database);
+            DatasetTupleTranslator tupleReaderWriter = tupleTranslatorProvider.getDatasetTupleTranslator(false);
+            IValueExtractor<Dataset> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            List<Dataset> results = new ArrayList<>();
+            searchIndex(txnId, mdIndexesProvider.getDatasetEntity().getIndex(), searchKey, valueExtractor, results);
+            return results;
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1055,7 +1271,20 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getFeedEntity().getIndex(), searchKey, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+    }
+
+    private List<Feed> getDatabaseFeeds(TxnId txnId, String database) throws AlgebricksException {
+        try {
+            ITupleReference searchKey = createTuple(database);
+            FeedTupleTranslator tupleReaderWriter = tupleTranslatorProvider.getFeedTupleTranslator(false);
+            IValueExtractor<Feed> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            List<Feed> results = new ArrayList<>();
+            searchIndex(txnId, mdIndexesProvider.getFeedEntity().getIndex(), searchKey, valueExtractor, results);
+            return results;
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1070,7 +1299,21 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getLibraryEntity().getIndex(), searchKey, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+    }
+
+    @Override
+    public List<Library> getDatabaseLibraries(TxnId txnId, String database) throws AlgebricksException {
+        try {
+            ITupleReference searchKey = createTuple(database);
+            LibraryTupleTranslator tupleReaderWriter = tupleTranslatorProvider.getLibraryTupleTranslator(false);
+            IValueExtractor<Library> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            List<Library> results = new ArrayList<>();
+            searchIndex(txnId, mdIndexesProvider.getLibraryEntity().getIndex(), searchKey, valueExtractor, results);
+            return results;
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1085,7 +1328,21 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getDatatypeEntity().getIndex(), searchKey, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+    }
+
+    private List<Datatype> getDatabaseDatatypes(TxnId txnId, String database) throws AlgebricksException {
+        try {
+            ITupleReference searchKey = createTuple(database);
+            DatatypeTupleTranslator tupleReaderWriter =
+                    tupleTranslatorProvider.getDataTypeTupleTranslator(txnId, this, false);
+            IValueExtractor<Datatype> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            List<Datatype> results = new ArrayList<>();
+            searchIndex(txnId, mdIndexesProvider.getDatatypeEntity().getIndex(), searchKey, valueExtractor, results);
+            return results;
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1101,7 +1358,24 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getFullTextConfigEntity().getIndex(), searchKey, valueExtractor,
                     results);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+        return results;
+    }
+
+    private List<FullTextConfigMetadataEntity> getDatabaseFullTextConfigs(TxnId txnId, String database)
+            throws AlgebricksException {
+        ITupleReference searchKey = createTuple(database);
+        FullTextConfigMetadataEntityTupleTranslator tupleReaderWriter =
+                tupleTranslatorProvider.getFullTextConfigTupleTranslator(true);
+        IValueExtractor<FullTextConfigMetadataEntity> valueExtractor =
+                new MetadataEntityValueExtractor<>(tupleReaderWriter);
+        List<FullTextConfigMetadataEntity> results = new ArrayList<>();
+        try {
+            searchIndex(txnId, mdIndexesProvider.getFullTextConfigEntity().getIndex(), searchKey, valueExtractor,
+                    results);
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
         return results;
     }
@@ -1118,7 +1392,24 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getFullTextFilterEntity().getIndex(), searchKey, valueExtractor,
                     results);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+        return results;
+    }
+
+    private List<FullTextFilterMetadataEntity> getDatabaseFullTextFilters(TxnId txnId, String database)
+            throws AlgebricksException {
+        ITupleReference searchKey = createTuple(database);
+        FullTextFilterMetadataEntityTupleTranslator tupleReaderWriter =
+                tupleTranslatorProvider.getFullTextFilterTupleTranslator(true);
+        IValueExtractor<FullTextFilterMetadataEntity> valueExtractor =
+                new MetadataEntityValueExtractor<>(tupleReaderWriter);
+        List<FullTextFilterMetadataEntity> results = new ArrayList<>();
+        try {
+            searchIndex(txnId, mdIndexesProvider.getFullTextFilterEntity().getIndex(), searchKey, valueExtractor,
+                    results);
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
         return results;
     }
@@ -1137,7 +1428,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return results.get(0);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1149,7 +1440,7 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getDatasetEntity().getIndex(), null, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1166,7 +1457,7 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getDatatypeEntity().getIndex(), null, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1180,7 +1471,7 @@ public class MetadataNode implements IMetadataNode {
                     results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1193,30 +1484,142 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getFeedConnectionEntity().getIndex(), null, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+    }
+
+    private void confirmDatabaseCanBeDeleted(TxnId txnId, String database) throws AlgebricksException {
+        // if a dataset/view from a DIFFERENT database uses a type from this database throw an error
+        ensureNoDatasetUsingDatabase(txnId, database);
+
+        // if a function from a DIFFERENT database uses datasets, functions, datatypes, or synonyms from this database
+        // throw an error
+        ensureNoFunctionUsingDatabase(txnId, database);
+
+        // if a feed connection from a DIFFERENT database applies a function from this database then throw an error
+        ensureNoFeedUsingDatabase(txnId, database);
+
+        // if an adapter from a DIFFERENT database uses a library from this database then throw an error
+        ensureNoAdapterUsingDatabase(txnId, database);
+    }
+
+    private void ensureNoAdapterUsingDatabase(TxnId txnId, String database) throws AlgebricksException {
+        List<DatasourceAdapter> adapters = getAllAdapters(txnId);
+        for (DatasourceAdapter adapter : adapters) {
+            if (database.equals(adapter.getAdapterIdentifier().getDatabaseName())) {
+                // skip adapters in self database
+                continue;
+            }
+            if (database.equals(adapter.getLibraryDatabaseName())) {
+                throw new AsterixException(CANNOT_DROP_DATABASE_DEPENDENT_EXISTS, "library",
+                        MetadataUtil.getFullyQualifiedDisplayName(adapter.getLibraryDatabaseName(),
+                                adapter.getLibraryDataverseName(), adapter.getLibraryName()),
+                        "adapter",
+                        MetadataUtil.getFullyQualifiedDisplayName(adapter.getAdapterIdentifier().getDataverseName(),
+                                adapter.getAdapterIdentifier().getName()));
+            }
+        }
+    }
+
+    private void ensureNoFeedUsingDatabase(TxnId txnId, String database) throws AlgebricksException {
+        List<FeedConnection> feedConnections = getAllFeedConnections(txnId);
+        for (FeedConnection feedConnection : feedConnections) {
+            if (database.equals(feedConnection.getDatabaseName())) {
+                continue;
+            }
+            for (FunctionSignature functionSignature : feedConnection.getAppliedFunctions()) {
+                if (database.equals(functionSignature.getDatabaseName())) {
+                    throw new AsterixException(CANNOT_DROP_DATABASE_DEPENDENT_EXISTS, "function", functionSignature,
+                            "feed connection",
+                            MetadataUtil.getFullyQualifiedDisplayName(feedConnection.getDatabaseName(),
+                                    feedConnection.getDataverseName(), feedConnection.getFeedName()));
+                }
+            }
+        }
+    }
+
+    private void ensureNoFunctionUsingDatabase(TxnId txnId, String database) throws AlgebricksException {
+        List<Function> functions = getAllFunctions(txnId);
+        for (Function otherFunction : functions) {
+            if (otherFunction.getDatabaseName().equals(database)) {
+                continue;
+            }
+            List<DependencyKind> dependenciesSchema = Function.DEPENDENCIES_SCHEMA;
+            List<List<DependencyFullyQualifiedName>> dependencies = otherFunction.getDependencies();
+            for (int i = 0, n = dependencies.size(); i < n; i++) {
+                for (DependencyFullyQualifiedName dependency : dependencies.get(i)) {
+                    if (dependency.getDatabaseName().equals(database)) {
+                        DependencyKind dependencyKind = dependenciesSchema.get(i);
+                        throw new AsterixException(CANNOT_DROP_DATABASE_DEPENDENT_EXISTS, dependencyKind,
+                                dependencyKind.getDependencyDisplayName(dependency), "function",
+                                otherFunction.getSignature());
+                    }
+                }
+            }
+            if (database.equals(otherFunction.getLibraryDatabaseName())) {
+                throw new AsterixException(CANNOT_DROP_DATABASE_DEPENDENT_EXISTS, "library",
+                        MetadataUtil.getFullyQualifiedDisplayName(otherFunction.getLibraryDatabaseName(),
+                                otherFunction.getLibraryDataverseName(), otherFunction.getLibraryName()),
+                        "function", otherFunction.getSignature());
+            }
+        }
+    }
+
+    private void ensureNoDatasetUsingDatabase(TxnId txnId, String database) throws AlgebricksException {
+        List<Dataset> datasets = getAllDatasets(txnId);
+        for (Dataset otherDataset : datasets) {
+            if (otherDataset.getDatabaseName().equals(database)) {
+                continue;
+            }
+            if (otherDataset.getItemTypeDatabaseName().equals(database)) {
+                //TODO(DB): fix display to include the database conditionally
+                throw new AsterixException(CANNOT_DROP_DATABASE_DEPENDENT_EXISTS, "type",
+                        MetadataUtil.getFullyQualifiedDisplayName(otherDataset.getItemTypeDatabaseName(),
+                                otherDataset.getItemTypeDataverseName(), otherDataset.getItemTypeName()),
+                        dataset(), DatasetUtil.getFullyQualifiedDisplayName(otherDataset));
+            }
+            if (otherDataset.hasMetaPart() && otherDataset.getMetaItemTypeDatabaseName().equals(database)) {
+                throw new AsterixException(CANNOT_DROP_DATABASE_DEPENDENT_EXISTS, "type",
+                        MetadataUtil.getFullyQualifiedDisplayName(otherDataset.getItemTypeDatabaseName(),
+                                otherDataset.getMetaItemTypeDataverseName(), otherDataset.getMetaItemTypeName()),
+                        dataset(), DatasetUtil.getFullyQualifiedDisplayName(otherDataset));
+            }
+            if (otherDataset.getDatasetType() == DatasetType.VIEW) {
+                ViewDetails viewDetails = (ViewDetails) otherDataset.getDatasetDetails();
+                List<DependencyKind> dependenciesSchema = ViewDetails.DEPENDENCIES_SCHEMA;
+                List<List<DependencyFullyQualifiedName>> dependencies = viewDetails.getDependencies();
+                for (int i = 0, n = dependencies.size(); i < n; i++) {
+                    for (DependencyFullyQualifiedName dependency : dependencies.get(i)) {
+                        if (dependency.getDatabaseName().equals(database)) {
+                            DependencyKind dependencyKind = dependenciesSchema.get(i);
+                            throw new AsterixException(CANNOT_DROP_DATABASE_DEPENDENT_EXISTS, dependencyKind,
+                                    dependencyKind.getDependencyDisplayName(dependency), "view",
+                                    DatasetUtil.getFullyQualifiedDisplayName(otherDataset));
+                        }
+                    }
+                }
+            }
         }
     }
 
     private void confirmDataverseCanBeDeleted(TxnId txnId, String database, DataverseName dataverseName)
             throws AlgebricksException {
-        // If a dataset from a DIFFERENT dataverse
-        // uses a type from this dataverse
-        // throw an error
+        // If a dataset from a DIFFERENT dataverse uses a type from this dataverse throw an error
         List<Dataset> datasets = getAllDatasets(txnId);
         for (Dataset dataset : datasets) {
-            if (dataset.getDataverseName().equals(dataverseName)) {
+            if (dataset.getDataverseName().equals(dataverseName) && dataset.getDatabaseName().equals(database)) {
                 continue;
             }
-            if (dataset.getItemTypeDataverseName().equals(dataverseName)) {
-                throw new AsterixException(
-                        org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS, "type",
+            if (dataset.getItemTypeDataverseName().equals(dataverseName)
+                    && dataset.getItemTypeDatabaseName().equals(database)) {
+                throw new AsterixException(CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS, "type",
                         TypeUtil.getFullyQualifiedDisplayName(dataset.getItemTypeDataverseName(),
                                 dataset.getItemTypeName()),
                         dataset(), DatasetUtil.getFullyQualifiedDisplayName(dataset));
             }
-            if (dataset.hasMetaPart() && dataset.getMetaItemTypeDataverseName().equals(dataverseName)) {
-                throw new AsterixException(
-                        org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS, "type",
+            if (dataset.hasMetaPart() && dataset.getMetaItemTypeDataverseName().equals(dataverseName)
+                    && dataset.getMetaItemTypeDatabaseName().equals(database)) {
+                throw new AsterixException(CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS, "type",
                         TypeUtil.getFullyQualifiedDisplayName(dataset.getMetaItemTypeDataverseName(),
                                 dataset.getMetaItemTypeName()),
                         dataset(), DatasetUtil.getFullyQualifiedDisplayName(dataset));
@@ -1224,14 +1627,14 @@ public class MetadataNode implements IMetadataNode {
             if (dataset.getDatasetType() == DatasetType.VIEW) {
                 ViewDetails viewDetails = (ViewDetails) dataset.getDatasetDetails();
                 List<DependencyKind> dependenciesSchema = ViewDetails.DEPENDENCIES_SCHEMA;
-                List<List<Triple<DataverseName, String, String>>> dependencies = viewDetails.getDependencies();
+                List<List<DependencyFullyQualifiedName>> dependencies = viewDetails.getDependencies();
                 for (int i = 0, n = dependencies.size(); i < n; i++) {
-                    for (Triple<DataverseName, String, String> dependency : dependencies.get(i)) {
-                        if (dependency.first.equals(dataverseName)) {
+                    for (DependencyFullyQualifiedName dependency : dependencies.get(i)) {
+                        if (dependency.getDataverseName().equals(dataverseName)
+                                && dependency.getDatabaseName().equals(database)) {
                             DependencyKind dependencyKind = dependenciesSchema.get(i);
-                            throw new AsterixException(
-                                    org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS,
-                                    dependencyKind, dependencyKind.getDependencyDisplayName(dependency), "view",
+                            throw new AsterixException(CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS, dependencyKind,
+                                    dependencyKind.getDependencyDisplayName(dependency), "view",
                                     DatasetUtil.getFullyQualifiedDisplayName(dataset));
                         }
                     }
@@ -1239,45 +1642,45 @@ public class MetadataNode implements IMetadataNode {
             }
         }
 
-        // If a function from a DIFFERENT dataverse
-        // uses datasets, functions, datatypes, or synonyms from this dataverse
+        // If a function from a DIFFERENT dataverse uses datasets, functions, datatypes, or synonyms from this dataverse
         // throw an error
         List<Function> functions = getAllFunctions(txnId);
         for (Function function : functions) {
-            if (function.getDataverseName().equals(dataverseName)) {
+            if (function.getDataverseName().equals(dataverseName) && function.getDatabaseName().equals(database)) {
                 continue;
             }
             List<DependencyKind> dependenciesSchema = Function.DEPENDENCIES_SCHEMA;
-            List<List<Triple<DataverseName, String, String>>> dependencies = function.getDependencies();
+            List<List<DependencyFullyQualifiedName>> dependencies = function.getDependencies();
             for (int i = 0, n = dependencies.size(); i < n; i++) {
-                for (Triple<DataverseName, String, String> dependency : dependencies.get(i)) {
-                    if (dependency.first.equals(dataverseName)) {
+                for (DependencyFullyQualifiedName dependency : dependencies.get(i)) {
+                    if (dependency.getDataverseName().equals(dataverseName)
+                            && dependency.getDatabaseName().equals(database)) {
                         DependencyKind dependencyKind = dependenciesSchema.get(i);
-                        throw new AsterixException(
-                                org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS,
-                                dependencyKind, dependencyKind.getDependencyDisplayName(dependency), "function",
+                        throw new AsterixException(CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS, dependencyKind,
+                                dependencyKind.getDependencyDisplayName(dependency), "function",
                                 function.getSignature());
                     }
                 }
             }
         }
 
-        // If a feed connection from a DIFFERENT dataverse applies
-        // a function from this dataverse then throw an error
+        // If a feed connection from a DIFFERENT dataverse applies a function from this dataverse then throw an error
         List<FeedConnection> feedConnections = getAllFeedConnections(txnId);
         for (FeedConnection feedConnection : feedConnections) {
-            if (dataverseName.equals(feedConnection.getDataverseName())) {
+            if (dataverseName.equals(feedConnection.getDataverseName())
+                    && database.equals(feedConnection.getDatabaseName())) {
                 continue;
             }
             for (FunctionSignature functionSignature : feedConnection.getAppliedFunctions()) {
-                if (dataverseName.equals(functionSignature.getDataverseName())) {
-                    throw new AsterixException(
-                            org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS,
-                            "function", functionSignature, "feed connection", MetadataUtil.getFullyQualifiedDisplayName(
+                if (dataverseName.equals(functionSignature.getDataverseName())
+                        && database.equals(functionSignature.getDatabaseName())) {
+                    throw new AsterixException(CANNOT_DROP_DATAVERSE_DEPENDENT_EXISTS, "function", functionSignature,
+                            "feed connection", MetadataUtil.getFullyQualifiedDisplayName(
                                     feedConnection.getDataverseName(), feedConnection.getFeedName()));
                 }
             }
         }
+        //TODO(DB): should check entities depending on libraries in this dataverse
     }
 
     private void confirmFunctionCanBeDeleted(TxnId txnId, FunctionSignature signature) throws AlgebricksException {
@@ -1288,23 +1691,24 @@ public class MetadataNode implements IMetadataNode {
         List<FeedConnection> feedConnections = getAllFeedConnections(txnId);
         for (FeedConnection feedConnection : feedConnections) {
             if (feedConnection.containsFunction(signature)) {
-                throw new AsterixException(
-                        org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "function",
-                        signature, "feed connection", MetadataUtil.getFullyQualifiedDisplayName(
-                                feedConnection.getDataverseName(), feedConnection.getFeedName()));
+                throw new AsterixException(CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "function", signature,
+                        "feed connection", MetadataUtil.getFullyQualifiedDisplayName(feedConnection.getDataverseName(),
+                                feedConnection.getFeedName()));
             }
         }
     }
 
     private void confirmFunctionIsUnusedByViews(TxnId txnId, FunctionSignature signature) throws AlgebricksException {
-        confirmObjectIsUnusedByViews(txnId, "function", DependencyKind.FUNCTION, null, signature.getDataverseName(),
-                signature.getName(), Integer.toString(signature.getArity()));
+        String functionDatabase = signature.getDatabaseName();
+        confirmObjectIsUnusedByViews(txnId, "function", DependencyKind.FUNCTION, functionDatabase,
+                signature.getDataverseName(), signature.getName(), Integer.toString(signature.getArity()));
     }
 
     private void confirmFunctionIsUnusedByFunctions(TxnId txnId, FunctionSignature signature)
             throws AlgebricksException {
-        confirmObjectIsUnusedByFunctions(txnId, "function", DependencyKind.FUNCTION, null, signature.getDataverseName(),
-                signature.getName(), Integer.toString(signature.getArity()));
+        String functionDatabase = signature.getDatabaseName();
+        confirmObjectIsUnusedByFunctions(txnId, "function", DependencyKind.FUNCTION, functionDatabase,
+                signature.getDataverseName(), signature.getName(), Integer.toString(signature.getArity()));
     }
 
     private void confirmObjectIsUnusedByFunctions(TxnId txnId, String objectKindDisplayName,
@@ -1324,18 +1728,19 @@ public class MetadataNode implements IMetadataNode {
             throw new AlgebricksException(ErrorCode.ILLEGAL_STATE);
         }
         for (Function function : allFunctions) {
-            List<List<Triple<DataverseName, String, String>>> functionDependencies = function.getDependencies();
+            List<List<DependencyFullyQualifiedName>> functionDependencies = function.getDependencies();
             if (functionDependencyIdx < functionDependencies.size()) {
-                List<Triple<DataverseName, String, String>> functionObjectDependencies =
+                List<DependencyFullyQualifiedName> functionObjectDependencies =
                         functionDependencies.get(functionDependencyIdx);
                 if (functionObjectDependencies != null) {
-                    for (Triple<DataverseName, String, String> dependency : functionObjectDependencies) {
-                        if (dependency.first.equals(dataverseName) && dependency.second.equals(objectName)
-                                && (objectArg == null || objectArg.equals(dependency.third))) {
-                            throw new AsterixException(
-                                    org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS,
-                                    objectKindDisplayName, dependencyKind.getDependencyDisplayName(dependency),
-                                    "function", function.getSignature());
+                    for (DependencyFullyQualifiedName dependency : functionObjectDependencies) {
+                        if (dependency.getDataverseName().equals(dataverseName)
+                                && dependency.getDatabaseName().equals(database)
+                                && dependency.getSubName1().equals(objectName)
+                                && (objectArg == null || objectArg.equals(dependency.getSubName2()))) {
+                            throw new AsterixException(CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, objectKindDisplayName,
+                                    dependencyKind.getDependencyDisplayName(dependency), "function",
+                                    function.getSignature());
                         }
                     }
                 }
@@ -1362,18 +1767,18 @@ public class MetadataNode implements IMetadataNode {
         for (Dataset dataset : allDatasets) {
             if (dataset.getDatasetType() == DatasetType.VIEW) {
                 ViewDetails viewDetails = (ViewDetails) dataset.getDatasetDetails();
-                List<List<Triple<DataverseName, String, String>>> viewDependencies = viewDetails.getDependencies();
+                List<List<DependencyFullyQualifiedName>> viewDependencies = viewDetails.getDependencies();
                 if (viewDependencyIdx < viewDependencies.size()) {
-                    List<Triple<DataverseName, String, String>> viewObjectDependencies =
-                            viewDependencies.get(viewDependencyIdx);
+                    List<DependencyFullyQualifiedName> viewObjectDependencies = viewDependencies.get(viewDependencyIdx);
                     if (viewObjectDependencies != null) {
-                        for (Triple<DataverseName, String, String> dependency : viewObjectDependencies) {
-                            if (dependency.first.equals(dataverseName) && dependency.second.equals(objectName)
-                                    && (objectArg == null || objectArg.equals(dependency.third))) {
-                                throw new AsterixException(
-                                        org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS,
-                                        objectKindDisplayName, dependencyKind.getDependencyDisplayName(dependency),
-                                        "view", DatasetUtil.getFullyQualifiedDisplayName(dataset));
+                        for (DependencyFullyQualifiedName dependency : viewObjectDependencies) {
+                            if (dependency.getDataverseName().equals(dataverseName)
+                                    && dependency.getDatabaseName().equals(database)
+                                    && dependency.getSubName1().equals(objectName)
+                                    && (objectArg == null || objectArg.equals(dependency.getSubName2()))) {
+                                throw new AsterixException(CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, objectKindDisplayName,
+                                        dependencyKind.getDependencyDisplayName(dependency), "view",
+                                        DatasetUtil.getFullyQualifiedDisplayName(dataset));
                             }
                         }
                     }
@@ -1385,8 +1790,7 @@ public class MetadataNode implements IMetadataNode {
     private void confirmFullTextConfigCanBeDeleted(TxnId txnId, String database,
             DataverseName dataverseNameFullTextConfig, String configName) throws AlgebricksException {
         if (Strings.isNullOrEmpty(configName)) {
-            throw new MetadataException(
-                    org.apache.asterix.common.exceptions.ErrorCode.FULL_TEXT_DEFAULT_CONFIG_CANNOT_BE_DELETED_OR_CREATED);
+            throw new MetadataException(FULL_TEXT_DEFAULT_CONFIG_CANNOT_BE_DELETED_OR_CREATED);
         }
 
         // If any index uses this full-text config, throw an error
@@ -1402,10 +1806,9 @@ public class MetadataNode implements IMetadataNode {
                 if (Index.IndexCategory.of(index.getIndexType()) == Index.IndexCategory.TEXT) {
                     String indexConfigName = ((Index.TextIndexDetails) index.getIndexDetails()).getFullTextConfigName();
                     if (index.getDataverseName().equals(dataverseNameFullTextConfig)
-                            && !Strings.isNullOrEmpty(indexConfigName) && indexConfigName.equals(configName)) {
-                        throw new AsterixException(
-                                org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS,
-                                "full-text config",
+                            && index.getDatabaseName().equals(database) && !Strings.isNullOrEmpty(indexConfigName)
+                            && indexConfigName.equals(configName)) {
+                        throw new AsterixException(CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "full-text config",
                                 MetadataUtil.getFullyQualifiedDisplayName(dataverseNameFullTextConfig, configName),
                                 "index", DatasetUtil.getFullyQualifiedDisplayName(index.getDataverseName(),
                                         index.getDatasetName()) + "." + index.getIndexName());
@@ -1443,10 +1846,9 @@ public class MetadataNode implements IMetadataNode {
             String libraryName) throws AlgebricksException {
         List<Function> functions = getAllFunctions(txnId);
         for (Function function : functions) {
-            if (libraryName.equals(function.getLibraryName())
+            if (libraryName.equals(function.getLibraryName()) && database.equals(function.getLibraryDatabaseName())
                     && dataverseName.equals(function.getLibraryDataverseName())) {
-                throw new AsterixException(
-                        org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "library",
+                throw new AsterixException(CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "library",
                         MetadataUtil.getFullyQualifiedDisplayName(dataverseName, libraryName), "function",
                         function.getSignature());
             }
@@ -1457,10 +1859,9 @@ public class MetadataNode implements IMetadataNode {
             String libraryName) throws AlgebricksException {
         List<DatasourceAdapter> adapters = getAllAdapters(txnId);
         for (DatasourceAdapter adapter : adapters) {
-            if (libraryName.equals(adapter.getLibraryName())
+            if (libraryName.equals(adapter.getLibraryName()) && database.equals(adapter.getLibraryDatabaseName())
                     && dataverseName.equals(adapter.getLibraryDataverseName())) {
-                throw new AsterixException(
-                        org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "library",
+                throw new AsterixException(CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "library",
                         MetadataUtil.getFullyQualifiedDisplayName(dataverseName, libraryName), "adapter",
                         MetadataUtil.getFullyQualifiedDisplayName(adapter.getAdapterIdentifier().getDataverseName(),
                                 adapter.getAdapterIdentifier().getName()));
@@ -1482,10 +1883,11 @@ public class MetadataNode implements IMetadataNode {
         for (Dataset dataset : datasets) {
             if ((dataset.getItemTypeName().equals(datatypeName)
                     && dataset.getItemTypeDataverseName().equals(dataverseName))
+                    && dataset.getItemTypeDatabaseName().equals(database)
                     || ((dataset.hasMetaPart() && dataset.getMetaItemTypeName().equals(datatypeName)
-                            && dataset.getMetaItemTypeDataverseName().equals(dataverseName)))) {
-                throw new AsterixException(
-                        org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "type",
+                            && dataset.getMetaItemTypeDataverseName().equals(dataverseName)
+                            && dataset.getMetaItemTypeDatabaseName().equals(database)))) {
+                throw new AsterixException(CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "type",
                         TypeUtil.getFullyQualifiedDisplayName(dataverseName, datatypeName), dataset(),
                         DatasetUtil.getFullyQualifiedDisplayName(dataset));
             }
@@ -1507,15 +1909,16 @@ public class MetadataNode implements IMetadataNode {
         IAType typeToBeDropped = dataTypeToBeDropped.getDatatype();
         List<Datatype> datatypes = getAllDatatypes(txnId);
         for (Datatype dataType : datatypes) {
+
             // skip types in different dataverses as well as the type to be dropped itself
-            if (!dataType.getDataverseName().equals(dataverseName)
+            //TODO(DB): review this
+            if (!dataType.getDataverseName().equals(dataverseName) || !dataType.getDatabaseName().equals(database)
                     || dataType.getDatatype().getTypeName().equals(datatypeName)) {
                 continue;
             }
             AbstractComplexType recType = (AbstractComplexType) dataType.getDatatype();
             if (recType.containsType(typeToBeDropped)) {
-                throw new AsterixException(
-                        org.apache.asterix.common.exceptions.ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "type",
+                throw new AsterixException(CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "type",
                         TypeUtil.getFullyQualifiedDisplayName(dataverseName, datatypeName), "type",
                         TypeUtil.getFullyQualifiedDisplayName(dataverseName, recType.getTypeName()));
             }
@@ -1536,10 +1939,9 @@ public class MetadataNode implements IMetadataNode {
             FullTextConfigDescriptor config = configMetadataEntity.getFullTextConfig();
             for (String filterName : config.getFilterNames()) {
                 if (filterName.equals(fullTextFilterName)) {
-                    throw new AlgebricksException("Cannot drop full-text filter "
-                            + TypeUtil.getFullyQualifiedDisplayName(dataverseName, fullTextFilterName)
-                            + " being used by full-text config "
-                            + TypeUtil.getFullyQualifiedDisplayName(dataverseName, config.getName()));
+                    throw new AsterixException(CANNOT_DROP_OBJECT_DEPENDENT_EXISTS, "full-text filter",
+                            TypeUtil.getFullyQualifiedDisplayName(dataverseName, fullTextFilterName),
+                            "full-text config", TypeUtil.getFullyQualifiedDisplayName(dataverseName, config.getName()));
                 }
             }
         }
@@ -1603,7 +2005,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return results.get(0);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1619,7 +2021,7 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getIndexEntity().getIndex(), searchKey, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1638,7 +2040,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return results.get(0);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1655,14 +2057,16 @@ public class MetadataNode implements IMetadataNode {
             }
             return results.get(0);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
     @Override
     public Function getFunction(TxnId txnId, FunctionSignature functionSignature) throws AlgebricksException {
-        List<Function> functions = getFunctionsImpl(txnId, createTuple(null, functionSignature.getDataverseName(),
-                functionSignature.getName(), Integer.toString(functionSignature.getArity())));
+        String functionDatabase = functionSignature.getDatabaseName();
+        List<Function> functions =
+                getFunctionsImpl(txnId, createTuple(functionDatabase, functionSignature.getDataverseName(),
+                        functionSignature.getName(), Integer.toString(functionSignature.getArity())));
         return functions.isEmpty() ? null : functions.get(0);
     }
 
@@ -1670,6 +2074,10 @@ public class MetadataNode implements IMetadataNode {
     public List<Function> getDataverseFunctions(TxnId txnId, String database, DataverseName dataverseName)
             throws AlgebricksException {
         return getFunctionsImpl(txnId, createTuple(database, dataverseName));
+    }
+
+    private List<Function> getDatabaseFunctions(TxnId txnId, String database) throws AlgebricksException {
+        return getFunctionsImpl(txnId, createTuple(database));
     }
 
     private List<Function> getFunctionsImpl(TxnId txnId, ITupleReference searchKey) throws AlgebricksException {
@@ -1681,7 +2089,7 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getFunctionEntity().getIndex(), searchKey, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -1697,7 +2105,8 @@ public class MetadataNode implements IMetadataNode {
         }
         try {
             // Delete entry from the 'function' dataset.
-            ITupleReference searchKey = createTuple(null, functionSignature.getDataverseName(),
+            String functionDatabase = functionSignature.getDatabaseName();
+            ITupleReference searchKey = createTuple(functionDatabase, functionSignature.getDataverseName(),
                     functionSignature.getName(), Integer.toString(functionSignature.getArity()));
             // Searches the index for the tuple to be deleted. Acquires an S lock on the 'function' dataset.
             ITupleReference functionTuple =
@@ -1705,10 +2114,9 @@ public class MetadataNode implements IMetadataNode {
             deleteTupleFromIndex(txnId, mdIndexesProvider.getFunctionEntity().getIndex(), functionTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_FUNCTION, e,
-                        functionSignature.toString());
+                throw new AsterixException(UNKNOWN_FUNCTION, e, functionSignature.toString());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -1809,7 +2217,7 @@ public class MetadataNode implements IMetadataNode {
             IValueExtractor<T> valueExtractor, List<T> results) throws AlgebricksException, HyracksDataException {
         IBinaryComparatorFactory[] comparatorFactories = index.getKeyBinaryComparatorFactory();
         if (index.getFile() == null) {
-            throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.METADATA_ERROR,
+            throw new AsterixException(METADATA_ERROR,
                     "No file for Index " + index.getDataverseName() + "." + index.getIndexName());
         }
         String resourceName = index.getFile().getRelativePath();
@@ -1871,7 +2279,7 @@ public class MetadataNode implements IMetadataNode {
                 datasetLifecycleManager.close(resourceName);
             }
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
         DatasetIdFactory.initialize(mostRecentDatasetId);
     }
@@ -1923,7 +2331,7 @@ public class MetadataNode implements IMetadataNode {
         }
     }
 
-    private static ITupleReference createDatabaseTuple(String databaseName, DataverseName dataverseName,
+    public static ITupleReference createDatabaseTuple(String databaseName, DataverseName dataverseName,
             String... rest) {
         try {
             ArrayTupleBuilder tupleBuilder = new ArrayTupleBuilder(2 + rest.length);
@@ -1983,10 +2391,9 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getDatasourceAdapterEntity().getIndex(), adapterTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.ADAPTER_EXISTS, e,
-                        adapter.getAdapterIdentifier().getName());
+                throw new AsterixException(ADAPTER_EXISTS, e, adapter.getAdapterIdentifier().getName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2004,10 +2411,9 @@ public class MetadataNode implements IMetadataNode {
             deleteTupleFromIndex(txnId, mdIndexesProvider.getDatasourceAdapterEntity().getIndex(), datasetTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_ADAPTER, e,
-                        adapterName);
+                throw new AsterixException(UNKNOWN_ADAPTER, e, adapterName);
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2028,7 +2434,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return results.get(0);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2043,10 +2449,9 @@ public class MetadataNode implements IMetadataNode {
                     compactionPolicyTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.COMPACTION_POLICY_EXISTS, e,
-                        compactionPolicy.getPolicyName());
+                throw new AsterixException(COMPACTION_POLICY_EXISTS, e, compactionPolicy.getPolicyName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2067,7 +2472,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return null;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2084,7 +2489,22 @@ public class MetadataNode implements IMetadataNode {
                     results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+    }
+
+    private List<DatasourceAdapter> getDatabaseAdapters(TxnId txnId, String database) throws AlgebricksException {
+        try {
+            ITupleReference searchKey = createTuple(database);
+            DatasourceAdapterTupleTranslator tupleReaderWriter =
+                    tupleTranslatorProvider.getAdapterTupleTranslator(false);
+            IValueExtractor<DatasourceAdapter> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            List<DatasourceAdapter> results = new ArrayList<>();
+            searchIndex(txnId, mdIndexesProvider.getDatasourceAdapterEntity().getIndex(), searchKey, valueExtractor,
+                    results);
+            return results;
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2097,10 +2517,9 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getLibraryEntity().getIndex(), libraryTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.LIBRARY_EXISTS, e,
-                        library.getName());
+                throw new AsterixException(LIBRARY_EXISTS, e, library.getName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2125,10 +2544,9 @@ public class MetadataNode implements IMetadataNode {
             deleteTupleFromIndex(txnId, mdIndexesProvider.getLibraryEntity().getIndex(), datasetTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_LIBRARY, e,
-                        libraryName);
+                throw new AsterixException(UNKNOWN_LIBRARY, e, libraryName);
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2147,7 +2565,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return results.get(0);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2165,10 +2583,9 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getFeedPolicyEntity().getIndex(), feedPolicyTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.FEED_POLICY_EXISTS, e,
-                        feedPolicy.getPolicyName());
+                throw new AsterixException(FEED_POLICY_EXISTS, e, feedPolicy.getPolicyName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2187,7 +2604,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return null;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2200,10 +2617,10 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getFeedConnectionEntity().getIndex(), feedConnTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.FEED_CONNECTION_EXISTS, e,
-                        feedConnection.getFeedName(), feedConnection.getDatasetName());
+                throw new AsterixException(FEED_CONNECTION_EXISTS, e, feedConnection.getFeedName(),
+                        feedConnection.getDatasetName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2221,7 +2638,7 @@ public class MetadataNode implements IMetadataNode {
                     results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2241,7 +2658,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return null;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2255,10 +2672,9 @@ public class MetadataNode implements IMetadataNode {
             deleteTupleFromIndex(txnId, mdIndexesProvider.getFeedConnectionEntity().getIndex(), tuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_FEED_CONNECTION, e,
-                        feedName, datasetName);
+                throw new AsterixException(UNKNOWN_FEED_CONNECTION, e, feedName, datasetName);
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2272,10 +2688,9 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getFeedEntity().getIndex(), feedTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.FEED_EXISTS, e,
-                        feed.getFeedName());
+                throw new AsterixException(FEED_EXISTS, e, feed.getFeedName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2294,7 +2709,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return null;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2308,7 +2723,7 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getFeedEntity().getIndex(), searchKey, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2323,9 +2738,9 @@ public class MetadataNode implements IMetadataNode {
             deleteTupleFromIndex(txnId, mdIndexesProvider.getFeedEntity().getIndex(), tuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_FEED, e, feedName);
+                throw new AsterixException(UNKNOWN_FEED, e, feedName);
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2340,10 +2755,9 @@ public class MetadataNode implements IMetadataNode {
             deleteTupleFromIndex(txnId, mdIndexesProvider.getFeedPolicyEntity().getIndex(), tuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_FEED_POLICY, e,
-                        policyName);
+                throw new AsterixException(UNKNOWN_FEED_POLICY, e, policyName);
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2359,7 +2773,20 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getFeedPolicyEntity().getIndex(), searchKey, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+    }
+
+    private List<FeedPolicyEntity> getDatabaseFeedPolicies(TxnId txnId, String database) throws AlgebricksException {
+        try {
+            ITupleReference searchKey = createTuple(database);
+            FeedPolicyTupleTranslator tupleReaderWriter = tupleTranslatorProvider.getFeedPolicyTupleTranslator(false);
+            IValueExtractor<FeedPolicyEntity> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            List<FeedPolicyEntity> results = new ArrayList<>();
+            searchIndex(txnId, mdIndexesProvider.getFeedPolicyEntity().getIndex(), searchKey, valueExtractor, results);
+            return results;
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2373,10 +2800,10 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getExternalFileEntity().getIndex(), externalFileTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.EXTERNAL_FILE_EXISTS, e,
-                        externalFile.getFileNumber(), externalFile.getDatasetName());
+                throw new AsterixException(EXTERNAL_FILE_EXISTS, e, externalFile.getFileNumber(),
+                        externalFile.getDatasetName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2394,7 +2821,7 @@ public class MetadataNode implements IMetadataNode {
                     results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2411,10 +2838,9 @@ public class MetadataNode implements IMetadataNode {
             deleteTupleFromIndex(txnId, mdIndexesProvider.getExternalFileEntity().getIndex(), datasetTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_EXTERNAL_FILE, e,
-                        fileNumber, datasetName);
+                throw new AsterixException(UNKNOWN_EXTERNAL_FILE, e, fileNumber, datasetName);
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2482,7 +2908,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return results.get(0);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2495,10 +2921,9 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getSynonymEntity().getIndex(), synonymTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.DUPLICATE_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.SYNONYM_EXISTS, e,
-                        synonym.getSynonymName());
+                throw new AsterixException(SYNONYM_EXISTS, e, synonym.getSynonymName());
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2525,10 +2950,9 @@ public class MetadataNode implements IMetadataNode {
             deleteTupleFromIndex(txnId, mdIndexesProvider.getSynonymEntity().getIndex(), synonymTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_SYNONYM, e,
-                        synonymName);
+                throw new AsterixException(UNKNOWN_SYNONYM, e, synonymName);
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2565,7 +2989,7 @@ public class MetadataNode implements IMetadataNode {
             }
             return results.get(0);
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2580,7 +3004,20 @@ public class MetadataNode implements IMetadataNode {
             searchIndex(txnId, mdIndexesProvider.getSynonymEntity().getIndex(), searchKey, valueExtractor, results);
             return results;
         } catch (HyracksDataException e) {
-            throw new AlgebricksException(e);
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
+        }
+    }
+
+    private List<Synonym> getDatabaseSynonyms(TxnId txnId, String database) throws AlgebricksException {
+        try {
+            ITupleReference searchKey = createTuple(database);
+            SynonymTupleTranslator tupleReaderWriter = tupleTranslatorProvider.getSynonymTupleTranslator(false);
+            IValueExtractor<Synonym> valueExtractor = new MetadataEntityValueExtractor<>(tupleReaderWriter);
+            List<Synonym> results = new ArrayList<>();
+            searchIndex(txnId, mdIndexesProvider.getSynonymEntity().getIndex(), searchKey, valueExtractor, results);
+            return results;
+        } catch (HyracksDataException e) {
+            throw new AsterixException(METADATA_ERROR, e, e.getMessage());
         }
     }
 
@@ -2601,10 +3038,11 @@ public class MetadataNode implements IMetadataNode {
             insertTupleIntoIndex(txnId, mdIndexesProvider.getDatasetEntity().getIndex(), datasetTuple);
         } catch (HyracksDataException e) {
             if (e.matches(ErrorCode.UPDATE_OR_DELETE_NON_EXISTENT_KEY)) {
-                throw new AsterixException(org.apache.asterix.common.exceptions.ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE,
-                        e, dataset.getDatasetName(), dataset.getDataverseName());
+                throw new AsterixException(UNKNOWN_DATASET_IN_DATAVERSE, e, dataset.getDatasetName(),
+                        MetadataUtil.dataverseName(dataset.getDatabaseName(), dataset.getDataverseName(),
+                                mdIndexesProvider.isUsingDatabase()));
             } else {
-                throw new AlgebricksException(e);
+                throw new AsterixException(METADATA_ERROR, e, e.getMessage());
             }
         }
     }
@@ -2629,5 +3067,54 @@ public class MetadataNode implements IMetadataNode {
 
     public ITxnIdFactory getTxnIdFactory() {
         return txnIdFactory;
+    }
+
+    private Database defaultDatabase(String databaseName) {
+        //TODO(DB): review
+        if (MetadataConstants.SYSTEM_DATABASE.equals(databaseName)) {
+            return MetadataBuiltinEntities.SYSTEM_DATABASE;
+        } else {
+            return MetadataBuiltinEntities.DEFAULT_DATABASE;
+        }
+    }
+
+    private ArrayNode getJsonNodes(TxnId txnId, IMetadataIndex mdIndex, int payloadPosition)
+            throws AlgebricksException, HyracksDataException {
+        IValueExtractor<JsonNode> valueExtractor = createValueExtractor(mdIndex, payloadPosition);
+        List<JsonNode> results = new ArrayList<>();
+        searchIndex(txnId, mdIndex, null, valueExtractor, results);
+        ArrayNode array = JSONUtil.createArray();
+        results.forEach(array::add);
+        return array;
+    }
+
+    private static IValueExtractor<JsonNode> createValueExtractor(IMetadataIndex mdIndex, int payloadFieldIndex) {
+        return new IValueExtractor<>() {
+
+            final ARecordType payloadRecordType = mdIndex.getPayloadRecordType();
+            final IPrinterFactory printerFactory =
+                    CleanJSONPrinterFactoryProvider.INSTANCE.getPrinterFactory(payloadRecordType);
+            final IPrinter printer = printerFactory.createPrinter();
+            final ByteArrayAccessibleOutputStream outputStream = new ByteArrayAccessibleOutputStream();
+            final PrintStream printStream = new PrintStream(outputStream);
+
+            @Override
+            public JsonNode getValue(TxnId txnId, ITupleReference tuple) {
+                try {
+                    byte[] serRecord = tuple.getFieldData(payloadFieldIndex);
+                    int recordStartOffset = tuple.getFieldStart(payloadFieldIndex);
+                    int recordLength = tuple.getFieldLength(payloadFieldIndex);
+
+                    printer.init();
+                    outputStream.reset();
+
+                    printer.print(serRecord, recordStartOffset, recordLength, printStream);
+                    printStream.flush();
+                    return JSONUtil.readTree(outputStream.getByteArray(), 0, outputStream.getLength());
+                } catch (Throwable th) {
+                    return JSONUtil.createObject();
+                }
+            }
+        };
     }
 }

@@ -28,6 +28,7 @@ import org.apache.asterix.common.functions.ExternalFunctionLanguage;
 import org.apache.asterix.common.library.ILibrary;
 import org.apache.asterix.common.library.ILibraryManager;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.common.metadata.Namespace;
 import org.apache.asterix.external.api.ITypedAdapterFactory;
 import org.apache.asterix.external.feed.api.IFeed;
 import org.apache.asterix.external.feed.policy.FeedPolicyAccessor;
@@ -63,6 +64,7 @@ public class FeedIntakeOperatorDescriptor extends AbstractSingleActivityOperator
 
     private final FeedPolicyAccessor policyAccessor;
     private final ARecordType adapterOutputType;
+    private String adaptorLibraryDatabase;
     /**
      * The adaptor factory that is used to create an instance of the feed adaptor
      **/
@@ -85,19 +87,22 @@ public class FeedIntakeOperatorDescriptor extends AbstractSingleActivityOperator
     public FeedIntakeOperatorDescriptor(JobSpecification spec, IFeed primaryFeed, ITypedAdapterFactory adapterFactory,
             ARecordType adapterOutputType, FeedPolicyAccessor policyAccessor, RecordDescriptor rDesc) {
         super(spec, 0, 1);
-        this.feedId = new EntityId(FEED_EXTENSION_NAME, primaryFeed.getDataverseName(), primaryFeed.getFeedName());
+        this.feedId = new EntityId(FEED_EXTENSION_NAME, primaryFeed.getDatabaseName(), primaryFeed.getDataverseName(),
+                primaryFeed.getFeedName());
         this.adaptorFactory = adapterFactory;
         this.adapterOutputType = adapterOutputType;
         this.policyAccessor = policyAccessor;
         this.outRecDescs[0] = rDesc;
     }
 
-    public FeedIntakeOperatorDescriptor(JobSpecification spec, IFeed feed, DataverseName adapterLibraryDataverse,
-            String adapterLibraryName, String adapterFactoryClassName, ARecordType adapterOutputType,
-            FeedPolicyAccessor policyAccessor, RecordDescriptor rDesc) {
+    public FeedIntakeOperatorDescriptor(JobSpecification spec, IFeed feed, String databaseName,
+            DataverseName adapterLibraryDataverse, String adapterLibraryName, String adapterFactoryClassName,
+            ARecordType adapterOutputType, FeedPolicyAccessor policyAccessor, RecordDescriptor rDesc) {
         super(spec, 0, 1);
-        this.feedId = new EntityId(FEED_EXTENSION_NAME, feed.getDataverseName(), feed.getFeedName());
+        this.feedId =
+                new EntityId(FEED_EXTENSION_NAME, feed.getDatabaseName(), feed.getDataverseName(), feed.getFeedName());
         this.adaptorFactoryClassName = adapterFactoryClassName;
+        this.adaptorLibraryDatabase = databaseName;
         this.adaptorLibraryDataverse = adapterLibraryDataverse;
         this.adaptorLibraryName = adapterLibraryName;
         this.adaptorConfiguration = feed.getConfiguration();
@@ -120,7 +125,8 @@ public class FeedIntakeOperatorDescriptor extends AbstractSingleActivityOperator
         INcApplicationContext runtimeCtx =
                 (INcApplicationContext) ctx.getJobletContext().getServiceContext().getApplicationContext();
         ILibraryManager libraryManager = runtimeCtx.getLibraryManager();
-        ILibrary lib = libraryManager.getLibrary(adaptorLibraryDataverse, adaptorLibraryName);
+        ILibrary lib = libraryManager.getLibrary(new Namespace(adaptorLibraryDatabase, adaptorLibraryDataverse),
+                adaptorLibraryName);
         if (lib.getLanguage() != ExternalFunctionLanguage.JAVA) {
             throw new HyracksDataException("Unexpected library language: " + lib.getLanguage());
         }
@@ -162,6 +168,10 @@ public class FeedIntakeOperatorDescriptor extends AbstractSingleActivityOperator
 
     public FeedPolicyAccessor getPolicyAccessor() {
         return this.policyAccessor;
+    }
+
+    public String getAdaptorLibraryDatabase() {
+        return adaptorLibraryDatabase;
     }
 
     public DataverseName getAdaptorLibraryDataverse() {

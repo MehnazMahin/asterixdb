@@ -116,7 +116,8 @@ public class InvertedIndexPOperator extends IndexSearchPOperator {
         jobGenParams.readFromFuncArgs(unnestFuncExpr.getArguments());
 
         MetadataProvider metadataProvider = (MetadataProvider) context.getMetadataProvider();
-        Dataset dataset = metadataProvider.findDataset(jobGenParams.getDataverseName(), jobGenParams.getDatasetName());
+        Dataset dataset = metadataProvider.findDataset(jobGenParams.getDatabaseName(), jobGenParams.getDataverseName(),
+                jobGenParams.getDatasetName());
         int[] keyIndexes = getKeyIndexes(jobGenParams.getKeyVarList(), inputSchemas);
 
         boolean propagateIndexFilter = unnestMapOp.propagateIndexFilter();
@@ -180,7 +181,8 @@ public class InvertedIndexPOperator extends IndexSearchPOperator {
         IBinaryTokenizerFactory queryTokenizerFactory =
                 InvertedIndexAccessMethod.getBinaryTokenizerFactory(searchModifierType, searchKeyType, secondaryIndex);
         IFullTextConfigEvaluatorFactory fullTextConfigEvaluatorFactory =
-                FullTextUtil.fetchFilterAndCreateConfigEvaluator(metadataProvider, secondaryIndex.getDataverseName(),
+                FullTextUtil.fetchFilterAndCreateConfigEvaluator(metadataProvider, secondaryIndex.getDatabaseName(),
+                        secondaryIndex.getDataverseName(),
                         ((Index.TextIndexDetails) secondaryIndex.getIndexDetails()).getFullTextConfigName());
         IIndexDataflowHelperFactory dataflowHelperFactory =
                 new IndexDataflowHelperFactory(metadataProvider.getStorageComponentProvider().getStorageManager(),

@@ -87,11 +87,13 @@ public class SchemaClipperVisitor implements IATypeVisitor<AbstractSchemaNode, A
 
     @Override
     public AbstractSchemaNode visit(AbstractCollectionType collectionType, AbstractSchemaNode arg) {
-        if (isNotCompatible(collectionType, arg)) {
+        // We check only if arg is a collection to include both array and multiset
+        if (!arg.isCollection() && isNotCompatible(collectionType, arg)) {
             return MissingFieldSchemaNode.INSTANCE;
         }
-        AbstractCollectionSchemaNode collectionNode =
-                getActualNode(arg, collectionType.getTypeTag(), AbstractCollectionSchemaNode.class);
+
+        ATypeTag typeTag = arg.isCollection() ? arg.getTypeTag() : ATypeTag.ARRAY;
+        AbstractCollectionSchemaNode collectionNode = getActualNode(arg, typeTag, AbstractCollectionSchemaNode.class);
         AbstractSchemaNode newItemNode = collectionType.getItemType().accept(this, collectionNode.getItemNode());
         AbstractCollectionSchemaNode clippedCollectionNode =
                 AbstractCollectionSchemaNode.create(collectionType.getTypeTag());
@@ -115,14 +117,12 @@ public class SchemaClipperVisitor implements IATypeVisitor<AbstractSchemaNode, A
     }
 
     private AbstractSchemaNode getNonCompatibleNumericNodeIfAny(IAType flatType, AbstractSchemaNode arg) {
-        ATypeHierarchy.Domain requestedDomain = ATypeHierarchy.getTypeDomain(flatType.getTypeTag());
-        ATypeHierarchy.Domain nodeDomain = ATypeHierarchy.getTypeDomain(arg.getTypeTag());
-        if (nodeDomain == requestedDomain && nodeDomain == ATypeHierarchy.Domain.NUMERIC) {
+        if (isNumeric(flatType.getTypeTag()) && isNumeric(arg.getTypeTag())) {
             // This will be reconciled by the filter accessor
             return arg;
         } else if (arg.getTypeTag() == ATypeTag.UNION) {
             UnionSchemaNode unionNode = (UnionSchemaNode) arg;
-            return unionNode.getNumericChildOrMissing();
+            return unionNode.getNumericChildOrMissing(flatType.getTypeTag());
         }
 
         return MissingFieldSchemaNode.INSTANCE;
@@ -139,14 +139,19 @@ public class SchemaClipperVisitor implements IATypeVisitor<AbstractSchemaNode, A
     }
 
     private boolean isNotCompatible(IAType requestedType, AbstractSchemaNode schemaNode) {
-        if (requestedType.getTypeTag() != schemaNode.getTypeTag()) {
+        if (schemaNode.getTypeTag() == ATypeTag.MISSING) {
+            return true;
+        }
+        ATypeTag requestedTypeTag = requestedType.getTypeTag();
+        if (requestedTypeTag != schemaNode.getTypeTag()) {
             if (schemaNode.getTypeTag() != ATypeTag.UNION) {
                 warn(requestedType, schemaNode);
                 return true;
             }
             // Handle union
             UnionSchemaNode unionNode = (UnionSchemaNode) schemaNode;
-            return notInUnion(requestedType, unionNode);
+            return notInUnion(requestedType, unionNode)
+                    || isNumeric(requestedTypeTag) && unionContainsMultipleNumeric(schemaNode);
         }
         return unionContainsMultipleNumeric(schemaNode);
     }
@@ -162,7 +167,7 @@ public class SchemaClipperVisitor implements IATypeVisitor<AbstractSchemaNode, A
         if (ATypeHierarchy.isCompatible(requestedType.getTypeTag(), schemaNode.getTypeTag())) {
             return;
         }
-        if (warningCollector.shouldWarn()) {
+        if (warningCollector.shouldWarn() && functionCallInfoMap.containsKey(requestedType.getTypeName())) {
             Warning warning = functionCallInfoMap.get(requestedType.getTypeName())
                     .createWarning(requestedType.getTypeTag(), schemaNode.getTypeTag());
             if (warning != null) {
@@ -177,5 +182,9 @@ public class SchemaClipperVisitor implements IATypeVisitor<AbstractSchemaNode, A
             return unionNode.getNumberOfNumericChildren() > 1;
         }
         return false;
+    }
+
+    private static boolean isNumeric(ATypeTag typeTag) {
+        return ATypeHierarchy.getTypeDomain(typeTag) == ATypeHierarchy.Domain.NUMERIC;
     }
 }

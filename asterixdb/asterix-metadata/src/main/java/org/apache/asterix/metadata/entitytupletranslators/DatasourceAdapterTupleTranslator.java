@@ -23,11 +23,11 @@ import java.util.Calendar;
 
 import org.apache.asterix.common.external.IDataSourceAdapter;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.common.metadata.MetadataUtil;
 import org.apache.asterix.external.dataset.adapter.AdapterIdentifier;
 import org.apache.asterix.metadata.bootstrap.DatasourceAdapterEntity;
 import org.apache.asterix.metadata.bootstrap.MetadataRecordTypes;
 import org.apache.asterix.metadata.entities.DatasourceAdapter;
-import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.om.base.ARecord;
 import org.apache.asterix.om.base.AString;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
@@ -62,6 +62,7 @@ public class DatasourceAdapterTupleTranslator extends AbstractTupleTranslator<Da
         IDataSourceAdapter.AdapterType adapterType = IDataSourceAdapter.AdapterType
                 .valueOf(((AString) adapterRecord.getValueByPos(datasourceAdapterEntity.typeIndex())).getStringValue());
 
+        //TODO(DB): look into enforcing database and dataverse to be non-null
         String libraryDatabase = null;
         DataverseName libraryDataverseName = null;
         String libraryName = null;
@@ -74,7 +75,13 @@ public class DatasourceAdapterTupleTranslator extends AbstractTupleTranslator<Da
                     ? DataverseName.createFromCanonicalForm(
                             ((AString) adapterRecord.getValueByPos(libraryDataverseNameIdx)).getStringValue())
                     : dataverseName;
-            libraryDatabase = MetadataUtil.resolveDatabase(libraryDatabase, libraryDataverseName);
+            int libraryDatabaseNameIdx =
+                    adapterRecord.getType().getFieldIndex(MetadataRecordTypes.FIELD_NAME_LIBRARY_DATABASE_NAME);
+            if (libraryDatabaseNameIdx >= 0) {
+                libraryDatabase = ((AString) adapterRecord.getValueByPos(libraryDatabaseNameIdx)).getStringValue();
+            } else {
+                libraryDatabase = MetadataUtil.databaseFor(libraryDataverseName);
+            }
         }
 
         return new DatasourceAdapter(new AdapterIdentifier(databaseName, dataverseName, adapterName), adapterType,
@@ -160,7 +167,17 @@ public class DatasourceAdapterTupleTranslator extends AbstractTupleTranslator<Da
             return;
         }
 
-        //TODO(DB): write library database name
+        //TODO(DB): change to check against something better
+        if (datasourceAdapterEntity.databaseNameIndex() >= 0) {
+            fieldName.reset();
+            aString.setValue(MetadataRecordTypes.FIELD_NAME_LIBRARY_DATABASE_NAME);
+            stringSerde.serialize(aString, fieldName.getDataOutput());
+            fieldValue.reset();
+            aString.setValue(adapter.getLibraryDatabaseName());
+            stringSerde.serialize(aString, fieldValue.getDataOutput());
+            recordBuilder.addField(fieldName, fieldValue);
+        }
+
         fieldName.reset();
         aString.setValue(MetadataRecordTypes.FIELD_NAME_LIBRARY_DATAVERSE_NAME);
         stringSerde.serialize(aString, fieldName.getDataOutput());

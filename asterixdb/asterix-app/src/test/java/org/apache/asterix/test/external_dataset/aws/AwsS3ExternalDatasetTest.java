@@ -115,6 +115,7 @@ public class AwsS3ExternalDatasetTest {
     static String ONLY_TESTS;
     static String TEST_CONFIG_FILE_NAME;
     static Runnable PREPARE_BUCKET;
+    static Runnable PREPARE_DYNAMIC_PREFIX_AT_START_BUCKET;
     static Runnable PREPARE_FIXED_DATA_BUCKET;
     static Runnable PREPARE_MIXED_DATA_BUCKET;
     static Runnable PREPARE_BOM_FILE_BUCKET;
@@ -144,6 +145,7 @@ public class AwsS3ExternalDatasetTest {
     protected TestCaseContext tcCtx;
 
     public static final String PLAYGROUND_CONTAINER = "playground";
+    public static final String DYNAMIC_PREFIX_AT_START_CONTAINER = "dynamic-prefix-at-start-container";
     public static final String FIXED_DATA_CONTAINER = "fixed-data"; // Do not use, has fixed data
     public static final String INCLUDE_EXCLUDE_CONTAINER = "include-exclude";
     public static final String BOM_FILE_CONTAINER = "bom-file-container";
@@ -151,6 +153,8 @@ public class AwsS3ExternalDatasetTest {
 
     public static final PutObjectRequest.Builder playgroundBuilder =
             PutObjectRequest.builder().bucket(PLAYGROUND_CONTAINER);
+    public static final PutObjectRequest.Builder dynamicPrefixAtStartBuilder =
+            PutObjectRequest.builder().bucket(DYNAMIC_PREFIX_AT_START_CONTAINER);
     public static final PutObjectRequest.Builder fixedDataBuilder =
             PutObjectRequest.builder().bucket(FIXED_DATA_CONTAINER);
     public static final PutObjectRequest.Builder includeExcludeBuilder =
@@ -166,7 +170,6 @@ public class AwsS3ExternalDatasetTest {
     }
 
     // iceberg
-
     private static final Schema SCHEMA =
             new Schema(required(1, "id", Types.IntegerType.get()), required(2, "data", Types.StringType.get()));
     private static final Configuration CONF = new Configuration();
@@ -348,6 +351,7 @@ public class AwsS3ExternalDatasetTest {
         ONLY_TESTS = "only_external_dataset.xml";
         TEST_CONFIG_FILE_NAME = "src/main/resources/cc.conf";
         PREPARE_BUCKET = ExternalDatasetTestUtils::preparePlaygroundContainer;
+        PREPARE_DYNAMIC_PREFIX_AT_START_BUCKET = ExternalDatasetTestUtils::prepareDynamicPrefixAtStartContainer;
         PREPARE_FIXED_DATA_BUCKET = ExternalDatasetTestUtils::prepareFixedDataContainer;
         PREPARE_MIXED_DATA_BUCKET = ExternalDatasetTestUtils::prepareMixedDataContainer;
         PREPARE_BOM_FILE_BUCKET = ExternalDatasetTestUtils::prepareBomFileContainer;
@@ -397,6 +401,7 @@ public class AwsS3ExternalDatasetTest {
                 .endpointOverride(endpoint);
         client = builder.build();
         client.createBucket(CreateBucketRequest.builder().bucket(PLAYGROUND_CONTAINER).build());
+        client.createBucket(CreateBucketRequest.builder().bucket(DYNAMIC_PREFIX_AT_START_CONTAINER).build());
         client.createBucket(CreateBucketRequest.builder().bucket(FIXED_DATA_CONTAINER).build());
         client.createBucket(CreateBucketRequest.builder().bucket(INCLUDE_EXCLUDE_CONTAINER).build());
         client.createBucket(CreateBucketRequest.builder().bucket(BOM_FILE_CONTAINER).build());
@@ -405,9 +410,11 @@ public class AwsS3ExternalDatasetTest {
 
         // Create the bucket and upload some json files
         setDataPaths(JSON_DATA_PATH, CSV_DATA_PATH, TSV_DATA_PATH);
-        setUploaders(AwsS3ExternalDatasetTest::loadPlaygroundData, AwsS3ExternalDatasetTest::loadFixedData,
+        setUploaders(AwsS3ExternalDatasetTest::loadPlaygroundData,
+                AwsS3ExternalDatasetTest::loadDynamicPrefixAtStartData, AwsS3ExternalDatasetTest::loadFixedData,
                 AwsS3ExternalDatasetTest::loadMixedData, AwsS3ExternalDatasetTest::loadBomData);
         PREPARE_BUCKET.run();
+        PREPARE_DYNAMIC_PREFIX_AT_START_BUCKET.run();
         PREPARE_FIXED_DATA_BUCKET.run();
         PREPARE_MIXED_DATA_BUCKET.run();
         PREPARE_BOM_FILE_BUCKET.run();
@@ -416,6 +423,10 @@ public class AwsS3ExternalDatasetTest {
 
     private static void loadPlaygroundData(String key, String content, boolean fromFile, boolean gzipped) {
         client.putObject(playgroundBuilder.key(key).build(), getRequestBody(content, fromFile, gzipped));
+    }
+
+    private static void loadDynamicPrefixAtStartData(String key, String content, boolean fromFile, boolean gzipped) {
+        client.putObject(dynamicPrefixAtStartBuilder.key(key).build(), getRequestBody(content, fromFile, gzipped));
     }
 
     private static void loadFixedData(String key, String content, boolean fromFile, boolean gzipped) {
@@ -470,10 +481,13 @@ public class AwsS3ExternalDatasetTest {
                     String lastLine = lines[lines.length - 1];
                     String[] command = lastLine.trim().split(" ");
                     int length = command.length;
-                    if (length != 3) {
+                    if (length == 1) {
+                        createBucket(command[0]);
+                    } else if (length == 3) {
+                        dropRecreateBucket(command[0], command[1], command[2]);
+                    } else {
                         throw new Exception("invalid create bucket format");
                     }
-                    dropRecreateBucket(command[0], command[1], command[2]);
                     break;
                 default:
                     super.executeTestFile(testCaseCtx, ctx, variableCtx, statement, isDmlRecoveryTest, pb, cUnit,
@@ -482,10 +496,7 @@ public class AwsS3ExternalDatasetTest {
         }
     }
 
-    private static void dropRecreateBucket(String bucketName, String definition, String files) {
-        String definitionPath = definition + (definition.endsWith("/") ? "" : "/");
-        String[] fileSplits = files.split(",");
-
+    private static void createBucket(String bucketName) {
         LOGGER.info("Dropping bucket " + bucketName);
         try {
             client.deleteBucket(DELETE_BUCKET_BUILDER.bucket(bucketName).build());
@@ -494,6 +505,12 @@ public class AwsS3ExternalDatasetTest {
         }
         LOGGER.info("Creating bucket " + bucketName);
         client.createBucket(CREATE_BUCKET_BUILDER.bucket(bucketName).build());
+    }
+
+    private static void dropRecreateBucket(String bucketName, String definition, String files) {
+        String definitionPath = definition + (definition.endsWith("/") ? "" : "/");
+        String[] fileSplits = files.split(",");
+        createBucket(bucketName);
         LOGGER.info("Uploading to bucket " + bucketName + " definition " + definitionPath);
         fileNames.clear();
         for (int i = 0; i < fileSplits.length; i++) {

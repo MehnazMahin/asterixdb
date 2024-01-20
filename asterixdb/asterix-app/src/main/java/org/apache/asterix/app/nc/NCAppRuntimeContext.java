@@ -38,6 +38,8 @@ import org.apache.asterix.common.api.IConfigValidatorFactory;
 import org.apache.asterix.common.api.ICoordinationService;
 import org.apache.asterix.common.api.IDatasetLifecycleManager;
 import org.apache.asterix.common.api.IDiskWriteRateLimiterProvider;
+import org.apache.asterix.common.api.INamespacePathResolver;
+import org.apache.asterix.common.api.INamespaceResolver;
 import org.apache.asterix.common.api.INcApplicationContext;
 import org.apache.asterix.common.api.IPropertiesFactory;
 import org.apache.asterix.common.api.IReceptionist;
@@ -169,9 +171,12 @@ public class NCAppRuntimeContext implements INcApplicationContext {
     private IDiskWriteRateLimiterProvider diskWriteRateLimiterProvider;
     private final CloudProperties cloudProperties;
     private IPartitionBootstrapper partitionBootstrapper;
+    private final INamespacePathResolver namespacePathResolver;
+    private final INamespaceResolver namespaceResolver;
 
     public NCAppRuntimeContext(INCServiceContext ncServiceContext, NCExtensionManager extensionManager,
-            IPropertiesFactory propertiesFactory) {
+            IPropertiesFactory propertiesFactory, INamespaceResolver namespaceResolver,
+            INamespacePathResolver namespacePathResolver) {
         this.ncServiceContext = ncServiceContext;
         compilerProperties = propertiesFactory.newCompilerProperties();
         externalProperties = propertiesFactory.newExternalProperties();
@@ -186,9 +191,12 @@ public class NCAppRuntimeContext implements INcApplicationContext {
         cloudProperties = propertiesFactory.newCloudProperties();
         ncExtensionManager = extensionManager;
         componentProvider = new StorageComponentProvider();
-        resourceIdFactory = new GlobalResourceIdFactoryProvider(ncServiceContext).createResourceIdFactory();
+        resourceIdFactory = new GlobalResourceIdFactoryProvider(ncServiceContext, getResourceIdBlockSize())
+                .createResourceIdFactory();
         persistedResourceRegistry = ncServiceContext.getPersistedResourceRegistry();
         cacheManager = new CacheManager();
+        this.namespacePathResolver = namespacePathResolver;
+        this.namespaceResolver = namespaceResolver;
     }
 
     @Override
@@ -197,7 +205,8 @@ public class NCAppRuntimeContext implements INcApplicationContext {
             boolean initialRun) throws IOException {
         ioManager = getServiceContext().getIoManager();
         if (isCloudDeployment()) {
-            persistenceIOManager = CloudManagerProvider.createIOManager(cloudProperties, ioManager);
+            persistenceIOManager =
+                    CloudManagerProvider.createIOManager(cloudProperties, ioManager, namespacePathResolver);
             partitionBootstrapper = CloudManagerProvider.getCloudPartitionBootstrapper(persistenceIOManager);
         } else {
             persistenceIOManager = ioManager;
@@ -246,6 +255,7 @@ public class NCAppRuntimeContext implements INcApplicationContext {
         datasetLifecycleManager =
                 new DatasetLifecycleManager(storageProperties, localResourceRepository, txnSubsystem.getLogManager(),
                         virtualBufferCache, indexCheckpointManagerProvider, ioManager.getIODevices().size());
+        localResourceRepository.setDatasetLifecycleManager(datasetLifecycleManager);
         final String nodeId = getServiceContext().getNodeId();
         final Set<Integer> nodePartitions = metadataProperties.getNodePartitions(nodeId);
         replicaManager = new ReplicaManager(this, nodePartitions);
@@ -465,6 +475,16 @@ public class NCAppRuntimeContext implements INcApplicationContext {
     }
 
     @Override
+    public INamespaceResolver getNamespaceResolver() {
+        return namespaceResolver;
+    }
+
+    @Override
+    public INamespacePathResolver getNamespacePathResolver() {
+        return namespacePathResolver;
+    }
+
+    @Override
     public void initializeMetadata(boolean newUniverse, int partitionId) throws Exception {
         LOGGER.info("Bootstrapping ({}) metadata in partition {}", newUniverse ? "new" : "existing", partitionId);
         MetadataNode.INSTANCE.initialize(this, ncExtensionManager.getMetadataIndexesProvider(),
@@ -676,5 +696,10 @@ public class NCAppRuntimeContext implements INcApplicationContext {
     @Override
     public IPartitionBootstrapper getPartitionBootstrapper() {
         return partitionBootstrapper;
+    }
+
+    private int getResourceIdBlockSize() {
+        return isCloudDeployment() ? storageProperties.getStoragePartitionsCount()
+                : ncServiceContext.getIoManager().getIODevices().size();
     }
 }

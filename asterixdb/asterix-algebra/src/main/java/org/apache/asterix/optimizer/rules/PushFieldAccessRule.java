@@ -28,6 +28,7 @@ import org.apache.asterix.algebra.base.OperatorAnnotation;
 import org.apache.asterix.common.config.DatasetConfig.DatasetType;
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
+import org.apache.asterix.common.metadata.MetadataUtil;
 import org.apache.asterix.metadata.declared.DataSource;
 import org.apache.asterix.metadata.declared.DataSourceId;
 import org.apache.asterix.metadata.declared.MetadataProvider;
@@ -128,11 +129,11 @@ public class PushFieldAccessRule implements IAlgebraicRewriteRule {
         }
         MetadataProvider mp = (MetadataProvider) context.getMetadataProvider();
         DataSourceId asid = ((IDataSource<DataSourceId>) scan.getDataSource()).getId();
-
-        Dataset dataset = mp.findDataset(asid.getDataverseName(), asid.getDatasourceName());
+        Dataset dataset = mp.findDataset(asid.getDatabaseName(), asid.getDataverseName(), asid.getDatasourceName());
         if (dataset == null) {
             throw new CompilationException(ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE, scan.getSourceLocation(),
-                    asid.getDatasourceName(), asid.getDataverseName());
+                    asid.getDatasourceName(),
+                    MetadataUtil.dataverseName(asid.getDatabaseName(), asid.getDataverseName(), mp.isUsingDatabase()));
         }
         if (dataset.getDatasetType() != DatasetType.INTERNAL) {
             return false;
@@ -140,7 +141,7 @@ public class PushFieldAccessRule implements IAlgebraicRewriteRule {
         final Integer pos = ConstantExpressionUtil.getIntConstant(accessFun.getArguments().get(1).getValue());
         if (pos != null) {
             String tName = dataset.getItemTypeName();
-            IAType t = mp.findType(dataset.getItemTypeDataverseName(), tName);
+            IAType t = mp.findType(dataset.getItemTypeDatabaseName(), dataset.getItemTypeDataverseName(), tName);
             if (t.getTypeTag() != ATypeTag.OBJECT) {
                 return false;
             }
@@ -150,7 +151,8 @@ public class PushFieldAccessRule implements IAlgebraicRewriteRule {
             }
         }
 
-        List<Index> datasetIndexes = mp.getDatasetIndexes(dataset.getDataverseName(), dataset.getDatasetName());
+        List<Index> datasetIndexes =
+                mp.getDatasetIndexes(dataset.getDatabaseName(), dataset.getDataverseName(), dataset.getDatasetName());
         boolean hasSecondaryIndex = false;
         for (Index index : datasetIndexes) {
             if (index.isSecondaryIndex()) {
@@ -317,10 +319,11 @@ public class PushFieldAccessRule implements IAlgebraicRewriteRule {
             }
             DataSourceId asid = dataSource.getId();
             MetadataProvider mp = (MetadataProvider) context.getMetadataProvider();
-            Dataset dataset = mp.findDataset(asid.getDataverseName(), asid.getDatasourceName());
+            Dataset dataset = mp.findDataset(asid.getDatabaseName(), asid.getDataverseName(), asid.getDatasourceName());
             if (dataset == null) {
                 throw new CompilationException(ErrorCode.UNKNOWN_DATASET_IN_DATAVERSE, scan.getSourceLocation(),
-                        asid.getDatasourceName(), asid.getDataverseName());
+                        asid.getDatasourceName(), MetadataUtil.dataverseName(asid.getDatabaseName(),
+                                asid.getDataverseName(), mp.isUsingDatabase()));
             }
             if (dataset.getDatasetType() != DatasetType.INTERNAL) {
                 setAsFinal(assignOp, context, finalAnnot);
@@ -333,7 +336,8 @@ public class PushFieldAccessRule implements IAlgebraicRewriteRule {
 
             // data part
             String dataTypeName = dataset.getItemTypeName();
-            IAType dataType = mp.findType(dataset.getItemTypeDataverseName(), dataTypeName);
+            IAType dataType =
+                    mp.findType(dataset.getItemTypeDatabaseName(), dataset.getItemTypeDataverseName(), dataTypeName);
             if (dataType.getTypeTag() != ATypeTag.OBJECT) {
                 return false;
             }

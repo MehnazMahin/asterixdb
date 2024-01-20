@@ -18,9 +18,13 @@
  */
 package org.apache.asterix.common.utils;
 
+import static org.apache.asterix.common.utils.StorageConstants.PARTITION_DIR_PREFIX;
+import static org.apache.asterix.common.utils.StorageConstants.STORAGE_ROOT_DIR_NAME;
+
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.Iterator;
+import java.util.List;
 
 import org.apache.asterix.common.cluster.ClusterPartition;
 import org.apache.asterix.common.metadata.DataverseName;
@@ -43,6 +47,7 @@ public class StoragePathUtil {
 
     private static final Logger LOGGER = LogManager.getLogger();
     public static final char DATAVERSE_CONTINUATION_MARKER = '^';
+    private static final String PARTITION_PATH = STORAGE_ROOT_DIR_NAME + File.separator + PARTITION_DIR_PREFIX;
 
     private StoragePathUtil() {
     }
@@ -70,22 +75,25 @@ public class StoragePathUtil {
         return new DefaultIoDeviceFileSplit(nodeId, relativePath);
     }
 
-    public static String prepareStoragePartitionPath(int partitonId) {
-        return Paths.get(StorageConstants.STORAGE_ROOT_DIR_NAME, StorageConstants.PARTITION_DIR_PREFIX + partitonId)
-                .toString();
+    public static String prepareStoragePartitionPath(int partitionId) {
+        return Paths.get(StorageConstants.STORAGE_ROOT_DIR_NAME, PARTITION_DIR_PREFIX + partitionId).toString();
     }
 
     public static String prepareIngestionLogPath() {
         return Paths.get(StorageConstants.INGESTION_LOGS_DIR_NAME).toString();
     }
 
-    public static String prepareDataverseIndexName(DataverseName dataverseName, String datasetName, String idxName,
-            long rebalanceCount) {
-        return prepareDataverseComponentName(dataverseName, prepareFullIndexName(datasetName, idxName, rebalanceCount));
+    public static String prepareNamespaceIndexName(String datasetName, String idxName, long rebalanceCount,
+            String namespacePath) {
+        return prepareNamespaceComponentName(namespacePath, prepareFullIndexName(datasetName, idxName, rebalanceCount));
     }
 
     public static String prepareDataverseName(DataverseName dataverseName) {
-        Iterator<String> dvParts = dataverseName.getParts().iterator();
+        List<String> parts = dataverseName.getParts();
+        if (parts.size() < 2) {
+            return parts.get(0);
+        }
+        Iterator<String> dvParts = parts.iterator();
         StringBuilder builder = new StringBuilder();
         builder.append(dvParts.next());
         while (dvParts.hasNext()) {
@@ -94,8 +102,8 @@ public class StoragePathUtil {
         return builder.toString();
     }
 
-    public static String prepareDataverseComponentName(DataverseName dataverseName, String component) {
-        return prepareDataverseName(dataverseName) + File.separatorChar + component;
+    public static String prepareNamespaceComponentName(String namespacePath, String component) {
+        return namespacePath + File.separatorChar + component;
     }
 
     private static String prepareFullIndexName(String datasetName, String idxName, long rebalanceCount) {
@@ -103,8 +111,7 @@ public class StoragePathUtil {
     }
 
     public static int getPartitionNumFromRelativePath(String relativePath) {
-        int startIdx = relativePath.lastIndexOf(StorageConstants.PARTITION_DIR_PREFIX)
-                + StorageConstants.PARTITION_DIR_PREFIX.length();
+        int startIdx = relativePath.lastIndexOf(PARTITION_DIR_PREFIX) + PARTITION_DIR_PREFIX.length();
         int partitionEndIdx = relativePath.indexOf(File.separatorChar, startIdx);
         int idxEnd = partitionEndIdx != -1 ? partitionEndIdx : relativePath.length();
         String partition = relativePath.substring(startIdx, idxEnd);
@@ -182,5 +189,41 @@ public class StoragePathUtil {
      */
     public static FileReference getIndexPath(IIOManager ioManager, ResourceReference ref) throws HyracksDataException {
         return ioManager.resolve(ref.getRelativePath().toString());
+    }
+
+    /**
+     * Returns the index's path after the partition directory
+     * Example:
+     * - Input:
+     * /../storage/partition_8/dataverse_p1[/^dataverse_p2[/^dataverse_p3...]]/dataset/rebalanceCount/index/0_0_b
+     * - Output
+     * dataverse_p1[/^dataverse_p2[/^dataverse_p3...]]/dataset/rebalanceCount/index
+     *
+     * @param fileReference a file inside the index director
+     * @param isDirectory   if the provided {@link FileReference} corresponds to a directory
+     * @return index path
+     */
+    public static String getIndexSubPath(FileReference fileReference, boolean isDirectory) {
+        String relativePath = fileReference.getRelativePath();
+        if (relativePath.length() <= PARTITION_PATH.length() || !relativePath.startsWith(PARTITION_PATH)) {
+            return "";
+        }
+        String partition = PARTITION_PATH + getPartitionNumFromRelativePath(relativePath);
+        int partitionStart = relativePath.indexOf(partition);
+        int start = partitionStart + partition.length() + 1;
+        int end = isDirectory ? relativePath.length() : relativePath.lastIndexOf('/');
+        if (start >= end) {
+            // This could happen if the provided path contains only a partition path (e.g., storage/partition_0)
+            return "";
+        }
+        return relativePath.substring(start, end);
+    }
+
+    public static boolean hasSameStorageRoot(FileReference file1, FileReference file2) {
+        return file1.getDeviceHandle().equals(file2.getDeviceHandle());
+    }
+
+    public static boolean isRelativeParent(FileReference parent, FileReference child) {
+        return child.getRelativePath().startsWith(parent.getRelativePath());
     }
 }

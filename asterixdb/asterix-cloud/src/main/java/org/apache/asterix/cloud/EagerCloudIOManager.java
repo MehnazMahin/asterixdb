@@ -22,11 +22,11 @@ import static org.apache.asterix.common.utils.StorageConstants.STORAGE_ROOT_DIR_
 
 import java.io.File;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.asterix.cloud.clients.IParallelDownloader;
+import org.apache.asterix.common.api.INamespacePathResolver;
 import org.apache.asterix.common.config.CloudProperties;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 import org.apache.hyracks.api.io.FileReference;
@@ -45,8 +45,9 @@ import org.apache.logging.log4j.Logger;
 final class EagerCloudIOManager extends AbstractCloudIOManager {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    public EagerCloudIOManager(IOManager ioManager, CloudProperties cloudProperties) throws HyracksDataException {
-        super(ioManager, cloudProperties);
+    public EagerCloudIOManager(IOManager ioManager, CloudProperties cloudProperties,
+            INamespacePathResolver nsPathResolver) throws HyracksDataException {
+        super(ioManager, cloudProperties, nsPathResolver);
     }
 
     /*
@@ -56,15 +57,11 @@ final class EagerCloudIOManager extends AbstractCloudIOManager {
      */
 
     @Override
-    protected void downloadPartitions() throws HyracksDataException {
-        // TODO currently it throws an error in local test
-        Map<String, String> cloudToLocalStoragePaths = new HashMap<>();
-        for (FileReference partitionPath : partitionPaths) {
-            String cloudStoragePath = STORAGE_ROOT_DIR_NAME + "/" + partitionPath.getName();
-            cloudToLocalStoragePaths.put(cloudStoragePath, partitionPath.getAbsolutePath());
-        }
-        LOGGER.info("Resolved paths to io devices: {}", cloudToLocalStoragePaths);
-        cloudClient.syncFiles(bucket, cloudToLocalStoragePaths);
+    protected void downloadPartitions(boolean metadataNode, int metadataPartition) throws HyracksDataException {
+        IParallelDownloader downloader = cloudClient.createParallelDownloader(bucket, localIoManager);
+        LOGGER.info("Downloading all files located in {}", partitionPaths);
+        downloader.downloadDirectories(partitionPaths);
+        LOGGER.info("Finished downloading {}", partitionPaths);
     }
 
     @Override

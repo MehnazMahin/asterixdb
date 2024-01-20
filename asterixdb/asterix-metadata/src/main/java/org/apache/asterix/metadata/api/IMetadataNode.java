@@ -48,6 +48,8 @@ import org.apache.asterix.metadata.entities.Synonym;
 import org.apache.asterix.transaction.management.opcallbacks.AbstractIndexModificationOperationCallback;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 /**
  * A metadata node stores metadata in its local storage structures (currently
  * BTrees). A metadata node services requests on behalf of the (possibly remote)
@@ -83,6 +85,8 @@ public interface IMetadataNode extends Remote, Serializable {
 
     void dropDatabase(TxnId txnId, String databaseName) throws AlgebricksException, RemoteException;
 
+    Database getDatabase(TxnId txnId, String databaseName) throws AlgebricksException, RemoteException;
+
     /**
      * Inserts a new dataverse into the metadata, acquiring local locks on behalf of
      * the given transaction id.
@@ -98,17 +102,19 @@ public interface IMetadataNode extends Remote, Serializable {
     void addDataverse(TxnId txnId, Dataverse dataverse) throws AlgebricksException, RemoteException;
 
     /**
-     * Retrieves all dataverses, acquiring local locks on behalf of the given
-     * transaction id.
+     * Deletes the dataverse with given name, and all it's associated datasets,
+     * indexes, and types, acquiring local locks on behalf of the given transaction
+     * id.
      *
      * @param txnId
      *            A globally unique id for an active metadata transaction.
-     * @return A list of dataverse instances.
+     * @param dataverseName
+     *            Name of the dataverse to drop.
      * @throws AlgebricksException
      *             For example, if the dataverse does not exist.
-     * @throws RemoteException remote exception
      */
-    List<Dataverse> getDataverses(TxnId txnId) throws AlgebricksException, RemoteException;
+    void dropDataverse(TxnId txnId, String database, DataverseName dataverseName)
+            throws AlgebricksException, RemoteException;
 
     /**
      * Retrieves a dataverse with given name, acquiring local locks on behalf of the
@@ -126,6 +132,23 @@ public interface IMetadataNode extends Remote, Serializable {
     Dataverse getDataverse(TxnId txnId, String database, DataverseName dataverseName)
             throws AlgebricksException, RemoteException;
 
+    List<Database> getDatabases(TxnId txnId) throws AlgebricksException, RemoteException;
+
+    /**
+     * Retrieves all dataverses, acquiring local locks on behalf of the given
+     * transaction id.
+     *
+     * @param txnId
+     *            A globally unique id for an active metadata transaction.
+     * @return A list of dataverse instances.
+     * @throws AlgebricksException
+     *             For example, if the dataverse does not exist.
+     * @throws RemoteException remote exception
+     */
+    List<Dataverse> getDataverses(TxnId txnId) throws AlgebricksException, RemoteException;
+
+    List<Dataset> getDatabaseDatasets(TxnId txnId, String database) throws AlgebricksException, RemoteException;
+
     /**
      * Retrieves all datasets belonging to the given dataverse, acquiring local
      * locks on behalf of the given transaction id.
@@ -139,21 +162,6 @@ public interface IMetadataNode extends Remote, Serializable {
      *             For example, if the dataverse does not exist. RemoteException
      */
     List<Dataset> getDataverseDatasets(TxnId txnId, String database, DataverseName dataverseName)
-            throws AlgebricksException, RemoteException;
-
-    /**
-     * Deletes the dataverse with given name, and all it's associated datasets,
-     * indexes, and types, acquiring local locks on behalf of the given transaction
-     * id.
-     *
-     * @param txnId
-     *            A globally unique id for an active metadata transaction.
-     * @param dataverseName
-     *            Name of the dataverse to drop.
-     * @throws AlgebricksException
-     *             For example, if the dataverse does not exist.
-     */
-    void dropDataverse(TxnId txnId, String database, DataverseName dataverseName)
             throws AlgebricksException, RemoteException;
 
     /**
@@ -712,6 +720,8 @@ public interface IMetadataNode extends Remote, Serializable {
     Library getLibrary(TxnId txnId, String database, DataverseName dataverseName, String libraryName)
             throws AlgebricksException, RemoteException;
 
+    List<Library> getDatabaseLibraries(TxnId txnId, String database) throws AlgebricksException, RemoteException;
+
     /**
      * Retireve libraries installed in a given dataverse.
      *
@@ -980,6 +990,21 @@ public interface IMetadataNode extends Remote, Serializable {
      * @throws RemoteException remote exception
      */
     <T extends IExtensionMetadataEntity> List<T> getEntities(TxnId txnId, IExtensionMetadataSearchKey searchKey)
+            throws AlgebricksException, RemoteException;
+
+    /**
+     * Gets all the records of a metadata dataset as JSON.
+     *
+     * @param txnId transaction id
+     * @param metadataIndex the metadata dataset
+     * @param payloadPosition the position of the record in the tuple
+     *
+     * @return the metadata records as JSON
+     *
+     * @throws AlgebricksException AlgebricksException
+     * @throws RemoteException RemoteException
+     */
+    JsonNode getEntitiesAsJson(TxnId txnId, IMetadataIndex metadataIndex, int payloadPosition)
             throws AlgebricksException, RemoteException;
 
     void addFeedConnection(TxnId txnId, FeedConnection feedConnection) throws AlgebricksException, RemoteException;

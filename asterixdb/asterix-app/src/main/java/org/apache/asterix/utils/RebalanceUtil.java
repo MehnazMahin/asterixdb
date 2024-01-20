@@ -93,8 +93,8 @@ public class RebalanceUtil {
      * @return <code>false</code> if the rebalance was safely skipped
      * @throws Exception
      */
-    public static boolean rebalance(DataverseName dataverseName, String datasetName, Set<String> targetNcNames,
-            MetadataProvider metadataProvider, IHyracksClientConnection hcc,
+    public static boolean rebalance(String database, DataverseName dataverseName, String datasetName,
+            Set<String> targetNcNames, MetadataProvider metadataProvider, IHyracksClientConnection hcc,
             IDatasetRebalanceCallback datasetRebalanceCallback, boolean forceRebalance) throws Exception {
         Dataset sourceDataset;
         Dataset targetDataset;
@@ -106,7 +106,7 @@ public class RebalanceUtil {
         metadataProvider.setMetadataTxnContext(mdTxnCtx);
         try {
             // The source dataset.
-            sourceDataset = metadataProvider.findDataset(dataverseName, datasetName);
+            sourceDataset = metadataProvider.findDataset(database, dataverseName, datasetName);
 
             // If the source dataset doesn't exist, then it's a no-op.
             if (sourceDataset == null) {
@@ -121,9 +121,9 @@ public class RebalanceUtil {
 
             if (!targetNcNames.isEmpty()) {
                 // Creates a node group for rebalance.
-                String nodeGroupName = DatasetUtil.createNodeGroupForNewDataset(sourceDataset.getDataverseName(),
-                        sourceDataset.getDatasetName(), sourceDataset.getRebalanceCount() + 1, targetNcNames,
-                        metadataProvider);
+                String nodeGroupName = DatasetUtil.createNodeGroupForNewDataset(sourceDataset.getDatabaseName(),
+                        sourceDataset.getDataverseName(), sourceDataset.getDatasetName(),
+                        sourceDataset.getRebalanceCount() + 1, targetNcNames, metadataProvider);
                 // The target dataset for rebalance.
                 targetDataset = sourceDataset.getTargetDatasetForRebalance(nodeGroupName);
 
@@ -261,8 +261,8 @@ public class RebalanceUtil {
                 (ActiveNotificationHandler) appCtx.getActiveNotificationHandler();
         IMetadataLockManager lockManager = appCtx.getMetadataLockManager();
         LOGGER.debug("attempting to acquire dataset {} upgrade lock", source.getDatasetName());
-        lockManager.upgradeDatasetLockToWrite(metadataProvider.getLocks(), source.getDataverseName(),
-                source.getDatasetName());
+        lockManager.upgradeDatasetLockToWrite(metadataProvider.getLocks(), source.getDatabaseName(),
+                source.getDataverseName(), source.getDatasetName());
         LOGGER.debug("acquired dataset {} upgrade lock", source.getDatasetName());
         LOGGER.info("Updating dataset {} node group from {} to {}", source.getDatasetName(), source.getNodeGroupName(),
                 target.getNodeGroupName());
@@ -278,8 +278,8 @@ public class RebalanceUtil {
             MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);
             LOGGER.info("dataset {} node group updated to {}", target.getDatasetName(), target.getNodeGroupName());
         } finally {
-            lockManager.downgradeDatasetLockToExclusiveModify(metadataProvider.getLocks(), target.getDataverseName(),
-                    target.getDatasetName());
+            lockManager.downgradeDatasetLockToExclusiveModify(metadataProvider.getLocks(), target.getDatabaseName(),
+                    target.getDataverseName(), target.getDatasetName());
         }
     }
 
@@ -353,8 +353,8 @@ public class RebalanceUtil {
 
     private static ITupleProjectorFactory createTupleProjectorFactory(Dataset source, MetadataProvider metadataProvider)
             throws AlgebricksException {
-        ARecordType itemType =
-                (ARecordType) metadataProvider.findType(source.getItemTypeDataverseName(), source.getItemTypeName());
+        ARecordType itemType = (ARecordType) metadataProvider.findType(source.getItemTypeDatabaseName(),
+                source.getItemTypeDataverseName(), source.getItemTypeName());
         ARecordType metaType = DatasetUtil.getMetaType(metadataProvider, source);
         itemType = (ARecordType) metadataProvider.findTypeForDatasetWithoutType(itemType, metaType, source);
         int numberOfPrimaryKeys = source.getPrimaryKeys().size();
@@ -396,7 +396,8 @@ public class RebalanceUtil {
             return;
         }
         List<JobSpecification> jobs = new ArrayList<>();
-        List<Index> indexes = metadataProvider.getDatasetIndexes(dataset.getDataverseName(), dataset.getDatasetName());
+        List<Index> indexes = metadataProvider.getDatasetIndexes(dataset.getDatabaseName(), dataset.getDataverseName(),
+                dataset.getDatasetName());
         for (Index index : indexes) {
             jobs.add(IndexUtil.buildDropIndexJobSpec(index, metadataProvider, dataset,
                     EnumSet.of(DropOption.IF_EXISTS, DropOption.WAIT_ON_IN_USE), null));
@@ -409,7 +410,8 @@ public class RebalanceUtil {
     // Creates and loads all secondary indexes for the rebalance target dataset.
     private static void createAndLoadSecondaryIndexesForTarget(Dataset source, Dataset target,
             MetadataProvider metadataProvider, IHyracksClientConnection hcc) throws Exception {
-        List<Index> indexes = metadataProvider.getDatasetIndexes(source.getDataverseName(), source.getDatasetName());
+        List<Index> indexes = metadataProvider.getDatasetIndexes(source.getDatabaseName(), source.getDataverseName(),
+                source.getDatasetName());
         List<Index> secondaryIndexes = indexes.stream().filter(Index::isSecondaryIndex).collect(Collectors.toList());
         List<Index> nonSampleIndexes =
                 secondaryIndexes.stream().filter(idx -> !idx.isSampleIndex()).collect(Collectors.toList());
