@@ -894,14 +894,15 @@ public class Stats {
 
     private ILogicalOperator findParentOfSelectOp(ILogicalOperator op) {
         ILogicalOperator parent = null;
-        LogicalOperatorTag tag = op.getOperatorTag();
+        ILogicalOperator currentOp = op;
+        LogicalOperatorTag tag = currentOp.getOperatorTag();
         while (tag != LogicalOperatorTag.DATASOURCESCAN) {
             if (tag == LogicalOperatorTag.SELECT) {
                 return parent;
             }
-            parent = op;
-            op = op.getInputs().get(0).getValue();
-            tag = op.getOperatorTag();
+            parent = currentOp;
+            currentOp = currentOp.getInputs().get(0).getValue();
+            tag = currentOp.getOperatorTag();
         }
         return null; // no SelectOp in the query tree
     }
