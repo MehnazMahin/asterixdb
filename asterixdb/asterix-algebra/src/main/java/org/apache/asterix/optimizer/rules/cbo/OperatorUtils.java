@@ -178,8 +178,9 @@ public class OperatorUtils {
             ILogicalOperator grpByDistinctOp) {
         Pair<List<LogicalVariable>, List<AbstractFunctionCallExpression>> distinctVarsFunctions =
                 new Pair<>(new ArrayList<>(), new ArrayList<>());
-        List<LogicalVariable> distinctVars = distinctVarsFunctions.first;
-        List<AbstractFunctionCallExpression> distinctFunctions = distinctVarsFunctions.second;
+        List<LogicalVariable> distinctVars = distinctVarsFunctions.getFirst();
+        List<AbstractFunctionCallExpression> distinctFunctions = distinctVarsFunctions.getSecond();
+
         if (grpByDistinctOp == null) {
             return distinctVarsFunctions;
         }

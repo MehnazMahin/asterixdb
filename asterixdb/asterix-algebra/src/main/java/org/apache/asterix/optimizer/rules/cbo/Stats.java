@@ -896,6 +896,7 @@ public class Stats {
         ILogicalOperator parent = null;
         ILogicalOperator currentOp = op;
         LogicalOperatorTag tag = currentOp.getOperatorTag();
+
         while (tag != LogicalOperatorTag.DATASOURCESCAN) {
             if (tag == LogicalOperatorTag.SELECT) {
                 return parent;
