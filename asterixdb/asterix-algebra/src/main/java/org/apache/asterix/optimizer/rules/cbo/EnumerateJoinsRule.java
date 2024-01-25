@@ -457,8 +457,8 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
                             OperatorUtils.getGroupByDistinctVarFuncPair(grpByDistinctOp);
                     for (int i = 0; i < currentOp.getInputs().size(); i++) {
                         ILogicalOperator nextOp = currentOp.getInputs().get(i).getValue();
-                        OperatorUtils.createDistinctOpsForJoinNodes(nextOp, distinctVarsFuncPair.first,
-                                distinctVarsFuncPair.second, context, dataScanAndGroupByDistinctOps);
+                        OperatorUtils.createDistinctOpsForJoinNodes(nextOp, distinctVarsFuncPair, context,
+                                dataScanAndGroupByDistinctOps);
                     }
                 }
                 return;

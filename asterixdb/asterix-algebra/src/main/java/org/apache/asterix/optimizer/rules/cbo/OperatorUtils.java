@@ -48,9 +48,12 @@ import org.apache.hyracks.api.exceptions.SourceLocation;
 
 public class OperatorUtils {
 
-    public static void createDistinctOpsForJoinNodes(ILogicalOperator op, List<LogicalVariable> distinctVars,
-            List<AbstractFunctionCallExpression> distinctFunctions, IOptimizationContext context,
-            HashMap<DataSourceScanOperator, ILogicalOperator> scanAndDistinctOps) {
+    public static void createDistinctOpsForJoinNodes(ILogicalOperator op,
+            Pair<List<LogicalVariable>, List<AbstractFunctionCallExpression>> distinctVarsFuncPair,
+            IOptimizationContext context, HashMap<DataSourceScanOperator, ILogicalOperator> scanAndDistinctOps) {
+
+        List<LogicalVariable> distinctVars = distinctVarsFuncPair.getFirst();
+        List<AbstractFunctionCallExpression> distinctFunctions = distinctVarsFuncPair.getSecond();
         if (op == null || distinctVars.size() == 0) {
             return;
         }
@@ -64,7 +67,7 @@ public class OperatorUtils {
         if (tag == LogicalOperatorTag.INNERJOIN || tag == LogicalOperatorTag.LEFTOUTERJOIN) {
             for (int i = 0; i < currentOp.getInputs().size(); i++) {
                 ILogicalOperator nextOp = currentOp.getInputs().get(i).getValue();
-                createDistinctOpsForJoinNodes(nextOp, distinctVars, distinctFunctions, context, scanAndDistinctOps);
+                createDistinctOpsForJoinNodes(nextOp, distinctVarsFuncPair, context, scanAndDistinctOps);
             }
         } else {
             DataSourceScanOperator scanOp = null;
@@ -123,8 +126,7 @@ public class OperatorUtils {
                 } else if (tag == LogicalOperatorTag.INNERJOIN || tag == LogicalOperatorTag.LEFTOUTERJOIN) {
                     for (int i = 0; i < currentOp.getInputs().size(); i++) {
                         ILogicalOperator nextOp = currentOp.getInputs().get(i).getValue();
-                        createDistinctOpsForJoinNodes(nextOp, distinctVars, distinctFunctions, context,
-                                scanAndDistinctOps);
+                        createDistinctOpsForJoinNodes(nextOp, distinctVarsFuncPair, context, scanAndDistinctOps);
                     }
                     break; // next operators are already handled in the recursion, so exit looping
                 }
