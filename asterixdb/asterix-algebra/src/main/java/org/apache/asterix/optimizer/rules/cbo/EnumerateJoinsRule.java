@@ -84,7 +84,6 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
     private List<AssignOperator> assignOps;
     private List<ILogicalExpression> assignJoinExprs; // These are the join expressions below the assign operator.
 
-    // The Distinct operators for each Select or DataSourceScan operator (if applicable)
     // The Distinct operators for each DataSourceScan operator (if applicable)
     private HashMap<DataSourceScanOperator, ILogicalOperator> dataScanAndGroupByDistinctOps;
 
@@ -133,7 +132,6 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
             return false;
         }
 
-        // If cboMode or cboTestMode is true, identify each DistinctOp or GroupByOp for the corresponding DataScanOp
         if (op.getOperatorTag() == LogicalOperatorTag.DISTRIBUTE_RESULT) {
             // If cboMode or cboTestMode is true, identify each DistinctOp or GroupByOp for the corresponding DataScanOp
             getDistinctOpsForJoinNodes(op, context);
@@ -447,32 +445,33 @@ public class EnumerateJoinsRule implements IAlgebraicRewriteRule {
         }
         ILogicalOperator grpByDistinctOp = null; // null indicates no DistinctOp or GroupByOp
         DataSourceScanOperator scanOp;
+        ILogicalOperator currentOp = op;
         while (true) {
-            LogicalOperatorTag tag = op.getOperatorTag();
+            LogicalOperatorTag tag = currentOp.getOperatorTag();
             if (tag == LogicalOperatorTag.DISTINCT || tag == LogicalOperatorTag.GROUP) {
-                grpByDistinctOp = op; // GroupByOp Variable expressions (if any) take over DistinctOp ones
+                grpByDistinctOp = currentOp; // GroupByOp Variable expressions (if any) take over DistinctOp ones
                 this.rootGroupByDistinctOp = grpByDistinctOp;
             } else if (tag == LogicalOperatorTag.INNERJOIN || tag == LogicalOperatorTag.LEFTOUTERJOIN) {
                 if (grpByDistinctOp != null) {
                     Pair<List<LogicalVariable>, List<AbstractFunctionCallExpression>> distinctVarsFuncPair =
                             OperatorUtils.getGroupByDistinctVarFuncPair(grpByDistinctOp);
-                    for (int i = 0; i < op.getInputs().size(); i++) {
-                        ILogicalOperator nextOp = op.getInputs().get(i).getValue();
-                        OperatorUtils.createDistinctOpsForJoinNodes(nextOp, distinctVarsFuncPair.first,
-                                distinctVarsFuncPair.second, context, dataScanAndGroupByDistinctOps);
+                    for (int i = 0; i < currentOp.getInputs().size(); i++) {
+                        ILogicalOperator nextOp = currentOp.getInputs().get(i).getValue();
+                        OperatorUtils.createDistinctOpsForJoinNodes(nextOp, distinctVarsFuncPair, context,
+                                dataScanAndGroupByDistinctOps);
                     }
                 }
                 return;
             } else if (tag == LogicalOperatorTag.DATASOURCESCAN) { // single table queries
-                scanOp = (DataSourceScanOperator) op;
+                scanOp = (DataSourceScanOperator) currentOp;
                 // will work for any attributes present in GroupByOp or DistinctOp
                 if (grpByDistinctOp != null) {
                     dataScanAndGroupByDistinctOps.put(scanOp, grpByDistinctOp);
                 }
                 return;
             }
-            op = op.getInputs().get(0).getValue();
-            if (op.getOperatorTag() == LogicalOperatorTag.EMPTYTUPLESOURCE) {
+            currentOp = currentOp.getInputs().get(0).getValue();
+            if (currentOp.getOperatorTag() == LogicalOperatorTag.EMPTYTUPLESOURCE) {
                 return; // if this happens, there is nothing we can do in CBO code since there is no DataSourceScan
             }
         }
